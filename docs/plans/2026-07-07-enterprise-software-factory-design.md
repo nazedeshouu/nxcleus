@@ -1,6 +1,6 @@
 # Enterprise Software Factory — Consolidated Design
 
-**Status:** locked after brainstorm sessions, 2026-07-07.
+**Status:** SUPERSEDED by [`2026-07-07-adaptive-sovereign-platform-design.md`](2026-07-07-adaptive-sovereign-platform-design.md) (v2 reframe: process-as-deliverable, adaptive delivery modes, build/operate/refine lifecycle). Kept for history. Originally locked after brainstorm sessions, 2026-07-07.
 **Track:** AMD Hackathon ACT II, Track 3 (Unicorn / Open Innovation). Deadline **Jul 11, 2026, 21:00 KT (UTC+5)**.
 **Team:** duo, near full-time.
 **Working title:** TBD (see Open decisions — avoid "software factory" as a brand; Factory.ai collision).
@@ -30,7 +30,7 @@ Why a single frontier chat cannot substitute: jobs are too large for one context
 - Document OCR/extraction for document-driven jobs (e.g. KYC) happens here, locally.
 
 ### Stage 1 — Planning (dual, with Sovereign Mode)
-- Default planner: Claude-class external model (permitted by track rules; sees only Gemma-sanitized specs — never raw data).
+- Default planner: Claude Fable-class external model (permitted by track rules; sees only Gemma-sanitized specs — never raw data).
 - **Sovereign Mode:** a toggle that swaps the planner for a Fireworks-hosted open frontier model so the entire pipeline runs on AMD-hosted infrastructure with zero external calls. Product feature and demo insurance.
 - Output: module decomposition, typed interfaces, algorithm pseudocode, data schemas, task DAG, initial estimate.
 
