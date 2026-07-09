@@ -36,7 +36,8 @@ async def review_wave(ctx, *, plan: dict, plan_id: str, goal: str, wave_idx: int
                                                  rationale=amend.get("rationale", ""), plan_ref=ref)
             await ctx.emit(E.CONDUCTOR_AMENDMENT, {"wave": wave_idx + 1, "seq": row["seq"],
                                                    "origin": "conductor", "plan_ref": ref,
-                                                   "hash": row["hash"], "rationale": row["rationale"]})
+                                                   "hash": row["hash"], "prev_hash": row["prev_hash"],
+                                                   "rationale": row["rationale"]})
         else:
             await ctx.emit(E.SYSTEM_NOTICE, {"text": f"conductor amendment on built region {ref!r} "
                                              "rejected (scope-lock)", "level": "warn"})

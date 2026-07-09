@@ -82,7 +82,20 @@ def create_app() -> FastAPI:
 
     @app.get("/api/config/public")
     async def config_public() -> dict:
-        return settings.safe_summary()
+        from app.fleet import health
+
+        ready = health.ready_node_names()
+        # fleet profile inference (02 §5): no nodes -> P0 fallback; else P2 demo standard
+        profile = "P0" if not ready else "P2"
+        fallback_serving = (not ready) and settings.model_mode != "mock"
+        # frontend contract (06 §3 ruling) + retained safe_summary fields (additive)
+        return {
+            "sovereign": settings.sovereign_default,
+            "fallback_serving": fallback_serving,
+            "profile": profile,
+            "demo": not bool(settings.admin_token),   # presenter controls open when no token set
+            **settings.safe_summary(),
+        }
 
     @app.get("/api/replay/{scope:path}")
     async def replay_scope(scope: str, from_seq: int = 0) -> dict:

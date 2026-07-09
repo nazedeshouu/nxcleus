@@ -72,12 +72,26 @@ async def run(ctx) -> None:
     await ctx.emit(E.INTAKE_CLASSIFIED, {"mode": mode,
                                          "rationale": (sanitized_spec.get("mode") or {}).get("rationale", "")})
 
-    # 6) boundary gate — the "what the frontier will never see" moment, citing policy rule IDs
+    # 6) boundary gate — the "what the frontier will never see" moment (payload per 06 §3 ruling:
+    #    findings[{rule_id,label,count,action}] + never_leaves[] + brief_tokens)
     sr = sanitized_spec.get("sensitivity_report", {})
+    kind_counts: dict[str, int] = {}
+    for _, _, kind in entries:
+        kind_counts[kind] = kind_counts.get(kind, 0) + 1
+    findings = [{"rule_id": r.get("id", ""), "label": r.get("description", ""),
+                 "count": kind_counts.get(r.get("kind", ""), 0), "action": r.get("kind", "mask")}
+                for r in rules] or [
+        {"rule_id": "PII-BASE", "label": "PII baseline", "count": len(entries), "action": "never_leak"}]
+    never_leaves = [r.get("description", "") for r in rules if r.get("kind") == "never_leak"] \
+        or ["names, accounts, contacts, government IDs, credentials"]
+    brief_tokens = max(1, len(str(sanitized_spec)) // 4)
     await ctx.emit(E.BOUNDARY_SANITIZED, {
+        "findings": findings,
+        "never_leaves": never_leaves,
+        "brief_tokens": brief_tokens,
+        # retained for the sensitivity story (additive)
         "pii_fields_masked": max(sr.get("pii_fields_masked", 0), len(entries)),
         "documents_ocred": sr.get("documents_ocred", 0),
-        "policy_rules_applied": sr.get("policy_rules_applied", [r.get("id") for r in rules[:3]]),
         "identifiers_generalized": sr.get("identifiers_generalized", len(entries)),
         "vault_size": await vault.count(ctx.job_id),
     })

@@ -61,15 +61,16 @@ async def poll_once() -> None:
 
 async def _emit_telemetry(name: str, tele: dict) -> None:
     gpus = tele.get("gpus", [])
-    vram_used = sum(g.get("vram_used_gb", 0) for g in gpus)
-    vram_total = sum(g.get("vram_total_gb", 0) for g in gpus) or 1
-    util = round(sum(g.get("util", 0) for g in gpus) / max(1, len(gpus)), 1)
-    power = sum(g.get("power_w", 0) for g in gpus)
     tok_s = tele.get("tokens_per_s", 0)
-    await emit("fleet", E.TELEMETRY_GPU, {"node": name, "gpus": len(gpus),
-                                          "vram_used_gb": round(vram_used, 1),
-                                          "vram_total_gb": round(vram_total, 1),
-                                          "util": util, "power_w": power, "tokens_per_s": tok_s})
+    # one event per GPU (06 §3 ruling): {node, gpu, vram_used_gb, vram_total_gb, util, power_w, toks_per_s}
+    for g in gpus:
+        await emit("fleet", E.TELEMETRY_GPU, {
+            "node": name, "gpu": g.get("index", 0),
+            "vram_used_gb": round(g.get("vram_used_gb", 0), 1),
+            "vram_total_gb": round(g.get("vram_total_gb", 0), 1),
+            "util": round(g.get("util", 0), 1), "power_w": g.get("power_w", 0),
+            "toks_per_s": round(tok_s / max(1, len(gpus))),
+        })
     # store 1-in-15 samples for GPU-second attribution (10 §2)
     await meter.record_gpu_sample(scope="fleet", node=name,
                                   gpu_seconds=settings.node_poll_interval_s * len(gpus),
