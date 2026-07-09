@@ -1,12 +1,12 @@
 """Validation-gate benches are wired correctly (self-test mode). The REAL go/no-go runs in
 Wave 2 against a live P1 fleet (08 §7); these assert the harness + ground-truth plumbing."""
-from tests.validation.ground_truth import VECTORS, claims_payout, kyc_level, kyc_score
-from tests.validation.inspector_bench import _ScriptedInspector, evaluate_gate as insp_gate
-from tests.validation.inspector_bench import run_inspector_bench
-from tests.validation.oracle_bench import _PerfectOracle, evaluate_gate as orc_gate
-from tests.validation.oracle_bench import run_oracle_bench
-
 from _fake import run
+
+from tests.validation.ground_truth import VECTORS, claims_payout, kyc_level, kyc_score
+from tests.validation.inspector_bench import _ScriptedInspector, run_inspector_bench
+from tests.validation.inspector_bench import evaluate_gate as insp_gate
+from tests.validation.oracle_bench import _PerfectOracle, run_oracle_bench
+from tests.validation.oracle_bench import evaluate_gate as orc_gate
 
 
 def test_ground_truth_is_forty_vectors_with_expected():

@@ -1,0 +1,51 @@
+{
+  "plan_id": "",
+  "job_id": "",
+  "version": 1,
+  "mode": "build",
+  "modules": [
+    {"id": "mod_ocr", "name": "document_ocr", "purpose": "Extract identity fields from uploaded documents",
+     "consumes": [], "provides": ["if_identity"], "algorithm": "OCR image -> structured identity record",
+     "complexity": "M", "task_flags": ["extraction", "greenfield-codegen"],
+     "assumptions": ["documents are images or PDFs of a passport/ID"]},
+    {"id": "mod_sanctions", "name": "sanctions_screening", "purpose": "Screen applicant against the sanctions dataset",
+     "consumes": ["if_identity"], "provides": ["if_sanctions_result"], "algorithm": "fuzzy name match against «TABLE_A»",
+     "complexity": "M", "task_flags": ["sql-data", "greenfield-codegen"],
+     "assumptions": ["«TABLE_A» has a unique applicant key"]},
+    {"id": "mod_pep", "name": "pep_screening", "purpose": "Screen applicant against the PEP list",
+     "consumes": ["if_identity"], "provides": ["if_pep_result"], "algorithm": "lookup against PEP dataset",
+     "complexity": "S", "task_flags": ["sql-data"], "assumptions": []},
+    {"id": "mod_risk", "name": "risk_scoring", "purpose": "Compute weighted risk score and decision",
+     "consumes": ["if_sanctions_result", "if_pep_result"], "provides": ["if_decision"],
+     "algorithm": "risk_score = 0.5*sanctions + 0.3*pep + 0.2*geo; map to approve/review/reject",
+     "complexity": "M", "task_flags": ["math", "greenfield-codegen"],
+     "assumptions": ["geo_risk derived from nationality lookup table"]}
+  ],
+  "interfaces": [
+    {"id": "if_identity", "producer": "mod_ocr", "consumers": ["mod_sanctions", "mod_pep"],
+     "schema": {"type": "object", "properties": {"full_name": {"type": "string"}, "dob": {"type": "string"}, "nationality": {"type": "string"}}}},
+    {"id": "if_sanctions_result", "producer": "mod_sanctions", "consumers": ["mod_risk"],
+     "schema": {"type": "object", "properties": {"hit": {"type": "boolean"}, "score": {"type": "number"}}}},
+    {"id": "if_pep_result", "producer": "mod_pep", "consumers": ["mod_risk"],
+     "schema": {"type": "object", "properties": {"pep": {"type": "boolean"}}}},
+    {"id": "if_decision", "producer": "mod_risk", "consumers": [],
+     "schema": {"type": "object", "properties": {"risk_score": {"type": "number"}, "decision": {"type": "string"}}}}
+  ],
+  "dag": [
+    {"task": "t_ocr", "module": "mod_ocr", "deps": []},
+    {"task": "t_sanctions", "module": "mod_sanctions", "deps": ["t_ocr"]},
+    {"task": "t_pep", "module": "mod_pep", "deps": ["t_ocr"]},
+    {"task": "t_risk", "module": "mod_risk", "deps": ["t_sanctions", "t_pep"]}
+  ],
+  "data_schemas": {},
+  "model_bom": {
+    "seats": [
+      {"seat": "coder", "count": 3, "why": "4 modules, width 3"},
+      {"seat": "oracle", "why": "1 numeric rule (NR-1)", "sampling": 0.05},
+      {"seat": "inspector", "why": "3 acceptance criteria to probe"}
+    ],
+    "fleet": {"profile": "P2", "nodes": 1, "parallel_width": 3}
+  },
+  "estimates": {"frontier_tokens": 120000, "local_tokens": 2500000, "gpu_hours": 1.8},
+  "risks": ["OCR quality on low-resolution documents", "name transliteration variants at the sanctions match"]
+}

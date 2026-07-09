@@ -1,0 +1,31 @@
+{
+  "plan_id": "",
+  "job_id": "",
+  "version": 1,
+  "mode": "process",
+  "modules": [],
+  "interfaces": [],
+  "dag": [],
+  "topology": {
+    "unit": {"noun": "record", "source": "corpus",
+      "schema": {"type": "object", "properties": {"id": {"type": "integer"}, "text": {"type": "string"}}}},
+    "steps": [
+      {"id": "s_extract", "seat": "trust", "per_unit": true, "task_flags": ["extraction"],
+       "prompt_spec": "Extract the structured fields the prompt asks for from each record",
+       "output_schema": {"type": "object", "properties": {"value": {"type": "string"}, "flag": {"type": "boolean"}}}},
+      {"id": "s_aggregate", "per_unit": false, "kind": "aggregate",
+       "task_flags": ["sql-data"],
+       "output_schema": {"type": "object", "properties": {"groups": {"type": "array"}}}}
+    ]
+  },
+  "data_schemas": {},
+  "model_bom": {
+    "seats": [
+      {"seat": "trust", "count": 1, "why": "per-unit extraction across the corpus"},
+      {"seat": "oracle", "why": "spot-check sampled units", "sampling": 0.05}
+    ],
+    "fleet": {"profile": "P3", "nodes": 1, "parallel_width": 8}
+  },
+  "estimates": {"frontier_tokens": 90000, "local_tokens": 1500000, "gpu_hours": 0.6},
+  "risks": ["freeform prompt may request out-of-scope fields"]
+}

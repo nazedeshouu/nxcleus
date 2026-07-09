@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {"finding_id": "F-001", "check": "error-coverage", "plan_ref": "modules.mod_risk.algorithm",
+     "severity": "gap", "triage": "amend",
+     "amendment": {"plan_ref": "modules.mod_risk", "patch": {"op": "add", "path": "/modules/3/algorithm_note", "value": "clamp risk_score to [0,1] and specify banker's rounding on the weighted sum"},
+       "rationale": "score could exceed 1.0 without clamping; rounding rule unstated", "spec_ref": "NR-1"},
+     "consult_request": null},
+    {"finding_id": "F-002", "check": "production-fit", "plan_ref": "modules.mod_sanctions.assumptions",
+     "severity": "structural", "triage": "consult",
+     "amendment": null,
+     "consult_request": {"scope": {"only_regions": ["mod_sanctions", "if_sanctions_result"]},
+       "question": "Should transliteration variants of the applicant name be matched, and at what similarity threshold?",
+       "findings": ["sanctions matching strategy underspecified for name variants"]}}
+  ],
+  "goal": "Onboard applicants by extracting their identity details from uploaded documents, screening each against the sanctions and PEP lists, computing a weighted risk score, and returning an approve / review / reject decision — with no applicant whose name matches the sanctions list ever auto-approved, and every decision auditable back to its inputs.",
+  "tests": [
+    {"id": "T-001", "module": "mod_risk", "kind": "integration",
+     "given": {"if_sanctions_result": {"hit": true, "score": 1.0}, "if_pep_result": {"pep": false}},
+     "expect": [{"path": "decision", "op": "eq", "value": "reject"}]},
+    {"id": "T-002", "module": "mod_risk", "kind": "integration",
+     "given": {"if_sanctions_result": {"hit": false, "score": 0.0}, "if_pep_result": {"pep": true}},
+     "expect": [{"path": "risk_score", "op": "eq", "value": 0.3}]}
+  ],
+  "vectors": [
+    {"id": "V-001", "rule": "NR-1", "inputs": {"sanctions_flag": 1, "pep_flag": 0, "geo_risk": 0.5}, "tolerance": "exact"},
+    {"id": "V-002", "rule": "NR-1", "inputs": {"sanctions_flag": 0, "pep_flag": 1, "geo_risk": 0.2}, "tolerance": "epsilon:0.001"}
+  ],
+  "adversarial_scenarios": [
+    "sanctions hit with a transliterated name variant",
+    "applicant with missing date of birth in the OCR output",
+    "duplicate submission of the same applicant"
+  ],
+  "identifiers_rehydrated": 4
+}

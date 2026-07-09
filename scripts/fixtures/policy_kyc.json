@@ -1,0 +1,12 @@
+{
+  "sources": [
+    {"kind": "doc", "ref": "data-handling-policy.pdf"},
+    {"kind": "text", "ref": "don't leak client names, document numbers, or our internal risk thresholds"}
+  ],
+  "rules": [
+    {"id": "RP-1", "kind": "never_leak", "description": "client legal names", "applies_to": ["entities.Applicant.fields[pii=true]", "documents"], "origin": "customer_policy §4.2"},
+    {"id": "RP-2", "kind": "mask", "description": "identity document numbers", "applies_to": ["entities.Applicant.document_id"], "origin": "customer_policy §4.3"},
+    {"id": "RP-3", "kind": "generalize", "description": "internal risk thresholds", "applies_to": ["numeric_rules.*"], "origin": "customer_policy §5.1"},
+    {"id": "PII-BASE", "kind": "never_leak", "description": "PII baseline: names, accounts, contacts, government IDs, credentials", "applies_to": ["*"], "origin": "pii_baseline"}
+  ]
+}

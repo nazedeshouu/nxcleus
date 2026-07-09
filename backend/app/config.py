@@ -1,0 +1,160 @@
+"""Configuration — pydantic-settings over the exact env surface of spec 01 §6.
+
+Every variable has a default so the control plane boots with zero config: SQLite in ./data/,
+model backends in `mock` mode, no keys required. The production `.env` on the VM overrides.
+Secrets are read but never logged or serialized (see .safe_summary()).
+"""
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# app/config.py -> app -> backend -> repo root
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _resolve(path_str: str) -> Path:
+    """Resolve a configured path: absolute as-is; relative tried against cwd then repo root."""
+    p = Path(path_str)
+    if p.is_absolute():
+        return p
+    if p.exists():
+        return p.resolve()
+    return (REPO_ROOT / p).resolve()
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(REPO_ROOT / ".env", BACKEND_ROOT / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # --- public / deploy
+    app_base_url: str = ""
+    app_name: str = "Nxcleus"
+
+    # --- provider keys / endpoints (secrets — never logged)
+    anthropic_api_key: str = ""
+    fireworks_api_key: str = ""
+    fireworks_base_url: str = "https://api.fireworks.ai/inference"
+    hf_token: str = ""
+    hf_token_file: str = ""                     # .env variant; resolved into hf_token at load
+    digitalocean_access_token: str = ""
+
+    # --- persistence
+    sqlite_path: str = "./data/platform.db"
+    data_dir: str = "./data"                    # packages, workspaces, backups (config addition)
+
+    # --- model routing config files
+    seats_config: str = "infra/seats.yaml"
+    models_config: str = "infra/models.yaml"    # config addition (02 §7.1); router reads if present
+    fleet_config: str = "infra/fleet.yaml"
+    rates_config: str = "infra/rates.yaml"      # config addition (10 §3)
+
+    # --- model mode: how backends dispatch
+    #   mock -> always MockClient (deterministic, zero-config, dev + CI + tests)
+    #   auto -> real client when its key/endpoint present and backend healthy, else mock (badged)
+    #   live -> real clients only; missing backend raises
+    model_mode: str = "mock"                    # config addition; dev/CI default is mock
+
+    # --- boundary / sovereign
+    sovereign_default: bool = False
+    allow_raw_on_amd_hosted: bool = True        # demo exception; badge in UI. false => show enforcement
+
+    # --- whisper (policy dictation, O9)
+    whisper_model_path: str = ""                # empty => voice input disabled
+    whisper_cli: str = "whisper-cli"
+
+    # --- budgets / guards
+    fireworks_daily_budget_usd: float = 15.0
+    sandbox_run_budget_usd: float = 0.50
+    sandbox_max_concurrent: int = 1
+
+    # --- auth / ops
+    admin_token: str = ""                       # empty => demo/admin writes are open in dev
+    fernet_key: str = ""                        # BYOK secret encryption; empty => ephemeral dev key
+    discord_webhook_url: str = ""
+
+    # --- engine tuning (config additions with spec-backed defaults)
+    pool_slots_per_backend: int = 4             # 07 §5.3 default concurrency per vLLM instance
+    node_poll_interval_s: float = 2.0           # 07 §5.1 heartbeat cadence
+    sse_heartbeat_s: float = 10.0               # 06 §3 rule
+    sse_throttle_per_s: int = 10                # 06 §3 delta throttle
+
+    def model_post_init(self, __ctx) -> None:
+        if not self.hf_token and self.hf_token_file:
+            fp = _resolve(self.hf_token_file)
+            if fp.exists():
+                object.__setattr__(self, "hf_token", fp.read_text().strip())
+
+    # --- resolved paths
+    @property
+    def sqlite_file(self) -> Path:
+        p = Path(self.sqlite_path)
+        if not p.is_absolute():
+            p = (REPO_ROOT / p).resolve()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def data_path(self) -> Path:
+        p = Path(self.data_dir)
+        if not p.is_absolute():
+            p = (REPO_ROOT / p).resolve()
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def packages_dir(self) -> Path:
+        d = self.data_path / "packages"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @property
+    def workspaces_dir(self) -> Path:
+        d = self.data_path / "workspaces"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def config_path(self, which: str) -> Path | None:
+        mapping = {
+            "seats": self.seats_config,
+            "models": self.models_config,
+            "fleet": self.fleet_config,
+            "rates": self.rates_config,
+        }
+        p = _resolve(mapping[which])
+        return p if p.exists() else None
+
+    def safe_summary(self) -> dict:
+        """Feature flags + non-secret state for GET /config/public — never includes key material."""
+        return {
+            "app_name": self.app_name,
+            "model_mode": self.model_mode,
+            "sovereign_default": self.sovereign_default,
+            "allow_raw_on_amd_hosted": self.allow_raw_on_amd_hosted,
+            "voice_input_enabled": bool(self.whisper_model_path),
+            "budgets": {
+                "fireworks_daily_usd": self.fireworks_daily_budget_usd,
+                "sandbox_run_usd": self.sandbox_run_budget_usd,
+                "sandbox_max_concurrent": self.sandbox_max_concurrent,
+            },
+            "keys_present": {
+                "anthropic": bool(self.anthropic_api_key),
+                "fireworks": bool(self.fireworks_api_key),
+            },
+            "admin_required": bool(self.admin_token),
+        }
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()

@@ -25,7 +25,6 @@ from typing import Any
 
 from app.seats import oracle
 from app.seats.base import Completion
-
 from tests.validation.ground_truth import VECTORS
 
 

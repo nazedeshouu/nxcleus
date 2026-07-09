@@ -9,10 +9,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.seats.base import CompleteFn, EmitFn
 from app.seats._common import (
-    ENGLISH_ONLY, GENESIS_HASH, STRUCTURED_ONLY, amendment_hash, as_json, convo, parsed_or_raise,
+    ENGLISH_ONLY,
+    GENESIS_HASH,
+    STRUCTURED_ONLY,
+    amendment_hash,
+    as_json,
+    convo,
+    parsed_or_raise,
 )
+from app.seats.base import CompleteFn, EmitFn
 
 # Returns a schema-validated dict; backend adapts into db/models.ConductorReview (team ruling).
 

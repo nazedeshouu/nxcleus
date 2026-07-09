@@ -3,7 +3,7 @@ modules and delegate to the rich harnesses — so seatlib's per-attribute SeatPr
 with zero stage edits."""
 from _fake import Emits, FakeComplete, run
 
-from app.seats import (certifier, coder, conductor, consolidator, inspector, oracle, planner, trust)
+from app.seats import certifier, coder, conductor, consolidator, inspector, oracle, planner, trust
 
 # The canonical surface the engine calls (must exist on the real modules).
 CANONICAL = {

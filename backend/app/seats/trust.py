@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.seats.base import CompleteFn, EmitFn
 from app.seats._common import ENGLISH_ONLY, STRUCTURED_ONLY, as_json, convo, parsed_or_raise
+from app.seats.base import CompleteFn, EmitFn
 
 # Harnesses return plain, schema-validated dicts (team ruling); the backend adapts them into
 # db/models.py pydantic at the call site. Seat modules never import backend model classes — the
@@ -441,7 +441,7 @@ async def sanitize_consult(
 ) -> tuple[str, dict[str, Any]]:
     """Consult egress gate (03 §4.2): backend's mechanical vault masking, then the trust-seat
     model residual sweep. Returns (masked_payload, receipt)."""
-    from app.boundary.sanitize import consult_sanitize   # backend-owned mechanical step
+    from app.boundary.sanitize import consult_sanitize  # backend-owned mechanical step
 
     masked, receipt = consult_sanitize(payload, vault_map)
     sweep = await sanitization_sweep(complete, emit, candidate_payload=masked,

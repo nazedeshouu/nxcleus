@@ -46,9 +46,9 @@ class StubProcess:
 
     async def http_request(self, *, method: str, path: str, headers=None, body=None) -> dict[str, Any]:
         headers, body = headers or {}, body or {}
-        token = headers.get("x-process-token", "kyc-stub")
+        _token = headers.get("x-process-token", "kyc-stub")
         # D4: should refuse a foreign token; instead accepts anything.
-        authorized = True  # planted defect (correct behavior: token == "kyc-stub")
+        authorized = True  # planted defect (correct behavior: _token == "kyc-stub")
         if not authorized:
             return {"status": 403, "body": {"error": "forbidden"}}
         if method.upper() == "POST" and path.rstrip("/").endswith("run_unit"):

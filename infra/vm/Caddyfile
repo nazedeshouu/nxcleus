@@ -1,0 +1,29 @@
+# Caddy reverse proxy (01 §5). Auto-HTTPS on the demo domain. Set APP_BASE_URL / the domain below.
+# / -> frontend static (mounted in Wave 2), /api -> uvicorn, /processes/{slug} -> runtime containers.
+
+{$NXCLEUS_DOMAIN:localhost} {
+	encode zstd gzip
+
+	# API + SSE (disable buffering so events stream promptly)
+	handle /api/* {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+	handle /openapi.json {
+		reverse_proxy api:8000
+	}
+	handle /docs* {
+		reverse_proxy api:8000
+	}
+
+	# process-runtime containers, exposed read-only for inspector probes + judges (04 §3)
+	handle /processes/* {
+		reverse_proxy api:8000
+	}
+
+	# frontend static build (Wave 2 mounts ./frontend/dist here); until then fall through to the API
+	handle {
+		reverse_proxy api:8000
+	}
+}

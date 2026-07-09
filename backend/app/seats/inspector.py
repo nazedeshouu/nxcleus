@@ -12,10 +12,11 @@ judge the deliverable against the goal in the customer's own terms.
 from __future__ import annotations
 
 import time
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
-from app.seats.base import CompleteFn, EmitFn
 from app.seats._common import ENGLISH_ONLY, STRUCTURED_ONLY, as_json, convo, parsed_or_raise
+from app.seats.base import CompleteFn, EmitFn
 
 # Harnesses return schema-validated dicts (a Ticket-shaped dict or None from probe; a GoalCheck-
 # shaped dict from the goal check); backend adapts into db/models at the call site (team ruling).

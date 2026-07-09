@@ -1,0 +1,41 @@
+# Nxcleus control VM (DigitalOcean s-2vcpu-4gb) — always-on address of the product (01 §1–2).
+# Runs the FastAPI control plane + SQLite + Caddy. Zero LLM inference here; all inference is on the
+# MI300X fleet / Fireworks fallback. Images build linux/amd64 on this VM (native amd64).
+services:
+  api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    env_file:
+      - ../../.env
+    environment:
+      - SQLITE_PATH=/data/platform.db
+      - DATA_DIR=/data
+      - MODEL_MODE=auto        # real backends when reachable, else mock (badged)
+    volumes:
+      - platform-data:/data
+      # code-exec + process-runtime containers are launched by the api via the host docker socket
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    platform: linux/amd64
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  platform-data:
+  caddy-data:
+  caddy-config:

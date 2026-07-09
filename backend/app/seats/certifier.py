@@ -13,11 +13,18 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from app.seats.base import CompleteFn, EmitFn
 from app.seats._common import (
-    ENGLISH_ONLY, GENESIS_HASH, STRUCTURED_ONLY, amendment_hash, apply_rfc6902, as_json, convo,
-    parsed_or_raise, rehydrate_tokens,
+    ENGLISH_ONLY,
+    GENESIS_HASH,
+    STRUCTURED_ONLY,
+    amendment_hash,
+    apply_rfc6902,
+    as_json,
+    convo,
+    parsed_or_raise,
+    rehydrate_tokens,
 )
+from app.seats.base import CompleteFn, EmitFn
 
 # Harnesses return plain, schema-validated dicts; backend adapts into db/models (CertifyResult,
 # Finding, IntegrationTestSpec, OracleVector) at the call site. No backend model imports (team ruling).

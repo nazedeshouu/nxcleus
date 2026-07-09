@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.seats.base import CompleteFn, EmitFn
 from app.seats._common import ENGLISH_ONLY, STRUCTURED_ONLY, as_json, convo, parsed_or_raise
+from app.seats.base import CompleteFn, EmitFn
 
 # Returns a schema-validated dict; backend adapts into db/models.CoderOutput (team ruling).
 

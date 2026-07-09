@@ -179,6 +179,18 @@ CREATE TABLE seat_overrides (                     -- user-configurable seat bind
 
 Sandbox company datasets are **separate read-only SQLite files** (`infra/seeds/out/{bank,clinic,lawfirm}.db`) — browsable via the sandbox API (09 §3), never mixed with platform state.
 
+## 5b. Implementation additions (backend Wave 1, change protocol)
+
+Two additive tables not in the original §2–5 list, added by the backend with the code that needs them:
+
+- **`secrets`** (`ref` PK, `ciphertext`, `created_at`) — encrypted-at-rest store for BYOK keys; the
+  `api_connections.api_key_ref` points here (never the key itself), Fernet-encrypted (D13, 02 §8).
+- **`checkpoints`** (`scope`, `key`, `value_json`, `ts`; PK `(scope, key)`) — job/run-scoped scratch
+  backing `StageContext.checkpoint()` for resumability (07 §1, §4). Stage 4 stores the certified
+  plan id + test/vector sets here so a restart re-enters at the top of a stage cheaply.
+
+Both are `CREATE TABLE IF NOT EXISTS` in `schema.sql`, applied idempotently at startup like the rest.
+
 ## 6. Retention & ops
 
 - Everything fits SQLite for the window (events for a full build ≈ low thousands of rows). No deletes during the hackathon; `VACUUM` not needed.

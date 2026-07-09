@@ -10,10 +10,11 @@ designs an executable work order, not generic advice (03 §3).
 """
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
-from app.seats.base import CompleteFn, EmitFn
 from app.seats._common import ENGLISH_ONLY, STRUCTURED_ONLY, as_json, convo, msg, parsed_or_raise
+from app.seats.base import CompleteFn, EmitFn
 
 # Harnesses return plain, schema-validated dicts; backend adapts into db/models.Plan at the call
 # site. Seat modules never import backend model classes (team ruling).
@@ -289,7 +290,7 @@ async def sandbox_plan(
     c = await complete("planner", messages, data_class=DATA_CLASS, schema=PLAN_SCHEMA,
                        temperature=temperature)
     out = parsed_or_raise(c, "planner.sandbox_plan")
-    steps = len(((out.get("topology") or {}).get("steps") or []))
+    steps = len((out.get("topology") or {}).get("steps") or [])
     risks = out.get("risks", [])
     if steps == 0:
         await emit("system.notice", {"scope": "sandbox",
