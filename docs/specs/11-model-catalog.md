@@ -89,17 +89,19 @@ Research verdict per seat — Gemma 4 is now **Apache 2.0** (no custom-license c
 | Inspector probe loop | `inspector` | fixed seat (`agentic-tool-use`) | `qwen36-35b-a3b` (mixed-swarm Gemma option, §4) |
 | Plan certify / wave review / merge / sovereign planning | node-B family | fixed seats (`long-context`, `merge-review`) | `glm-46` local (locked); `glm-52-hosted` fallback binding |
 
-## 6. Fireworks fallback bindings (catalog-verified, `accounts/fireworks/models/…`)
+## 6. Fireworks fallback bindings (`accounts/fireworks/models/…`) — **LIVE-VERIFIED 2026-07-09**
 
-| Seat | Local | Fireworks fallback |
+**Reality check against the hackathon account (1-token probes, HTTP status):** the account's serverless catalog is a curated 7-model set — `glm-5p2`, `glm-5p1`, `deepseek-v4-pro`, `kimi-k2p6`, `kimi-k2p5`, `gpt-oss-120b`, `flux-1-schnell-fp8`. **Every previously assumed per-seat fallback ID except `glm-5p2` returns 404** (gemma-4-\*, qwen3p6-\*, devstral-\*, qwen3-coder-\*). Impact is bounded: Gemma/Qwen/Devstral seats are LOCAL by design (D7); Fireworks is availability fallback only. Rebound as follows:
+
+| Seat | Local | Fireworks fallback (live-verified) |
 |---|---|---|
-| node-B brain | GLM-4.6 (locked) | **`glm-5p2`** (locked — frontier-class fallback; "GLM-5.2 Fast" endpoint also available) |
-| coder A | `qwen3-coder-next` | not hosted → `qwen3-coder-480b-a35b-instruct` (up) or `qwen3-coder-30b-a3b-instruct` (down) |
-| coder B | `qwen36-27b` | `qwen3p6-27b` (exact) |
-| coder C | `devstral-small-2` | `devstral-small-2-24b-instruct-2512` (exact) |
-| trust | `gemma-4-26b-a4b` | `gemma-4-26b-a4b-it` (exact) |
-| oracle | `gemma-4-31b` | `gemma-4-31b-it` (exact) |
-| inspector | `qwen36-35b-a3b` | `qwen3p6-35b-a3b` (exact) |
+| node-B brain | GLM-4.6 (locked) | **`glm-5p2`** ✅ 200 (as locked, D14) |
+| coder pool | `qwen3-coder-next` / `qwen36-27b` / `devstral-small-2` | **`deepseek-v4-pro`** (top hosted coder, SWE-bench ~80.6 per §7; vendor-diverse) |
+| trust | `gemma-4-26b-a4b` | `glm-5p2` |
+| oracle | `gemma-4-31b` | `glm-5p2` (oracle independence argument applies to the *local* seat; fallback is badged demo infra) |
+| inspector | `qwen36-35b-a3b` | `glm-5p2` |
+
+Note: P0/P1 profiles (pre-droplet dev, always-on URL, fleet-down) therefore serve everything on `glm-5p2` + `deepseek-v4-pro`. Per-token cost is higher than the small-model IDs originally assumed — bounded by `FIREWORKS_DAILY_BUDGET_USD`.
 
 ## 7. Recency notes (Apr–Jul 2026) & rejected candidates
 

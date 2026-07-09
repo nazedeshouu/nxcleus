@@ -1,0 +1,119 @@
+# infra/fleet.yaml — vLLM packing profiles (Nxcleus)
+#
+# Maps a PROFILE -> the vLLM instances to launch on a droplet, with per-instance GPU
+# assignment, port, tensor-parallel size, context length, memory fraction, and
+# quantization (docs/specs/02 §5, 07 §5.2, 11 §1). `model:` is a KEY into
+# infra/models.yaml (validated: no dangling keys). `served_model_name` is what vLLM
+# exposes on /v1 and what the router addresses (== the models.yaml key).
+#
+# DROPLET REALITY (spec 11 §0): AMD Dev Cloud sells 1x ($1.99/hr) and 8x ($15.92/hr)
+# MI300X shapes only. Node letters A/B/C/D are LOGICAL GPU PARTITIONS of the 8x droplet
+# (except P1, where "A" is a real 1x droplet). MI300X = 192 GB/GPU, gfx942 (CDNA3).
+#
+# Sizing convention (11 §5): FP8 ~1.0 GB/B, bf16 ~2.0 GB/B; "fits" leaves >=60 GB KV
+# headroom on a shared card. gpu_memory_utilization values on a shared GPU SUM to <=0.90.
+#
+# FIRST-BOOT TUNING (O4 residual): exact GPU split + the bf16-vs-FP8 brain decision
+# (D14, vLLM #31475) are finalized by the decode bench at first boot. The knob is
+# `node_b_precision` on each profile.
+
+default_profile: P2
+
+# Logical node -> physical GPU map on the 8x droplet (P2/P3). Documentary; the
+# instance `gpus:` lists are authoritative.
+node_gpu_map:
+  A: [5]            # QA/trust trio (P2). 1x droplet's only GPU in P1.
+  B: [0, 1, 2, 3, 4]  # the brain (bf16). GPUs 0-2 in P3 FP8.
+  C: [6]            # qwen3-coder-next
+  D: [7]            # qwen36-27b + devstral-small-2
+
+profiles:
+
+  # ── P0 — fallback: no droplets, every seat on its Fireworks fallback binding ───
+  P0:
+    shape: none
+    when: "always-on URL between fleet sessions; sandbox off-hours"
+    note: >
+      Zero droplets. The router resolves every seat to its `fallback` binding
+      (infra/seats.yaml) — node-B family + trust/oracle/inspector -> glm-52-hosted
+      (frontier-class GLM-5.2), coder -> deepseek-v4-pro. All badged demo-infra.
+    instances: []
+
+  # ── P1 — validation / cheap dev / judging idle: one 1x droplet ────────────────
+  P1:
+    shape: mi300x-1
+    when: "Gemma validation gate (08 §7); cheap dev; judging idle window"
+    node_b_precision: fallback   # GLM seats ride glm-52-hosted; no local brain on 1 GPU
+    note: >
+      Node-A trio local on the single GPU (92 GB weights). GLM seats (certifier/
+      conductor/consolidator/planner-sovereign) + coder pool use their Fireworks
+      fallbacks (badged). ~$1.99/hr.
+    instances:
+      - {name: oracle,    served_model_name: gemma-4-31b,    model: gemma-4-31b,    gpus: [0], tensor_parallel_size: 1, port: 8011, max_model_len: 32768, gpu_memory_utilization: 0.30, quantization: fp8}
+      - {name: trust,     served_model_name: gemma-4-26b-a4b, model: gemma-4-26b-a4b, gpus: [0], tensor_parallel_size: 1, port: 8012, max_model_len: 32768, gpu_memory_utilization: 0.28, quantization: fp8}
+      - {name: inspector, served_model_name: qwen36-35b-a3b, model: qwen36-35b-a3b, gpus: [0], tensor_parallel_size: 1, port: 8013, max_model_len: 32768, gpu_memory_utilization: 0.32, quantization: fp8}
+
+  # ── P2 — demo standard: one 8x droplet (the hero profile) ─────────────────────
+  P2:
+    shape: mi300x-8
+    when: "hero-demo rehearsal + live demos + recording"
+    node_b_precision: bf16       # KNOB (D14): bf16 across GPUs 0-4 (dodges FP8-decode caveat).
+                                 # Switch to `fp8` -> use profile P3 (GPUs 0-2) if the bench passes.
+    note: >
+      Encoded EXACTLY per spec 02 §5 / 11 §1. GPUs 0-4 the brain (bf16), GPU 5 the
+      A-trio, GPU 6 qwen3-coder-next, GPU 7 qwen36-27b + devstral-small-2. Only
+      non-local dispatch in default mode = the stage-1 planner call to Anthropic;
+      Sovereign mode dispatches nothing off-fleet.
+    instances:
+      # --- node B (GPUs 0-4): the brain, bf16, tensor-parallel 5 -----------------
+      - name: glm-46
+        served_model_name: glm-46
+        model: glm-46
+        role: [certifier, conductor, consolidator, "planner (sovereign)"]
+        gpus: [0, 1, 2, 3, 4]
+        tensor_parallel_size: 5
+        port: 8000
+        max_model_len: 200000
+        gpu_memory_utilization: 0.90   # 714 GB bf16 / 5 = ~143 GB/GPU weights; ~29 GB/GPU KV (tune at boot)
+        quantization: none
+        dtype: bfloat16
+      # --- node A (GPU 5): trust + oracle + inspector, three FP8 instances --------
+      - {name: oracle,    served_model_name: gemma-4-31b,    model: gemma-4-31b,    role: [oracle],    gpus: [5], tensor_parallel_size: 1, port: 8011, max_model_len: 65536, gpu_memory_utilization: 0.30, quantization: fp8}
+      - {name: trust,     served_model_name: gemma-4-26b-a4b, model: gemma-4-26b-a4b, role: [trust],     gpus: [5], tensor_parallel_size: 1, port: 8012, max_model_len: 65536, gpu_memory_utilization: 0.28, quantization: fp8}
+      - {name: inspector, served_model_name: qwen36-35b-a3b, model: qwen36-35b-a3b, role: [inspector], gpus: [5], tensor_parallel_size: 1, port: 8013, max_model_len: 65536, gpu_memory_utilization: 0.32, quantization: fp8}
+      # --- node C (GPU 6): qwen3-coder-next ---------------------------------------
+      - {name: qwen3-coder-next, served_model_name: qwen3-coder-next, model: qwen3-coder-next, role: [coder], gpus: [6], tensor_parallel_size: 1, port: 8021, max_model_len: 131072, gpu_memory_utilization: 0.90, quantization: fp8}
+      # --- node D (GPU 7): qwen36-27b + devstral-small-2 (51 GB weights) ----------
+      - {name: qwen36-27b,      served_model_name: qwen36-27b,      model: qwen36-27b,      role: [coder], gpus: [7], tensor_parallel_size: 1, port: 8022, max_model_len: 98304, gpu_memory_utilization: 0.45, quantization: fp8}
+      - {name: devstral-small-2, served_model_name: devstral-small-2, model: devstral-small-2, role: [coder], gpus: [7], tensor_parallel_size: 1, port: 8023, max_model_len: 98304, gpu_memory_utilization: 0.45, quantization: fp8}
+
+  # ── P3 — wide fan-out: same 8x droplet, brain FP8 on GPUs 0-2 ─────────────────
+  P3:
+    shape: mi300x-8
+    when: "corpus fan-out beats; stage-4 width demos (process mode width 8-16)"
+    node_b_precision: fp8        # ONLY if the first-boot decode bench passes (vLLM #31475)
+    note: >
+      Brain switches to glm-46 FP8 (zai-org/GLM-4.6-FP8) on GPUs 0-2, freeing GPUs 3-4
+      for coder replicas / process-mode width. Node A/C/D unchanged from P2.
+    instances:
+      - name: glm-46
+        served_model_name: glm-46
+        model: glm-46
+        role: [certifier, conductor, consolidator, "planner (sovereign)"]
+        gpus: [0, 1, 2]
+        tensor_parallel_size: 3
+        port: 8000
+        max_model_len: 200000
+        gpu_memory_utilization: 0.90   # 357 GB FP8 / 3 = ~119 GB/GPU weights; ~53 GB/GPU KV
+        quantization: fp8
+        hf_id_override: "zai-org/GLM-4.6-FP8"   # FP8 checkpoint (not the bf16 repo)
+      # coder replicas on the freed GPUs 3-4 (widen the pool for fan-out)
+      - {name: qwen3-coder-next-r2, served_model_name: qwen3-coder-next, model: qwen3-coder-next, role: [coder], gpus: [3], tensor_parallel_size: 1, port: 8024, max_model_len: 131072, gpu_memory_utilization: 0.90, quantization: fp8}
+      - {name: qwen36-27b-r2,       served_model_name: qwen36-27b,       model: qwen36-27b,       role: [coder], gpus: [4], tensor_parallel_size: 1, port: 8025, max_model_len: 98304, gpu_memory_utilization: 0.90, quantization: fp8}
+      # node A trio + node C/D primaries carry over from P2
+      - {name: oracle,    served_model_name: gemma-4-31b,    model: gemma-4-31b,    role: [oracle],    gpus: [5], tensor_parallel_size: 1, port: 8011, max_model_len: 65536, gpu_memory_utilization: 0.30, quantization: fp8}
+      - {name: trust,     served_model_name: gemma-4-26b-a4b, model: gemma-4-26b-a4b, role: [trust],     gpus: [5], tensor_parallel_size: 1, port: 8012, max_model_len: 65536, gpu_memory_utilization: 0.28, quantization: fp8}
+      - {name: inspector, served_model_name: qwen36-35b-a3b, model: qwen36-35b-a3b, role: [inspector], gpus: [5], tensor_parallel_size: 1, port: 8013, max_model_len: 65536, gpu_memory_utilization: 0.32, quantization: fp8}
+      - {name: qwen3-coder-next, served_model_name: qwen3-coder-next, model: qwen3-coder-next, role: [coder], gpus: [6], tensor_parallel_size: 1, port: 8021, max_model_len: 131072, gpu_memory_utilization: 0.90, quantization: fp8}
+      - {name: qwen36-27b,      served_model_name: qwen36-27b,      model: qwen36-27b,      role: [coder], gpus: [7], tensor_parallel_size: 1, port: 8022, max_model_len: 98304, gpu_memory_utilization: 0.45, quantization: fp8}
+      - {name: devstral-small-2, served_model_name: devstral-small-2, model: devstral-small-2, role: [coder], gpus: [7], tensor_parallel_size: 1, port: 8023, max_model_len: 98304, gpu_memory_utilization: 0.45, quantization: fp8}

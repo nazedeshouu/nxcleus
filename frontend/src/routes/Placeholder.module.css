@@ -1,0 +1,29 @@
+.wrap {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: clamp(48px, 10vh, 120px) clamp(16px, 3vw, 32px);
+  display: grid;
+  place-items: center;
+}
+.card {
+  text-align: center;
+  max-width: 460px;
+}
+.icon {
+  width: 40px;
+  height: 40px;
+  color: var(--accent);
+  margin: 0 auto 18px;
+}
+.title {
+  font-size: var(--fs-h1);
+  letter-spacing: -0.02em;
+}
+.note {
+  margin-top: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+[data-sovereign="true"] .note {
+  color: color-mix(in srgb, var(--sov-text) 72%, transparent);
+}

@@ -1,0 +1,117 @@
+# infra/seats.yaml — seat registry (Nxcleus)
+#
+# A SEAT is a role with a data-class clearance, a routing policy, and one or more
+# backend bindings (docs/specs/02-model-seats-and-routing.md §1/§3). Application code
+# addresses seats, never models — swapping a model is a YAML edit, not a refactor.
+#
+# `model:` in every binding is a KEY into infra/models.yaml (validated: no dangling
+# keys). The router resolves key -> provider + hf_id + zone. (Spec 02 §3's inline
+# example mixed short names and raw fireworks paths; normalized here to registry keys
+# so the boundary/zone check and the config validator are unambiguous — deviation
+# logged in the Wave-1 report.)
+#
+# Zones (enforced in code, not convention — 01 §3, 02 §4):
+#   local     -> LOCAL      (RAW ok)
+#   fireworks -> AMD_HOSTED  (RAW only under ALLOW_RAW_ON_AMD_HOSTED demo exception, badged)
+#   anthropic -> EXTERNAL    (SANITIZED only; never RAW)
+#
+# Fallback IDs are LIVE-VERIFIED (2026-07-09, spec 11 §6): the hackathon Fireworks
+# account serves ONLY glm-5p2 (-> models.yaml key `glm-52-hosted`) and deepseek-v4-pro
+# (-> `deepseek-v4-pro`) among our seats. Every previously-assumed per-seat Fireworks ID
+# 404s; rebound accordingly.
+#
+# temperature: demo/rehearsal paths run 0.1 for determinism (09 §5); oracle 0.3 (k=3),
+#   inspector 0.7 (diverse probing), planner 0.4. timeout_s: planner 300, coder 240,
+#   conductor 90 (07 §3.1), all others 120 (02 §2.2).
+
+seats:
+
+  # ── Stage 0/2-egress/7 — intake, policy distillation, PII masking, docs ────────
+  trust:
+    data_class_max: RAW
+    temperature: 0.1
+    timeout_s: 120
+    bindings:
+      default:   {backend: local, node: A, model: gemma-4-26b-a4b}
+      sovereign: default
+      fallback:  {backend: fireworks, model: glm-52-hosted, demo_exception: true}  # ⚠️ badge
+
+  # ── Stage 1 — the ONLY designed-in non-local seat (D7) ─────────────────────────
+  planner:
+    data_class_max: SANITIZED          # hard ceiling — the one seat that can never see RAW
+    temperature: 0.4
+    timeout_s: 300
+    bindings:
+      default:   {backend: anthropic, model: claude-fable-5}
+      sovereign: {backend: local, node: B, model: glm-46}          # zero non-local calls
+      fallback:  {backend: fireworks, model: glm-52-hosted, demo_exception: true}  # ⚠️ frontier-class
+
+  # ── Stage 2 / refine — plan completion, rehydration, certification, goal ───────
+  certifier:
+    data_class_max: RAW                # D9 — local seat, full raw context
+    temperature: 0.1
+    timeout_s: 120
+    bindings:
+      default:   {backend: local, node: B, model: glm-46}          # emergency: glm-45-air-fp8
+      sovereign: default
+      fallback:  {backend: fireworks, model: glm-52-hosted, demo_exception: true}  # ⚠️ badge
+
+  # ── Stage 4 between-waves review — same served instance as certifier (D8) ──────
+  conductor:
+    data_class_max: RAW
+    temperature: 0.1
+    timeout_s: 90
+    bindings:
+      default:   {backend: local, node: B, model: glm-46}
+      sovereign: default
+      # NO fallback: engine skips wave review when unavailable (07 §3.1, proceed-without-review)
+
+  # ── Stage 4 — module implementation + defect fixes; capability-routed pool ─────
+  coder:
+    data_class_max: RAW                # production-specific plan (D9) — stays LOCAL by construction
+    temperature: 0.1
+    timeout_s: 240
+    bindings:
+      default:                          # POOL — member picked by capability argmax (02 §7.4)
+        - {backend: local, node: C, model: qwen3-coder-next}
+        - {backend: local, node: D, model: qwen36-27b}
+        - {backend: local, node: D, model: devstral-small-2}
+        - {backend: local, node: A, model: gemma-4-26b-a4b, guest: true}  # docs/extraction DAG tasks only (02 §7.4; warm on node A, zero extra serving cost)
+      sovereign: default
+      fallback:  {backend: fireworks, model: deepseek-v4-pro, demo_exception: true}  # ⚠️ badge
+
+  # ── Stage 5 — consolidation; same served instance as certifier (third prompt) ──
+  consolidator:
+    data_class_max: RAW
+    temperature: 0.1
+    timeout_s: 120
+    bindings:
+      default:   {backend: local, node: B, model: glm-46}
+      sovereign: default
+      fallback:  {backend: fireworks, model: glm-52-hosted, demo_exception: true}  # ⚠️ badge
+
+  # ── Stage 2-vectors / 6 / operate — blind numeric recomputation ────────────────
+  oracle:
+    data_class_max: SANITIZED          # * vectors derive from inside-boundary data; local-only in prod
+    temperature: 0.3
+    timeout_s: 120
+    self_consistency: 3                # oracle-only: k votes, majority (08 §4)
+    bindings:
+      default:   {backend: local, node: A, model: gemma-4-31b}
+      sovereign: default
+      fallback:  {backend: fireworks, model: glm-52-hosted, demo_exception: true}  # ⚠️ badge (oracle independence argument applies to the local seat)
+
+  # ── Stage 6 / operate — agentic QA probes incl. goal-fulfillment check ─────────
+  inspector:
+    data_class_max: SANITIZED
+    temperature: 0.7                   # diverse probing (08 §2)
+    timeout_s: 120
+    swarm_size: 4                      # N concurrent agents (08 §2, config)
+    step_budget: 15                    # ≤15 tool steps per scenario (08 §2)
+    scenario_budget_s: 60              # ≤60 s wall per scenario (08 §2)
+    bindings:
+      default:   {backend: local, node: A, model: qwen36-35b-a3b}  # swapped from Gemma (MCPMark 37.0 vs 18.1)
+      sovereign: default
+      fallback:  {backend: fireworks, model: glm-52-hosted, demo_exception: true}  # ⚠️ badge
+    # mixed_swarm option (prize touchpoint, 11 §4): add gemma-4-26b-a4b members at the
+    # validation gate if it passes ≥7/12 — decided in 08 §7, seats.yaml edit only.

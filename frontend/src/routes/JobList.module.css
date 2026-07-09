@@ -1,0 +1,100 @@
+.wrap {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: clamp(28px, 5vh, 56px) clamp(16px, 3vw, 32px);
+}
+.head {
+  margin-bottom: 28px;
+}
+.title {
+  font-size: var(--fs-h1);
+}
+.sub {
+  margin-top: 8px;
+  color: var(--text-muted);
+  max-width: 56ch;
+  line-height: 1.6;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-mid);
+}
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.status svg {
+  width: 7px;
+  height: 7px;
+}
+.s_done {
+  color: var(--ok);
+}
+.s_building,
+.s_qa {
+  color: var(--accent);
+}
+.s_blocked {
+  color: var(--danger);
+}
+.mode {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+}
+.jobTitle {
+  font-size: var(--fs-h3);
+  letter-spacing: -0.015em;
+}
+.goal {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.enter {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--accent-strong);
+}
+.enter svg {
+  width: 0.95em;
+  height: 0.95em;
+  transition: transform var(--dur-1) var(--ease);
+}
+.card:hover .enter svg {
+  transform: translateX(3px);
+}

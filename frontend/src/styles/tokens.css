@@ -1,0 +1,86 @@
+:root {
+  /* ---- Neutrals (cool, never pure black/white) ---- */
+  --ink: #0c1417;
+  --ink-2: #1a2a30;
+  --paper: #f6fafb;
+  --surface: #ffffff;
+  --surface-sunk: #eef4f7;
+  --surface-raised: #ffffff;
+  --hairline: #d8e3e8;
+  --hairline-soft: #e6eef2;
+  --text: #0c1417;
+  --text-muted: #5b6b72;
+  --text-faint: #8b9aa0;
+
+  /* ---- Accent (the one accent) ---- */
+  --accent: #1c7aa3;
+  --accent-strong: #125b7d;
+  --accent-mid: #8cc5dd;
+  --accent-pale: #dceff6;
+  --accent-wash: #f0f8fb;
+
+  /* ---- Zones (temperature = position vs. the wall) ---- */
+  --zone-local: #1c7aa3;
+  --zone-local-wash: #e7f3f8;
+  --zone-amd: #cf8a3a;
+  --zone-amd-wash: #faf1e4;
+  --zone-custom: #5b6b90;
+  --zone-custom-wash: #eef0f6;
+  --zone-external: #57636b;
+  --zone-external-wash: #eef1f2;
+
+  /* ---- Data class ---- */
+  --raw: #0c1417;
+  --raw-on: #dceff6;
+  --sanitized: #1c7aa3;
+
+  /* ---- Semantic ---- */
+  --ok: #2f9e6b;
+  --ok-wash: #e7f5ee;
+  --warn: #cf8a3a;
+  --warn-wash: #faf1e4;
+  --danger: #e5484d;
+  --danger-wash: #fdecec;
+  --danger-strong: #c2282d;
+
+  /* ---- Sovereign mode ---- */
+  --sov-bg: #08171d;
+  --sov-surface: #0d2029;
+  --sov-hairline: #1c3a45;
+  --sov-seal: #3fd8c4;
+  --sov-text: #cfe8ea;
+
+  /* ---- Type ---- */
+  --font-sans: "Lenia Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "CS Arcel Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --fs-display: clamp(2.6rem, 5.6vw, 5rem);
+  --fs-h1: clamp(2rem, 3.6vw, 3.1rem);
+  --fs-h2: clamp(1.5rem, 2.4vw, 2.1rem);
+  --fs-h3: clamp(1.15rem, 1.5vw, 1.4rem);
+  --fs-lead: clamp(1.05rem, 1.4vw, 1.3rem);
+  --fs-body: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-xs: 0.78rem;
+  --fs-micro: 0.7rem;
+
+  /* ---- Space / radius / motion ---- */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(12, 20, 23, 0.05), 0 1px 3px rgba(12, 20, 23, 0.04);
+  --shadow-md: 0 4px 16px rgba(12, 20, 23, 0.08), 0 1px 3px rgba(12, 20, 23, 0.05);
+  --shadow-lg: 0 18px 48px rgba(12, 20, 23, 0.12), 0 2px 8px rgba(12, 20, 23, 0.06);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-1: 0.16s;
+  --dur-2: 0.34s;
+  --dur-3: 0.6s;
+
+  --maxw: 1240px;
+  --nav-h: 68px;
+}

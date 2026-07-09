@@ -1,0 +1,43 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.mark {
+  color: var(--accent);
+  flex: none;
+}
+.walls {
+  color: var(--ink);
+}
+.nucleus {
+  fill: var(--accent);
+}
+.mote {
+  fill: var(--accent-mid);
+}
+
+.word {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 1em;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.invert .word,
+.invert .walls {
+  color: var(--sov-text);
+}
+.invert .nucleus {
+  fill: var(--sov-seal);
+}
+.invert .mote {
+  fill: var(--sov-seal);
+}
+.invert .mark {
+  color: var(--sov-seal);
+}

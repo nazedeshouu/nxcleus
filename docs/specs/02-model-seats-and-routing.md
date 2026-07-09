@@ -12,14 +12,14 @@ Model ids below are the **resolved picks from the catalog ([11](11-model-catalog
 
 | Seat | Role (stages) | Data class seen | Default binding | Sovereign binding | Fallback (fleet down) |
 |---|---|---|---|---|---|
-| `trust` | Intake dialogue, mode classification, policy distillation, PII masking, OCR post-processing, consult sanitization sweep, doc generation (0, 2-egress, 7) | **RAW** | `local:A/gemma-4-26b-a4b` | same | `fireworks:gemma-4-26b-a4b-it` ⚠️ demo-exception badge |
+| `trust` | Intake dialogue, mode classification, policy distillation, PII masking, OCR post-processing, consult sanitization sweep, doc generation (0, 2-egress, 7) | **RAW** | `local:A/gemma-4-26b-a4b` | same | `fireworks:glm-5p2` ⚠️ demo-exception badge (live-verified 11 §6; `gemma-4-*` 404) |
 | `planner` | Topology + BoM authoring; constrained re-plans; refine consults (1, refine) | SANITIZED — **never anything else; enforced** | `anthropic:claude-fable-5` | `local:B/glm-46` — zero non-local calls | `fireworks:glm-5p2` ⚠️ badge |
 | `certifier` | Plan completion & certification against **full raw context**; rehydration; triage; goal emission; test-spec emission; refine triage (2, refine) | **RAW** (D9) | `local:B/glm-46` | same | `fireworks:glm-5p2` ⚠️ demo-exception badge |
 | `conductor` | Wave review between stage-4 waves: outputs vs plan + goal; bounded amendments to unbuilt regions; green flag (4) | **RAW** | `local:B/glm-46` (same instance as certifier, different prompt) | same | skip review (07 §3.1 proceed-without-review) |
-| `coder` (pool) | Module implementation + defect fixes (4, QA loop); capability-routed (§7) | RAW (production-specific plan) | pool: `local:C/qwen3-coder-next`, `local:D/qwen36-27b`, `local:D/devstral-small-2` | same | `fireworks:qwen3p6-27b`, `fireworks:devstral-small-2-24b-instruct-2512` ⚠️ demo-exception badge |
+| `coder` (pool) | Module implementation + defect fixes (4, QA loop); capability-routed (§7) | RAW (production-specific plan) | pool: `local:C/qwen3-coder-next`, `local:D/qwen36-27b`, `local:D/devstral-small-2` | same | `fireworks:deepseek-v4-pro` ⚠️ demo-exception badge (live-verified 11 §6; `qwen3p6-*`/`devstral-*` 404) |
 | `consolidator` | Merge modules into coherent codebase (5) | RAW (production-specific plan) | `local:B/glm-46` (same instance, third prompt) | same | `fireworks:glm-5p2` ⚠️ demo-exception badge |
-| `oracle` | Numeric Oracle: blind expected-output computation; operate spot-checks (2-vectors, 6, operate) | SANITIZED* | `local:A/gemma-4-31b` | same | `fireworks:gemma-4-31b-it` |
-| `inspector` | Agentic QA probes incl. goal-fulfillment check; operate-phase probes (6, operate) | SANITIZED | `local:A/qwen36-35b-a3b` — **swapped from Gemma** (MCPMark 37.0 vs 18.1, 11 §4); optional mixed swarm w/ Gemma members | same | `fireworks:qwen3p6-35b-a3b` |
+| `oracle` | Numeric Oracle: blind expected-output computation; operate spot-checks (2-vectors, 6, operate) | SANITIZED* | `local:A/gemma-4-31b` | same | `fireworks:glm-5p2` (live-verified 11 §6; `gemma-4-31b` 404 — badged demo infra) |
+| `inspector` | Agentic QA probes incl. goal-fulfillment check; operate-phase probes (6, operate) | SANITIZED | `local:A/qwen36-35b-a3b` — **swapped from Gemma** (MCPMark 37.0 vs 18.1, 11 §4); optional mixed swarm w/ Gemma members | same | `fireworks:glm-5p2` (live-verified 11 §6; `qwen3p6-35b-a3b` 404 — badged demo infra) |
 
 \* Oracle test vectors derive from data inside the boundary; in production the seat is local-only — same demo-exception rule as `trust` applies.
 
@@ -58,15 +58,20 @@ Three thin adapters behind one interface: `VllmClient` and `FireworksClient` (bo
 
 ## 3. `infra/seats.yaml` (shape)
 
+> **Normalization (AI Wave 1, 2026-07-09):** every binding's `model:` is a **key into
+> `infra/models.yaml`** (validated by `infra/validate_config.py` — no dangling keys). The
+> router resolves key → provider + hf_id + zone. Fallback IDs are live-verified per 11 §6
+> (only `glm-52-hosted`/`deepseek-v4-pro` exist on the account). The example below uses keys.
+
 ```yaml
 seats:
   oracle:
     data_class_max: SANITIZED
     temperature: 0.1
     bindings:
-      default:   {backend: local,     node: A, model: gemma-4-31b-it}
+      default:   {backend: local,     node: A, model: gemma-4-31b}
       sovereign: default
-      fallback:  {backend: fireworks, model: accounts/fireworks/models/gemma-4-31b}   # confirm ID launch day
+      fallback:  {backend: fireworks, model: glm-52-hosted}   # live-verified 11 §6 (gemma-4-31b 404); model = infra/models.yaml KEY
     self_consistency: 3          # oracle-only: k votes, majority (08 §4)
   planner:
     data_class_max: SANITIZED          # hard ceiling — the one seat that can never see RAW

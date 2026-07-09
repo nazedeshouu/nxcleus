@@ -1,0 +1,259 @@
+# infra/models.yaml — canonical model registry (Nxcleus)
+#
+# Generated/maintained from docs/specs/11-model-catalog.md §1–§2 (researched + locked
+# 2026-07-09). Change protocol (docs/specs/00-INDEX.md): when this file changes, change
+# spec 11 in the same commit, and vice-versa.
+#
+# One entry per SERVABLE model. Seats/pools reference these keys (infra/seats.yaml);
+# fleet launch specs reference these keys (infra/fleet.yaml). This file plus the
+# assignment table in spec 11 §5 is the canonical answer to "which model runs what,
+# where, and when".
+#
+# Fields:
+#   provider   local | fireworks | anthropic  — resolves the backend + zone.
+#                 local     -> LOCAL zone (self-hosted MI300X, vLLM/ROCm)
+#                 fireworks -> AMD_HOSTED zone (availability fallback only, D7 — badged)
+#                 anthropic -> EXTERNAL zone (the one designed-in non-local seat: planner)
+#   hf_id      exact HF repo (local) OR provider model id (fireworks/anthropic).
+#   serving    vram_gb / precision / context. hosted entries carry {hosted: true, context}.
+#   flags      capability vocabulary (spec 02 §7.2), values: strong | ok | weak.
+#              Consumed by the pool scheduler's deterministic argmax (02 §7.4, 07 §5.3).
+#   evidence   why we believe the flags (benchmarks; spec 11 §3 / §sources).
+#   license    SPDX-ish id. All picks MIT or Apache-2.0 (track rule: MIT-compatible).
+#   serves     seats/pools this model backs (documentary; the binding lives in seats.yaml).
+#   vllm_rocm  serving note for the fleet task (Day-0 support / kernel caveats).
+
+models:
+
+  # ── THE BRAIN (node B) — locked O4/D14 ───────────────────────────────────────
+  glm-46:
+    provider: local
+    hf_id: "zai-org/GLM-4.6"                 # bf16; FP8 variant: zai-org/GLM-4.6-FP8
+    serving: {vram_gb: 714, precision: bf16, context: 200000}
+    # ^ P2 default = bf16 across ~5 GPUs (dodges the FP8-decode caveat, vLLM #31475).
+    #   P3 alternative = FP8 ~357 GB across 3 GPUs, ONLY if the first-boot decode bench
+    #   passes (D14). The bf16<->fp8 knob lives in infra/fleet.yaml (node_b_precision).
+    flags:
+      greenfield-codegen: ok
+      refactor-edit: ok
+      sql-data: ok
+      test-writing: ok
+      docs-writing: ok
+      extraction: ok
+      math: strong
+      agentic-tool-use: strong
+      long-context: strong          # whole-plan / whole-codebase — the certifier's job
+      merge-review: strong          # the brain's core competency
+    evidence: "GPQA 82.9 (~Claude-4.5-class); LiveCodeBench v6 ~82.8, AIME'25 ~93.9 [M]; official: competitive w/ Claude Sonnet 4 / DeepSeek-V3.1 [A]; 200K ctx"
+    license: mit
+    serves: [certifier, conductor, consolidator, "planner (sovereign)"]
+    vllm_rocm: "supported 1/2/4/8-GPU (glm4_moe, mature); FP8-decode caveat spec 11 §0"
+
+  # node-B FALLBACK BINDING ONLY — frontier-class, always-on URL between fleet sessions.
+  # Never carries RAW sovereign traffic (D7/D9): fallback-zone only, badged.
+  glm-52-hosted:
+    provider: fireworks
+    hf_id: "accounts/fireworks/models/glm-5p2"   # LIVE-VERIFIED 200 (fw catalog 2026-07-09)
+    serving: {hosted: true, context: 1048576}
+    flags:
+      greenfield-codegen: ok
+      refactor-edit: ok
+      sql-data: ok
+      test-writing: ok
+      docs-writing: ok
+      extraction: ok
+      math: strong
+      agentic-tool-use: strong
+      long-context: strong
+      merge-review: strong
+    evidence: "AA Intelligence Index v4.1 = 51 (#1 open); GPQA 91.2, Terminal-Bench 82.7 [A]; 753B/~40B-active, 1M ctx, MIT"
+    license: mit
+    serves: ["node-B fallback binding (certifier/conductor/consolidator/planner-sovereign)"]
+    vllm_rocm: "n/a — Fireworks serving. Local serving = post-deadline upgrade (spec 11 §0)"
+
+  # emergency brain profile only (spec 11 §0) — 1 card, but 128K ctx is the risk.
+  glm-45-air-fp8:
+    provider: local
+    hf_id: "zai-org/GLM-4.5-Air-FP8"
+    serving: {vram_gb: 106, precision: fp8, context: 131072}
+    flags:
+      greenfield-codegen: ok
+      refactor-edit: ok
+      sql-data: ok
+      test-writing: ok
+      docs-writing: ok
+      extraction: ok
+      math: strong
+      agentic-tool-use: ok
+      long-context: ok              # 128K — the operative downgrade vs glm-46
+      merge-review: ok
+    evidence: "GPQA 73.3 [M]; 106B/12B; family verified single-MI300X [A]"
+    license: mit
+    serves: ["emergency brain profile (P1)"]
+    vllm_rocm: "mature (family verified single-MI300X) [A]"
+
+  # ── CODER POOL (nodes C/D) — capability-diverse (spec 11 §2) ──────────────────
+  qwen3-coder-next:
+    provider: local
+    hf_id: "Qwen/Qwen3-Coder-Next"
+    serving: {vram_gb: 80, precision: fp8, context: 262144}
+    flags:
+      greenfield-codegen: strong
+      refactor-edit: strong
+      sql-data: ok
+      test-writing: strong
+      docs-writing: ok
+      extraction: weak
+      math: ok
+      agentic-tool-use: strong      # long-horizon agent-tuned
+      long-context: strong          # 262K
+      merge-review: ok
+    evidence: "SWE-bench Verified 70.6, SWE-Pro 44.3, Terminal-Bench 2.0 36.2 [A]; Aider ~71 [M]"
+    license: apache-2.0
+    serves: ["coder pool (node C)"]
+    vllm_rocm: "AMD Day-0 (GDN fusion + Fused-Shared-Expert) [A]"
+
+  qwen36-27b:
+    provider: local
+    hf_id: "Qwen/Qwen3.6-27B"
+    serving: {vram_gb: 27, precision: fp8, context: 262144}
+    flags:
+      greenfield-codegen: strong    # SWE-V 77.2, dense/deterministic
+      refactor-edit: strong
+      sql-data: strong
+      test-writing: strong
+      docs-writing: strong          # multimodal, writing
+      extraction: ok
+      math: strong
+      agentic-tool-use: ok
+      long-context: ok
+      merge-review: ok
+    evidence: "SWE-bench Verified 77.2, SWE-Pro 53.5, Terminal-Bench 59.3, LiveCodeBench v5 70.7 [A/vendor ±3-5]"
+    license: apache-2.0
+    serves: ["coder pool (node D)"]
+    vllm_rocm: "Day-0 [A]"
+
+  devstral-small-2:
+    provider: local
+    hf_id: "mistralai/Devstral-Small-2-24B-Instruct-2512"
+    serving: {vram_gb: 24, precision: fp8, context: 262144}
+    flags:
+      greenfield-codegen: ok
+      refactor-edit: strong         # multi-file, SWE-agent/OpenHands-tuned
+      sql-data: weak
+      test-writing: ok
+      docs-writing: weak
+      extraction: weak
+      math: weak
+      agentic-tool-use: strong      # harness-native
+      long-context: ok              # 256K
+      merge-review: weak
+    evidence: "SWE-bench Verified 68.0, SWE-Multilingual 55.7, Terminal-Bench 22.5 [A]"
+    license: apache-2.0
+    serves: ["coder pool (node D — shares card with qwen36-27b: 27+24=51 GB)"]
+    vllm_rocm: "standard Mistral arch, FP8 tool-calling [A]"
+
+  # ── TRUST / ORACLE / INSPECTOR (node A) — QA & trust layer ────────────────────
+  gemma-4-26b-a4b:
+    provider: local
+    hf_id: "google/gemma-4-26B-A4B-it"        # GATED HF repo — accept license (see bootstrap.sh)
+    serving: {vram_gb: 26, precision: fp8, context: 262144}
+    flags:
+      greenfield-codegen: ok
+      refactor-edit: weak
+      sql-data: weak
+      test-writing: ok
+      docs-writing: strong          # multilingual prose, 140 langs
+      extraction: strong            # multimodal helps OCR post-proc
+      math: ok
+      agentic-tool-use: weak        # MCPMark 18.1
+      long-context: ok
+      merge-review: weak
+    evidence: "MMLU-Pro 82.6, GPQA-D 82.3, AIME 88.3, LiveCodeBench 77.1; multimodal, 140 languages [A]; MCPMark ~18.1 [A]"
+    license: apache-2.0             # NEW for Gemma 4 — no custom-license concerns
+    serves: [trust, "coder-pool guest (docs/extraction)", "inspector mixed-swarm (optional)"]
+    vllm_rocm: "AMD Day-0; needs transformers >=5.5 [A]"
+
+  gemma-4-31b:
+    provider: local
+    hf_id: "google/gemma-4-31B-it"            # GATED HF repo — accept license (see bootstrap.sh)
+    serving: {vram_gb: 31, precision: fp8, context: 262144}
+    flags:
+      greenfield-codegen: ok
+      refactor-edit: weak
+      sql-data: weak
+      test-writing: ok
+      docs-writing: ok
+      extraction: ok
+      math: strong                  # AIME 89.2, dense/stable at k=3
+      agentic-tool-use: ok
+      long-context: ok
+      merge-review: weak
+    evidence: "AIME 89.2, MMLU-Pro 85.2, GPQA-D 84.3 [A]; dense = stable at oracle k=3; value = lineage-independence from Qwen coders"
+    license: apache-2.0
+    serves: [oracle]
+    vllm_rocm: "Day-0 [A]"
+
+  qwen36-35b-a3b:
+    provider: local
+    hf_id: "Qwen/Qwen3.6-35B-A3B"
+    serving: {vram_gb: 35, precision: fp8, context: 262144}
+    flags:
+      greenfield-codegen: ok
+      refactor-edit: ok
+      sql-data: ok
+      test-writing: ok
+      docs-writing: ok
+      extraction: strong            # OmniDocBench 89.9
+      math: strong                  # AIME'26 92.7
+      agentic-tool-use: strong      # MCPMark 37.0 — ~2x Gemma on the inspector's job
+      long-context: strong          # 262K
+      merge-review: ok
+    evidence: "AIME'26 92.7, GPQA 86.0, MCPMark 37.0, BFCL/MCP-Atlas 62.8, Terminal-Bench 51.5, OmniDocBench 89.9 [A]"
+    license: apache-2.0
+    serves: [inspector, "understudy for trust/oracle if validation gate fails"]
+    vllm_rocm: "Day-0 [A]"
+
+  # ── HOSTED FALLBACK / EXTERNAL entries ────────────────────────────────────────
+  # coder-pool Fireworks fallback (P0 / fleet-down). LIVE-VERIFIED 200 (fw catalog 2026-07-09).
+  deepseek-v4-pro:
+    provider: fireworks
+    hf_id: "accounts/fireworks/models/deepseek-v4-pro"
+    serving: {hosted: true, context: 1048576}
+    flags:
+      greenfield-codegen: strong
+      refactor-edit: strong
+      sql-data: strong
+      test-writing: strong
+      docs-writing: ok
+      extraction: ok
+      math: strong
+      agentic-tool-use: strong
+      long-context: strong
+      merge-review: ok
+    evidence: "top hosted coder, SWE-bench ~80.6 (spec 11 §7); 1.6T multi-node → hosted-only; vendor-diverse from the local Qwen/Devstral pool"
+    license: "deepseek (hosted; not distributed)"
+    serves: ["coder pool fallback (P0/fleet-down)"]
+    vllm_rocm: "n/a — Fireworks serving"
+
+  # THE PLANNER — the single designed-in non-local seat (D7). EXTERNAL zone.
+  # Sees ONLY the sanitized planner brief (SANITIZED ceiling, enforced).
+  claude-fable-5:
+    provider: anthropic
+    hf_id: "claude-fable-5"                   # LIVE-VERIFIED in the account model list 2026-07-09
+    serving: {hosted: true, context: 1000000} # 1M input / 128K output
+    flags:                                     # documentary — the planner seat is not pool-routed
+      greenfield-codegen: strong
+      refactor-edit: strong
+      sql-data: strong
+      test-writing: strong
+      docs-writing: strong
+      extraction: strong
+      math: strong
+      agentic-tool-use: strong
+      long-context: strong
+      merge-review: strong
+    evidence: "frontier planner (topology + BoM authoring); structured outputs + adaptive thinking; 1M input ctx (Anthropic model list, verified 2026-07-09)"
+    license: "proprietary (hosted API; SANITIZED-only egress)"
+    serves: ["planner (default)"]
+    vllm_rocm: "n/a — Anthropic API"

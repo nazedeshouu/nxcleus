@@ -1,0 +1,46 @@
+# infra/rates.yaml — metering rate card (Nxcleus)
+#
+# Feeds the quote engine (stage 3) and the exact invoice (stage 7) — docs/specs/10 §3-§5.
+# Metering IS the product claim (the "money slide"), so these must be REAL numbers.
+#
+# STATUS: gpu rate confirmed from the droplet shape; per-token prices are PLACEHOLDERS
+# marked `confirm:` — fill from the live price sheets Day 1 (Anthropic console; Fireworks
+# catalog fireworks.ai/models). The quote renders ranges (±50% token, ±30% GPU), so
+# placeholders don't break the pipeline, but the money slide must not cite unconfirmed
+# per-token costs. Backend metering owns the consumption side; coordinate before locking.
+#
+# Model ids are KEYS into infra/models.yaml where possible; backend entries also list the
+# raw provider id used on the wire.
+
+gpu:
+  # 8x MI300X droplet = $15.92/hr -> $1.99/GPU-hr. Rounded to 2.00 (spec 10 §3).
+  mi300x_hour_usd: 2.00           # per-GPU-hour; local tokens are priced as GPU time (below)
+
+backends:
+
+  # EXTERNAL — the one designed-in non-local seat (planner). SANITIZED egress only.
+  anthropic:
+    claude-fable-5:
+      provider_id: claude-fable-5
+      in_per_mtok: 5.00           # confirm: Anthropic price sheet (Fable 5) — PLACEHOLDER
+      out_per_mtok: 25.00         # confirm: PLACEHOLDER
+      confirm: "Anthropic console pricing for claude-fable-5 (Day 1)"
+
+  # AMD_HOSTED — availability fallback only (D7), badged. LIVE-VERIFIED ids (fw catalog 2026-07-09).
+  fireworks:
+    glm-5p2:                      # models.yaml key: glm-52-hosted
+      provider_id: accounts/fireworks/models/glm-5p2
+      in_per_mtok: 0.90           # confirm: Fireworks catalog — PLACEHOLDER (753B MoE class)
+      out_per_mtok: 0.90          # confirm: PLACEHOLDER
+      confirm: "fireworks.ai/models glm-5p2 (Day 1)"
+    deepseek-v4-pro:              # models.yaml key: deepseek-v4-pro
+      provider_id: accounts/fireworks/models/deepseek-v4-pro
+      in_per_mtok: 1.20           # confirm: Fireworks catalog — PLACEHOLDER (1.6T class)
+      out_per_mtok: 1.20          # confirm: PLACEHOLDER
+      confirm: "fireworks.ai/models deepseek-v4-pro (Day 1)"
+
+  # LOCAL — self-hosted MI300X. Local tokens are priced as GPU time, not per-token (10 §3).
+  local:
+    default: {in_per_mtok: 0.0, out_per_mtok: 0.0}
+
+margin: 0.0                       # hackathon: cost passthrough. Product: pricing knob (10 §3).
