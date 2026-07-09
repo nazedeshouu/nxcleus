@@ -21,10 +21,18 @@ from app.seats._common import (
     apply_rfc6902,
     as_json,
     convo,
+    normalize_regions,
     parsed_or_raise,
+    region_ids,
     rehydrate_tokens,
 )
 from app.seats.base import CompleteFn, EmitFn
+
+# The certifier holds each certification round to a soft consult budget (03 §4): amend-first,
+# consult sparingly. Overflow consults are deferred (system.notice + `deferred_consults`) rather
+# than fired — a simple KYC plan does not need eight frontier round-trips. The backend keeps its
+# own hard round cap on top of this.
+SOFT_CONSULT_CAP = 2
 
 # Harnesses return plain, schema-validated dicts; backend adapts into db/models (CertifyResult,
 # Finding, IntegrationTestSpec, OracleVector) at the call site. No backend model imports (team ruling).
@@ -87,13 +95,23 @@ def check_system(check: str) -> str:
 
 FOCUSED CHECK — {check}: {CHECKS[check]}
 
-Return findings ONLY for this check. For each finding, TRIAGE it:
-  - amend: you can fix it locally with a precise RFC-6902 patch to the plan. Give the patch \
+Return findings ONLY for this check. Bias HARD toward amend: the local completion pass exists \
+precisely to fix things WITHOUT a frontier round-trip, and you have the full raw context to do \
+it. A consult is the rare, expensive exception. For each finding, TRIAGE it:
+  - amend (DEFAULT): fix it locally with a precise RFC-6902 patch to the plan. Give the patch \
 (op/path/value over the plan JSON), a one-line rationale, and the spec/AC reference it \
-satisfies. Prefer amend — the whole point is the local completion pass.
-  - consult: the fix is STRUCTURAL and needs the planner to redesign a region. Give a scope \
-lock (`only_regions`) and a precise question. Use consult sparingly, only when a local patch \
-cannot express the fix.
+satisfies. Any wrong VALUE, name, type, threshold, flag, missing field, missing failure branch, \
+or added test is an amend — not a consult.
+  - consult: choose this ONLY when the fix is genuinely STRUCTURAL and no local patch can express \
+it — the topology itself is wrong: a module that must be added or removed, an interface that \
+must be redesigned, a data flow that must be re-routed. If you can describe the fix as a patch, \
+it is an amend, not a consult. Each consult costs the customer a frontier call, so at most about \
+TWO consults are warranted for an entire plan; beyond that you are almost certainly under-using \
+amend. Give a precise question and a scope lock whose `only_regions` quotes the plan's region \
+ids VERBATIM — the exact `id` strings of the modules, interfaces, or topology steps involved \
+(e.g. "mod_risk", "if_sanctions_result", "s_extract"). NEVER a JSONPath, a dotted path, or a \
+field name (not "$.model_bom.seats", not "modules.mod_risk.algorithm" — just "mod_risk"). A \
+scope lock that names no real region id will be discarded.
 
 Severity is gap (something missing), inconsistency (something contradictory), or structural \
 (a design-level problem). If the plan passes this check, return an empty findings list. \
@@ -221,15 +239,45 @@ TESTS_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
     "properties": {"tests": {"type": "array", "items": _TEST_SPEC},
                    "vectors": {"type": "array", "items": _ORACLE_VECTOR}},
-    "required": ["tests", "vectors"],
+    # LIVE FIX (backend-w2): only `tests` is required. Real GLM output intermittently omits
+    # `vectors`, which failed validation even after the router's repair round and forced a costly
+    # full-stage retry; the harness already defaults `vectors` to []. A process with no numeric
+    # rules legitimately has no oracle vectors, so this is also more correct.
+    "required": ["tests"],
 }
 SCENARIOS_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
-    "properties": {"scenarios": {"type": "array", "items": {"type": "string"},
-                                  "minItems": 3, "maxItems": 5}},
+    # LIVE FIX (backend-w2): dropped minItems/maxItems. A real model returning 2 or 6 scenarios is
+    # fine; strict cardinality only bought spurious validation failures. Prompt still asks for 3-5.
+    "properties": {"scenarios": {"type": "array", "items": {"type": "string"}}},
     "required": ["scenarios"],
 }
 REFINE_TRIAGE_SCHEMA = _FINDING
+
+# Repair reprompt for a consult whose `only_regions` named no real plan region (the JSONPath-ish
+# failure mode). One shot: re-express the scope lock using verbatim plan region ids, or empty.
+REPAIR_REGIONS_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "properties": {"only_regions": {"type": "array", "items": {"type": "string"}}},
+    "required": ["only_regions"],
+}
+
+
+def _repair_regions_system(valid_ids: list[str]) -> str:
+    return f"""\
+Your previous consult named plan regions that DO NOT EXIST — its `only_regions` was not a list of \
+real region ids. A scope lock's `only_regions` MUST quote plan region ids VERBATIM: the exact \
+`id` strings of modules, interfaces, or topology steps in the plan (e.g. "mod_risk", \
+"if_sanctions_result", "s_extract"). Not a JSONPath, not a dotted path, not a field or seat name.
+
+The ONLY valid region ids for this plan are:
+{as_json(valid_ids)}
+
+Re-express the scope lock for your consult using ONLY ids from that list — pick the smallest set \
+of regions that contains the fix. If NONE of them apply, return an empty list. {ENGLISH_ONLY}
+
+{STRUCTURED_ONLY}"""
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Harnesses
@@ -251,6 +299,75 @@ async def run_check(
         f.setdefault("check", check)
     await emit("certify.check_completed", {"check": check, "findings": len(findings)})
     return findings
+
+
+async def _repair_consult_regions(
+    complete: CompleteFn, emit: EmitFn, *, consult: dict[str, Any], valid_ids: set[str],
+    bad: list[str], temperature: float | None = None,
+) -> list[str]:
+    """One repair reprompt for a consult whose scope lock named no real region: ask the certifier
+    to restate `only_regions` with verbatim plan ids. Returns the resolved ids (possibly empty). A
+    failed repair NEVER raises out — a consult it can't fix is simply deferred."""
+    body = {"question": consult.get("question", ""), "rejected_only_regions": list(bad),
+            "valid_region_ids": sorted(valid_ids)}
+    try:
+        c = await complete("certifier", convo(_repair_regions_system(sorted(valid_ids)), as_json(body)),
+                           data_class=DATA_CLASS, schema=REPAIR_REGIONS_SCHEMA, temperature=temperature)
+        out = parsed_or_raise(c, "certifier.repair_consult_regions")
+    except Exception:  # noqa: BLE001 — a failed repair defers the consult, it must not crash the stage
+        return []
+    resolved, _ = normalize_regions(out.get("only_regions", []), valid_ids)
+    await emit("certify.consult_repaired", {"regions": resolved})
+    return resolved
+
+
+async def _triage_consults(
+    complete: CompleteFn, emit: EmitFn, *, findings: list[dict[str, Any]], valid_ids: set[str],
+    temperature: float | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Consult discipline (03 §4). For every finding triaged `consult`:
+      1. normalize its `only_regions` onto the canonical vocabulary (`normalize_regions`);
+      2. if it resolves to no real region, run ONE repair reprompt; still nothing -> defer it;
+      3. enforce the soft per-round cap (`SOFT_CONSULT_CAP`) — overflow consults are deferred.
+    Kept consults carry verbatim region ids in `consult_request.scope.only_regions`, so the stage
+    passes a clean scope lock straight into `planner.replan`. Amend findings pass through
+    untouched and in place. Returns `(kept_findings, deferred)` where deferred is a list of
+    `{finding_id, reason, only_regions}` and each deferral also emits a `system.notice`."""
+    kept: list[dict[str, Any]] = []
+    deferred: list[dict[str, Any]] = []
+    accepted = 0
+    for f in findings:
+        if f.get("triage") != "consult":
+            kept.append(f)
+            continue
+        req = f.get("consult_request") or {}
+        scope = req.get("scope") or {}
+        raw_regions = scope.get("only_regions", []) or []
+        resolved, unresolved = normalize_regions(raw_regions, valid_ids)
+        if not resolved:
+            resolved = await _repair_consult_regions(
+                complete, emit, consult=req, valid_ids=valid_ids,
+                bad=unresolved or [str(r) for r in raw_regions], temperature=temperature)
+        fid = f.get("finding_id")
+        if not resolved:
+            deferred.append({"finding_id": fid, "reason": "no_valid_region",
+                             "only_regions": [str(r) for r in raw_regions]})
+            await emit("system.notice", {"scope": "certify", "level": "warn",
+                       "message": f"consult {fid} dropped: only_regions named no plan region "
+                                  f"({[str(r) for r in raw_regions]})"})
+            continue
+        if accepted >= SOFT_CONSULT_CAP:
+            deferred.append({"finding_id": fid, "reason": "consult_cap", "only_regions": resolved})
+            await emit("system.notice", {"scope": "certify", "level": "warn",
+                       "message": f"consult {fid} deferred: >{SOFT_CONSULT_CAP} consults this "
+                                  f"round — amend-first, escalate only the most structural"})
+            continue
+        scope["only_regions"] = resolved
+        req["scope"] = scope
+        f["consult_request"] = req
+        kept.append(f)
+        accepted += 1
+    return kept, deferred
 
 
 async def certify(
@@ -279,6 +396,14 @@ async def certify(
                     temperature=temperature) for chk in CHECKS]
     )
     findings: list[dict[str, Any]] = [f for group in results for f in group]
+
+    # Consult discipline (03 §4): normalize each consult's scope lock to the canonical region-id
+    # vocabulary (repairing JSONPath-style output once, dropping locks that name no real region)
+    # and hold the round to the soft consult cap. Validated against `plan`'s region ids — the same
+    # plan the stage hands to `planner.replan` — so a kept consult's `only_regions` is guaranteed
+    # to be a lock replan will accept, not reject. Overflow/untranslatable consults are deferred.
+    findings, deferred_consults = await _triage_consults(
+        complete, emit, findings=findings, valid_ids=region_ids(plan), temperature=temperature)
 
     # Apply every amendment immediately (03 §4); collect consults for the stage's re-plan loop.
     # Each applied amendment is hash-chained (origin: certifier) so the log is tamper-evident.
@@ -318,6 +443,7 @@ async def certify(
     scenarios = await emit_scenarios(complete, emit, plan=working, temperature=temperature)
 
     await emit("certify.certified", {"amendments": applied, "consults": consults,
+               "deferred_consults": len(deferred_consults),
                "tests": len(tests), "vectors": len(vectors), "version": working["version"]})
     return {
         "findings": findings,
@@ -327,6 +453,7 @@ async def certify(
         "adversarial_scenarios": scenarios,
         "identifiers_rehydrated": rehydrated,
         "certified_plan": working,
+        "deferred_consults": deferred_consults,   # amend-first overflow / untranslatable locks
         "amendment_chain_head": chain,   # thread into the conductor's prev_hash next stage
     }
 

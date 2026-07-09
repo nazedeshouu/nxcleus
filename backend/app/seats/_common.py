@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any
 
 from app.seats.base import Completion, Message
@@ -144,3 +145,58 @@ def rehydrate_tokens(obj: Any, vault: dict[str, str]) -> tuple[Any, int]:
         return x
 
     return walk(obj), count
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Scope-lock region vocabulary (03 §3–4). ONE canonical set of ids a `scope_lock` /
+# `only_regions` entry may name — concrete plan region ids exactly as they appear in the
+# plan JSON. The certifier quotes these verbatim when it emits a consult; `planner.replan`
+# enforces that a re-plan's edits stay inside them. Both ends import THIS helper so the
+# vocabulary can never drift apart (the live consult-loop dead-end was exactly that drift:
+# the certifier emitting JSONPath-ish `$.model_bom.seats` while replan expected `mod_risk`).
+# ─────────────────────────────────────────────────────────────────────────────
+
+_REGION_SPLIT = re.compile(r"[.\[\]$/#'\"]+")
+
+
+def region_ids(plan: dict[str, Any]) -> set[str]:
+    """The canonical scope-lock vocabulary for a plan: every module id, interface id, dag task
+    id, and topology step id, verbatim. These — and only these — are the ids a consult's
+    `only_regions` may name and `planner.replan` accepts."""
+    ids: set[str] = set()
+    for m in plan.get("modules", []) or []:
+        ids.add(m.get("id", ""))
+    for i in plan.get("interfaces", []) or []:
+        ids.add(i.get("id", ""))
+    for t in plan.get("dag", []) or []:
+        ids.add(t.get("task", ""))
+    for s in ((plan.get("topology") or {}).get("steps") or []):
+        ids.add(s.get("id", ""))
+    return {i for i in ids if i}
+
+
+def normalize_regions(entries: Any, valid_ids: set[str]) -> tuple[list[str], list[str]]:
+    """Map raw `only_regions` entries onto the canonical vocabulary. An entry that is already a
+    plan region id passes verbatim. The JSONPath-ish forms a model emits instead
+    (``$.modules.mod_risk``, ``modules[0].mod_risk``, ``mod_risk.algorithm``) are translated by
+    taking the first path segment that is a known region id. An entry that names no known region
+    (``$.model_bom.seats``, a bare field name) is returned as UNRESOLVED for the caller to repair
+    or drop. Returns ``(resolved_ids, unresolved_entries)`` — both order-preserving and de-duped."""
+    resolved: list[str] = []
+    unresolved: list[str] = []
+    for raw in entries or []:
+        entry = str(raw).strip()
+        if not entry:
+            continue
+        if entry in valid_ids:
+            if entry not in resolved:
+                resolved.append(entry)
+            continue
+        hit = next((seg for seg in _REGION_SPLIT.split(entry)
+                    if seg and seg in valid_ids), None)
+        if hit is not None:
+            if hit not in resolved:
+                resolved.append(hit)
+        elif entry not in unresolved:
+            unresolved.append(entry)
+    return resolved, unresolved

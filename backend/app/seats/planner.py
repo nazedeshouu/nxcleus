@@ -13,7 +13,15 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from app.seats._common import ENGLISH_ONLY, STRUCTURED_ONLY, as_json, convo, msg, parsed_or_raise
+from app.seats._common import (
+    ENGLISH_ONLY,
+    STRUCTURED_ONLY,
+    as_json,
+    convo,
+    msg,
+    parsed_or_raise,
+    region_ids,
+)
 from app.seats.base import CompleteFn, EmitFn
 
 # Harnesses return plain, schema-validated dicts; backend adapts into db/models.Plan at the call
@@ -174,20 +182,6 @@ PLAN_SCHEMA: dict[str, Any] = {
 }
 
 
-def _region_ids(plan: dict[str, Any]) -> set[str]:
-    ids: set[str] = set()
-    for m in plan.get("modules", []) or []:
-        ids.add(m.get("id", ""))
-    for i in plan.get("interfaces", []) or []:
-        ids.add(i.get("id", ""))
-    for t in plan.get("dag", []) or []:
-        ids.add(t.get("task", ""))
-    topo = plan.get("topology") or {}
-    for s in (topo.get("steps") or []):
-        ids.add(s.get("id", ""))
-    return {i for i in ids if i}
-
-
 async def _stream_cb(emit: EmitFn, event: str) -> Callable[[str], Awaitable[None]]:
     async def cb(chunk: str) -> None:
         await emit(event, {"text": chunk})
@@ -229,7 +223,7 @@ async def replan(
     only_regions = scope_lock.get("only_regions", [])
     lock = set(only_regions)
     current_plan = plan
-    before = _region_ids(current_plan)
+    before = region_ids(current_plan)
     payload = as_json({"current_plan": current_plan, "findings": findings,
                        "scope_lock": {"only_regions": only_regions}})
     c = await complete("planner", convo(SYSTEM_PLAN + "\n\n" + REPLAN_GUIDANCE, payload),
@@ -246,7 +240,7 @@ async def replan(
         raise ValueError(f"planner.replan touched regions outside the scope lock: {sorted(illegal)}")
 
     await emit("plan.replanned", {"only_regions": only_regions,
-               "added_regions": sorted(_region_ids(out) - before)})
+               "added_regions": sorted(region_ids(out) - before)})
     return out
 
 

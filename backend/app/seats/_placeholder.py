@@ -251,21 +251,27 @@ def _nr1(inputs: dict) -> float:
 
 # --------------------------------------------------------------------------- inspector
 class _Inspector:
-    async def probe(self, complete: CompleteFn, emit: EmitFn, *, scenario: str, base_url: str) -> dict:
+    async def probe(self, complete: CompleteFn, emit: EmitFn, *, scenario: dict, tools=None,
+                    step_budget: int = 15) -> dict | None:
+        # Conformed to the ratified inspector.probe signature (scenario DICT + injected egress tools
+        # + step_budget; returns a Ticket-shaped dict or None). Placeholder stays deterministic and
+        # does not need to drive the real tool loop.
+        title = scenario.get("title", "") if isinstance(scenario, dict) else str(scenario)
+        probe_txt = scenario.get("probe", "") if isinstance(scenario, dict) else ""
+        sid = scenario.get("id") if isinstance(scenario, dict) else None
         await _ask(complete, "inspector", "SANITIZED", None,
                    "You are the inspector seat probing a deployed business process. You cannot see its "
                    "code; try to break the claim; every finding needs a reproducible request/response.",
-                   f"Scenario: {scenario}; base_url: {base_url}")
-        # placeholder swarm reports the main path healthy; one scenario yields a minor finding
-        found = "missing" in scenario.lower()
-        return {
-            "scenario": scenario,
-            "found": found,
-            "finding": ({"title": f"probe: {scenario}", "instrument": "inspector",
-                         "severity": "minor", "suspected_modules": ["mod_ocr"],
-                         "repro": {"request": {"scenario": scenario}, "response": {"status": 200}}}
-                        if found else None),
-        }
+                   f"Scenario: {title} — {probe_txt}")
+        await emit("qa.probe_started", {"scenario": sid, "source": scenario.get("source")
+                                        if isinstance(scenario, dict) else None})
+        # placeholder swarm reports the main path healthy; malformed/missing scenarios yield a finding
+        if "missing" in (title + probe_txt).lower() or "malformed" in (title + probe_txt).lower():
+            return {"title": f"probe: {title}", "instrument": "inspector", "severity": "minor",
+                    "suspected_modules": ["mod_ocr"],
+                    "repro": {"request": {"method": "POST", "path": "/run_unit"},
+                              "response": {"status": 500}}}
+        return None
 
     async def goal_check(self, complete: CompleteFn, emit: EmitFn, *, goal: str, manifest: dict,
                          ac_outcomes: list, probe_results: list) -> dict:
