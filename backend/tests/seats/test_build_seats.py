@@ -21,7 +21,7 @@ def test_coder_fix():
                                     "notes": "banker's rounding"}])
     emits = Emits()
     out = run(coder.fix(fake, emits, ticket={"title": "rounding off"},
-                        module_source={"src/mod_risk.py": "old"}, tests=[{"id": "T-2"}]))
+                        module_src={"src/mod_risk.py": "old"}, tests=[{"id": "T-2"}]))
     assert out["files"][0]["content"] == "fixed"
     assert "task.fix_applied" in emits.types()
 
@@ -32,7 +32,7 @@ def test_consolidator_detects_entrypoint():
         {"path": "src/mod_a.py", "content": "..."}], "notes": "wired"}])
     emits = Emits()
     out = run(consolidator.consolidate(fake, emits, modules=[{"id": "mod_a"}],
-                                       interfaces=[], wiring_spec={"dag": []}))
+                                       interfaces=[], plan={"dag": []}))
     assert len(out["files"]) == 2
     assert emits.payload("consolidate.assembled")["has_entrypoint"] is True
     assert fake.data_classes_for("consolidator") == {"RAW"}

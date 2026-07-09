@@ -183,6 +183,18 @@ async def goal_fulfillment_check(
     return out
 
 
+# ── Engine entrypoint (canonical name; app/seats/_placeholder.py) ─────────────
+async def goal_check(
+    complete: CompleteFn, emit: EmitFn, *, goal: str, manifest: dict[str, Any],
+    ac_outcomes: list[dict[str, Any]], probe_results: list[dict[str, Any]],
+    temperature: float | None = None,
+) -> dict[str, Any]:
+    """Canonical alias for goal_fulfillment_check (08 §1.5)."""
+    return await goal_fulfillment_check(complete, emit, goal=goal, manifest=manifest,
+                                        ac_outcomes=ac_outcomes, probe_results=probe_results,
+                                        temperature=temperature)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Scenario generators (08 §3) — merged and deduped by the stage.
 # ─────────────────────────────────────────────────────────────────────────────

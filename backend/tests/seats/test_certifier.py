@@ -43,9 +43,11 @@ def _handler(seat, messages, schema, idx):
 def test_certify_end_to_end():
     fake = FakeComplete(handler=_handler)
     emits = Emits()
-    result = run(certifier.certify(fake, emits, plan=PLAN, raw_request="screen my applicants",
-                                   raw_context={"tables": ["customers"]},
-                                   vault={"«TABLE_A»": "customers"}))
+    result = run(certifier.certify(fake, emits, plan=PLAN,
+                                   raw_context={"request": "screen my applicants",
+                                                "vault": {"«TABLE_A»": "customers"},
+                                                "tables": ["customers"]},
+                                   policy={"rules": []}))
 
     # 7 checks + goal + tests + scenarios = 10 calls, all RAW.
     assert len(fake.calls) == 10
@@ -55,6 +57,12 @@ def test_certify_end_to_end():
     assert len(result["findings"]) == 2
     assert "certify.amendment" in emits.types()
     assert "certify.consult_requested" in emits.types()
+
+    # the amendment is hash-chained (origin + prev_hash + hash), threaded via chain head.
+    amend = next(f for f in result["findings"] if f.get("triage") == "amend")["amendment"]
+    assert amend["origin"] == "certifier"
+    assert amend["prev_hash"] == "0" * 64 and len(amend["hash"]) == 64
+    assert result["amendment_chain_head"] == amend["hash"]
 
     # rehydration replaced the one placeholder; version bumped; amended plan returned.
     assert result["identifiers_rehydrated"] == 1

@@ -90,14 +90,17 @@ async def compute(
     complete: CompleteFn,
     emit: EmitFn,
     *,
-    rule_text: str,
     vector: dict[str, Any],
+    rule_text: str,
     k: int = 3,
-    tolerance: str | None = "exact",
+    tolerance: str | None = None,
     temperature: float | None = 0.3,
 ) -> dict[str, Any]:
     """Blind-recompute one vector with k-vote self-consistency (08 §4).
-    Returns an OracleComputation-shaped dict: {expected, votes, uncertain}."""
+    Returns an OracleComputation-shaped dict: {expected, votes, uncertain}. Per-rule tolerance is
+    read from the vector (`vector["tolerance"]`) unless overridden by the `tolerance` argument."""
+    if tolerance is None:
+        tolerance = vector.get("tolerance", "exact")
     votes: list[Any] = []
     payload = as_json({"rule": rule_text, "inputs": vector.get("inputs", vector)})
     for _ in range(max(1, k)):

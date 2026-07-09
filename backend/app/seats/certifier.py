@@ -15,7 +15,8 @@ from typing import Any
 
 from app.seats.base import CompleteFn, EmitFn
 from app.seats._common import (
-    ENGLISH_ONLY, STRUCTURED_ONLY, apply_rfc6902, as_json, convo, parsed_or_raise, rehydrate_tokens,
+    ENGLISH_ONLY, GENESIS_HASH, STRUCTURED_ONLY, amendment_hash, apply_rfc6902, as_json, convo,
+    parsed_or_raise, rehydrate_tokens,
 )
 
 # Harnesses return plain, schema-validated dicts; backend adapts into db/models (CertifyResult,
@@ -252,6 +253,7 @@ async def certify(
     plan: dict[str, Any],
     raw_context: dict[str, Any],
     policy: dict[str, Any] | None = None,
+    prev_hash: str = GENESIS_HASH,
     temperature: float | None = None,
 ) -> dict[str, Any]:
     """Full stage-2 certification: run the 7 checks (parallel), apply amendments, collect
@@ -272,15 +274,23 @@ async def certify(
     findings: list[dict[str, Any]] = [f for group in results for f in group]
 
     # Apply every amendment immediately (03 §4); collect consults for the stage's re-plan loop.
+    # Each applied amendment is hash-chained (origin: certifier) so the log is tamper-evident.
     working = plan
     applied, consults = 0, 0
+    chain = prev_hash
     for f in findings:
         if f.get("triage") == "amend" and f.get("amendment", {}).get("patch"):
             try:
                 working = apply_rfc6902(working, f["amendment"]["patch"])
                 applied += 1
+                amd = f["amendment"]
+                amd["origin"] = amd.get("origin", "certifier")
+                amd["prev_hash"] = chain
+                amd["hash"] = amendment_hash(chain, amd.get("patch"), amd.get("rationale", ""))
+                chain = amd["hash"]
                 await emit("certify.amendment", {"finding_id": f.get("finding_id"),
-                           "plan_ref": f.get("plan_ref"), "rationale": f["amendment"].get("rationale")})
+                           "plan_ref": f.get("plan_ref"), "rationale": amd.get("rationale"),
+                           "hash": amd["hash"]})
             except Exception as exc:  # noqa: BLE001 — skip a malformed patch, don't corrupt the plan
                 await emit("system.notice", {"scope": "certify",
                            "message": f"skipped malformed amendment {f.get('finding_id')}: {exc}"})
@@ -310,6 +320,7 @@ async def certify(
         "adversarial_scenarios": scenarios,
         "identifiers_rehydrated": rehydrated,
         "certified_plan": working,
+        "amendment_chain_head": chain,   # thread into the conductor's prev_hash next stage
     }
 
 

@@ -11,10 +11,22 @@ hard failure. Harnesses never parse free text.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 
 from app.seats.base import Completion, Message
+
+# Amendment hash-chain (03 §4 / §6): each amendment row carries prev_hash + hash so the
+# amendment log is tamper-evident. hash = sha256(prev_hash + canonical(patch) + rationale).
+# The certifier and conductor populate these on the amendment dicts (backend persists as-is,
+# team ruling C); the chain threads across stages via the returned chain head.
+GENESIS_HASH = "0" * 64
+
+
+def amendment_hash(prev_hash: str, patch: Any, rationale: str) -> str:
+    body = prev_hash + json.dumps(patch, sort_keys=True, default=str) + (rationale or "")
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 # Stated in every system prompt (track rule: English-only output everywhere, 01 §7).
 ENGLISH_ONLY = (

@@ -10,7 +10,9 @@ from __future__ import annotations
 from typing import Any
 
 from app.seats.base import CompleteFn, EmitFn
-from app.seats._common import ENGLISH_ONLY, STRUCTURED_ONLY, as_json, convo, parsed_or_raise
+from app.seats._common import (
+    ENGLISH_ONLY, GENESIS_HASH, STRUCTURED_ONLY, amendment_hash, as_json, convo, parsed_or_raise,
+)
 
 # Returns a schema-validated dict; backend adapts into db/models.ConductorReview (team ruling).
 
@@ -73,6 +75,7 @@ async def review(
     goal: str,
     wave_outputs: list[dict[str, Any]] | dict[str, Any],
     remaining: list[Any],
+    prev_hash: str = GENESIS_HASH,
     temperature: float | None = None,
 ) -> dict[str, Any]:
     """Review one wave (returns a ConductorReview-shaped dict). Enforces (in-harness, not just prompt):
@@ -91,12 +94,23 @@ async def review(
     out = parsed_or_raise(c, "conductor.review")
 
     allowed = remaining_ids
+
+    def _in_scope(plan_ref: str) -> bool:
+        # plan_ref may be a bare id ("mod_risk") or a dotted/slashed path ("modules.mod_risk").
+        toks = set(plan_ref.replace("/", ".").split("."))
+        return plan_ref in allowed or bool(allowed & toks)
+
     kept_amendments: list[dict[str, Any]] = []
+    chain = prev_hash
     for a in out.get("amendments", []) or []:
-        if a.get("plan_ref") in allowed:
+        if _in_scope(a.get("plan_ref", "")):
+            a["origin"] = a.get("origin", "conductor")
+            a["prev_hash"] = chain
+            a["hash"] = amendment_hash(chain, a.get("patch"), a.get("rationale", ""))
+            chain = a["hash"]
             kept_amendments.append(a)
             await emit("conductor.amendment", {"plan_ref": a.get("plan_ref"),
-                       "rationale": a.get("rationale")})
+                       "rationale": a.get("rationale"), "hash": a["hash"]})
         else:
             await emit("plan.scope_violation", {"origin": "conductor",
                        "plan_ref": a.get("plan_ref"), "allowed": sorted(allowed)})
@@ -111,6 +125,7 @@ async def review(
             kept_rework.append(r)
 
     out["amendments"], out["rework"] = kept_amendments, kept_rework
+    out["amendment_chain_head"] = chain   # thread into the next wave's / stage's prev_hash
     if out.get("goal_drift"):
         await emit("conductor.goal_drift", {"description": out["goal_drift"]})
     await emit("conductor.green_flag", {"verdict": out.get("verdict"),

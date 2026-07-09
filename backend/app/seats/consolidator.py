@@ -59,13 +59,14 @@ async def consolidate(
     *,
     modules: list[dict[str, Any]],
     interfaces: list[dict[str, Any]],
-    wiring_spec: dict[str, Any],
+    plan: dict[str, Any],
     temperature: float | None = None,
 ) -> dict[str, Any]:
-    """Merge modules + interfaces + wiring into the assembled package with a process.py entrypoint.
-    Returns a CoderOutput-shaped dict: {files: [{path, content}], notes}."""
+    """Merge modules + interfaces + the plan's wiring into the assembled package with a process.py
+    entrypoint. Returns a CoderOutput-shaped dict: {files: [{path, content}], notes}."""
     await emit("consolidate.started", {"modules": len(modules)})
-    payload = as_json({"modules": modules, "interfaces": interfaces, "wiring": wiring_spec})
+    payload = as_json({"modules": modules, "interfaces": interfaces,
+                       "wiring": {"dag": plan.get("dag", []), "data_schemas": plan.get("data_schemas", {})}})
     c = await complete("consolidator", convo(SYSTEM_CONSOLIDATE, payload),
                        data_class=DATA_CLASS, schema=CONSOLIDATE_SCHEMA, temperature=temperature)
     out = parsed_or_raise(c, "consolidator.consolidate")

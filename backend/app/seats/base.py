@@ -1,6 +1,7 @@
 """Seam between the engine (backend) and the seat layer (AI engineer).
 Seat modules import ONLY from this file (+ app.db.models for artifact shapes)."""
-from typing import Any, Awaitable, Callable, Literal, Protocol
+from collections.abc import Awaitable, Callable
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel
 

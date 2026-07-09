@@ -98,17 +98,26 @@ async def implement(
     return out
 
 
+async def build_module(
+    complete: CompleteFn, emit: EmitFn, *, module: dict[str, Any],
+    interfaces: list[dict[str, Any]], tests: list[dict[str, Any]], temperature: float | None = None,
+) -> dict[str, Any]:
+    """Engine entrypoint (canonical name). Delegates to implement()."""
+    return await implement(complete, emit, module_spec=module, interfaces=interfaces,
+                           test_specs=tests, temperature=temperature)
+
+
 async def fix(
     complete: CompleteFn,
     emit: EmitFn,
     *,
     ticket: dict[str, Any],
-    module_source: dict[str, str],
+    module_src: dict[str, str] | str,
     tests: list[dict[str, Any]],
     temperature: float | None = None,
 ) -> dict[str, Any]:
     """Defect-fix micro-loop (08 §6): ticket + module source + tests -> surgical patch (dict)."""
-    payload = as_json({"ticket": ticket, "module_source": module_source, "tests": tests})
+    payload = as_json({"ticket": ticket, "module_source": module_src, "tests": tests})
     c = await complete("coder", convo(SYSTEM_FIX, payload),
                        data_class=DATA_CLASS, schema=CODER_OUTPUT_SCHEMA, temperature=temperature)
     out = parsed_or_raise(c, "coder.fix")

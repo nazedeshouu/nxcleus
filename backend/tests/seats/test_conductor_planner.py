@@ -26,9 +26,12 @@ def test_conductor_drops_out_of_scope_amendments_and_dedupes_rework():
     }])
     emits = Emits()
     review = run(conductor.review(fake, emits, plan=_plan(), goal="g",
-                                  wave_outputs={}, remaining_regions=["mod_unbuilt"]))
+                                  wave_outputs=[], remaining=["mod_unbuilt"]))
     assert len(review["amendments"]) == 1                    # out-of-scope dropped
     assert review["amendments"][0]["plan_ref"] == "mod_unbuilt"
+    assert review["amendments"][0]["origin"] == "conductor"  # hash-chained
+    assert len(review["amendments"][0]["hash"]) == 64
+    assert review["amendment_chain_head"] == review["amendments"][0]["hash"]
     assert len(review["rework"]) == 1                        # deduped to 1 per module
     assert "plan.scope_violation" in emits.types()
     assert fake.data_classes_for("conductor") == {"RAW"}
@@ -40,8 +43,8 @@ def test_planner_replan_accepts_in_scope_change():
     after["modules"][1]["name"] = "unbuilt-v2"               # only mod_unbuilt changed
     fake = FakeComplete(responses=[after])
     emits = Emits()
-    out = run(planner.replan(fake, emits, current_plan=before,
-                             findings=["fix mod_unbuilt"], only_regions=["mod_unbuilt"]))
+    out = run(planner.replan(fake, emits, plan=before,
+                             findings=["fix mod_unbuilt"], scope_lock={"only_regions": ["mod_unbuilt"]}))
     assert out["modules"][1]["name"] == "unbuilt-v2"
     assert fake.data_classes_for("planner") == {"SANITIZED"}  # boundary: planner never RAW
 
@@ -53,8 +56,8 @@ def test_planner_replan_rejects_out_of_scope_change():
     fake = FakeComplete(responses=[after])
     emits = Emits()
     try:
-        run(planner.replan(fake, emits, current_plan=before,
-                           findings=["x"], only_regions=["mod_unbuilt"]))
+        run(planner.replan(fake, emits, plan=before,
+                           findings=["x"], scope_lock={"only_regions": ["mod_unbuilt"]}))
     except ValueError:
         assert "plan.scope_violation" in emits.types()
         return
