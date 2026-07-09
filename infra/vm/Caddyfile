@@ -22,8 +22,15 @@
 		reverse_proxy api:8000
 	}
 
-	# frontend static build (Wave 2 mounts ./frontend/dist here); until then fall through to the API
+	# frontend static build (../../frontend/dist mounted at /srv/www). SPA fallback to index.html
+	# so client-side routes (react-router) deep-link correctly; unknown asset paths 404 normally.
 	handle {
-		reverse_proxy api:8000
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
 	}
+
+	# never cache the SPA entry document (assets are content-hashed and cached by default)
+	@html path / /index.html
+	header @html Cache-Control "no-cache"
 }

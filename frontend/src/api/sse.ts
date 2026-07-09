@@ -1,10 +1,14 @@
 /**
  * SSE wrapper for 06 §2/§3. Native EventSource gives us `Last-Event-ID` reconnect
  * resume for free (envelope `id:` == seq). `from_seq` opens replay-then-tail.
- * A watchdog tracks liveness (heartbeats arrive as `: heartbeat` comments the
- * browser hides, so we treat any message OR reconnect as proof of life).
+ *
+ * The backend emits NAMED SSE events (`event: <type>`) and keeps the stream
+ * alive with `: heartbeat` comments. Comments are invisible to EventSource, so
+ * connection liveness is tracked purely via native onopen/onerror — a healthy
+ * but idle stream (e.g. a completed job, fully replayed) stays "open".
  */
 import type { NxEvent } from "../lib/events";
+import { normalizeEvent, KNOWN_EVENT_TYPES } from "./adapt";
 
 export type ConnState = "connecting" | "open" | "reconnecting" | "closed";
 
@@ -17,52 +21,43 @@ export interface StreamHandle {
   close: () => void;
 }
 
-const HEARTBEAT_TIMEOUT = 25_000; // spec sends `: heartbeat` every 10s
-
 export function openEventStream(path: string, handlers: StreamHandlers, fromSeq = 0): StreamHandle {
   let es: EventSource | null = null;
-  let watchdog: ReturnType<typeof setTimeout> | null = null;
   let closed = false;
   let lastSeq = fromSeq;
 
   const setState = (s: ConnState) => handlers.onState?.(s);
 
-  const armWatchdog = () => {
-    if (watchdog) clearTimeout(watchdog);
-    watchdog = setTimeout(() => {
-      // No traffic for too long: the browser will retry on its own, but signal it.
-      setState("reconnecting");
-    }, HEARTBEAT_TIMEOUT);
-  };
-
   const connect = () => {
     if (closed) return;
     const sep = path.includes("?") ? "&" : "?";
-    // On first connect use from_seq; native reconnect uses Last-Event-ID header,
-    // but we also pin from_seq to lastSeq so a manual reconnect is deterministic.
+    // On first connect use from_seq; native reconnect also sends Last-Event-ID,
+    // but pinning from_seq to lastSeq makes a manual reconnect deterministic too.
     const url = `${path}${sep}from_seq=${lastSeq}`;
     es = new EventSource(url);
     setState("connecting");
 
-    es.onopen = () => {
-      setState("open");
-      armWatchdog();
-    };
+    es.onopen = () => setState("open");
 
-    es.onmessage = (e) => {
-      armWatchdog();
+    const handleFrame = (e: MessageEvent) => {
       if (!e.data) return;
       try {
-        const ev = JSON.parse(e.data) as NxEvent;
-        if (typeof ev.seq === "number") lastSeq = Math.max(lastSeq, ev.seq);
-        handlers.onEvent(ev);
+        const raw = JSON.parse(e.data);
+        if (typeof raw.seq === "number") lastSeq = Math.max(lastSeq, raw.seq);
+        const ev = normalizeEvent(raw); // backend payload -> typed NxEvent
+        if (ev) handlers.onEvent(ev);
       } catch {
         /* ignore malformed frame */
       }
     };
 
+    // Named events don't fire onmessage; register the handler per type. onmessage
+    // stays for any unnamed frames.
+    es.onmessage = handleFrame;
+    for (const type of KNOWN_EVENT_TYPES) es.addEventListener(type, handleFrame as EventListener);
+
     es.onerror = () => {
-      // EventSource auto-reconnects (with Last-Event-ID). Surface the state.
+      // EventSource auto-reconnects (resuming from Last-Event-ID / from_seq).
       if (closed) return;
       setState("reconnecting");
     };
@@ -73,7 +68,6 @@ export function openEventStream(path: string, handlers: StreamHandlers, fromSeq 
   return {
     close: () => {
       closed = true;
-      if (watchdog) clearTimeout(watchdog);
       es?.close();
       setState("closed");
     },

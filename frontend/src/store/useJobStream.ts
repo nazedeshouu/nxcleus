@@ -41,7 +41,13 @@ export function useJobStream(jobId: string, opts: { speed?: number; forceMock?: 
       onEvent: apply,
       onState: setConn,
     });
-    return () => stream.close();
+    // GPU telemetry lives on the fleet scope, not the job stream — merge it in
+    // so the cockpit's MI300X panel shows real utilization for any live job.
+    const fleet = openEventStream(`${API_BASE}/fleet/telemetry`, { onEvent: apply });
+    return () => {
+      stream.close();
+      fleet.close();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, isMock, opts.speed]);
 

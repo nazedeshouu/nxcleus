@@ -13,8 +13,13 @@ services:
       - SQLITE_PATH=/data/platform.db
       - DATA_DIR=/data
       - MODEL_MODE=auto        # real backends when reachable, else mock (badged)
+      # Public URL — derived from the domain (sslip.io now; swap NXCLEUS_DOMAIN to nxcleus.com later).
+      - APP_BASE_URL=https://${NXCLEUS_DOMAIN:-localhost}
     volumes:
       - platform-data:/data
+      # real seat/model/fleet/rates configs (repo infra/) — cwd is /app, so this is found before
+      # the builtin fallback registry. Read-only; the AI engineer owns these files.
+      - ../../infra:/app/infra:ro
       # code-exec + process-runtime containers are launched by the api via the host docker socket
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
@@ -29,8 +34,14 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      # Auto-HTTPS host. Empty/localhost => internal cert; a real hostname => Let's Encrypt.
+      # sslip.io maps <reserved-ip-dashed>.sslip.io to the reserved IP; swap to nxcleus.com later.
+      - NXCLEUS_DOMAIN=${NXCLEUS_DOMAIN:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Frontend static build, served by Caddy at / (built on the Mac — static output is arch-independent).
+      - ../../frontend/dist:/srv/www:ro
       - caddy-data:/data
       - caddy-config:/config
     restart: unless-stopped

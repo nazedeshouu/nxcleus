@@ -65,7 +65,7 @@ export interface WaveState {
   modules: string[];
   status: "running" | "reviewing" | "green";
   verdict?: "green" | "amend" | "hold";
-  goal_drift?: number;
+  goal_drift?: number | null;
   note?: string;
 }
 export interface TicketState {
@@ -143,7 +143,7 @@ export interface JobView {
 
   fleet: { profile?: string; nodesRequested?: number; nodes: Record<string, { gpus: number; up: boolean }> };
 
-  build: { waves: Record<number, WaveState>; tasks: Record<string, TaskState> };
+  build: { waves: Record<number, WaveState>; tasks: Record<string, TaskState>; taskWave: Record<string, number> };
 
   consolidate: { modules?: number; testRuns: Array<{ passed: number; failed: number; total: number }>; completed?: { passed: number; total: number } };
 
@@ -190,7 +190,7 @@ export function initialJobView(scope = ""): JobView {
     certify: { checks: [], amendments: [], consults: [] },
     quote: { lines: [] },
     fleet: { nodes: {} },
-    build: { waves: {}, tasks: {} },
+    build: { waves: {}, tasks: {}, taskWave: {} },
     consolidate: { testRuns: [] },
     qa: { inspectors: [], probes: [], findings: [], oracleChecks: [] },
     tickets: {},
@@ -277,9 +277,13 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       v.certify = { ...v.certify, checks: v.certify.checks.map((c) => (c.check === ev.payload.check ? { ...c, status: "finding", finding: ev.payload.finding, severity: ev.payload.severity } : c)) };
       break;
     case "certify.amendment":
-    case "conductor.amendment":
-      v.certify = { ...v.certify, amendments: [...v.certify.amendments, { id: ev.payload.id, origin: ev.payload.origin, summary: ev.payload.summary, hash: ev.payload.hash, prev_hash: ev.payload.prev_hash, region: ev.payload.region, seq: ev.seq }] };
+    case "conductor.amendment": {
+      // reconstruct the hash chain in display order when the backend omits prev_hash
+      const last = v.certify.amendments[v.certify.amendments.length - 1];
+      const prev_hash = ev.payload.prev_hash || last?.hash || "genesis";
+      v.certify = { ...v.certify, amendments: [...v.certify.amendments, { id: ev.payload.id, origin: ev.payload.origin, summary: ev.payload.summary, hash: ev.payload.hash, prev_hash, region: ev.payload.region, seq: ev.seq }] };
       break;
+    }
     case "certify.consult_opened":
       v.certify = { ...v.certify, consults: [...v.certify.consults, { id: ev.payload.id, scope: ev.payload.scope, round: ev.payload.round, rules_applied: ev.payload.sanitization_receipt.rules_applied, brief_tokens: ev.payload.sanitization_receipt.brief_tokens, seq: ev.seq }] };
       break;
@@ -316,9 +320,15 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       break;
 
     /* stage 4 */
-    case "task.started":
-      v.build = { ...v.build, tasks: { ...v.build.tasks, [ev.payload.module]: { module: ev.payload.module, backend: ev.payload.backend, seat: ev.payload.seat, zone: ev.payload.zone, wave: ev.payload.wave, why: ev.payload.why, output: "", status: "running" } } };
+    case "task.started": {
+      // resolve wave membership: the backend carries it in conductor.wave_started.tasks
+      const waveKeys = Object.keys(v.build.waves).map(Number);
+      const resolvedWave =
+        (ev.payload.task ? v.build.taskWave[ev.payload.task] : undefined) ??
+        (ev.payload.wave || (waveKeys.length ? Math.max(...waveKeys) : 1));
+      v.build = { ...v.build, tasks: { ...v.build.tasks, [ev.payload.module]: { module: ev.payload.module, backend: ev.payload.backend, seat: ev.payload.seat, zone: ev.payload.zone, wave: resolvedWave, why: ev.payload.why, output: "", status: "running" } } };
       break;
+    }
     case "task.output_delta": {
       const t = v.build.tasks[ev.payload.module];
       if (t) v.build = { ...v.build, tasks: { ...v.build.tasks, [ev.payload.module]: { ...t, output: t.output + ev.payload.text } } };
@@ -339,9 +349,12 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       if (t) v.build = { ...v.build, tasks: { ...v.build.tasks, [ev.payload.module]: { ...t, status: "failed", reason: ev.payload.reason } } };
       break;
     }
-    case "conductor.wave_started":
-      v.build = { ...v.build, waves: { ...v.build.waves, [ev.payload.wave]: { wave: ev.payload.wave, of: ev.payload.of, modules: ev.payload.modules, status: "running" } } };
+    case "conductor.wave_started": {
+      const taskWave = { ...v.build.taskWave };
+      for (const tid of ev.payload.tasks ?? []) taskWave[tid] = ev.payload.wave;
+      v.build = { ...v.build, taskWave, waves: { ...v.build.waves, [ev.payload.wave]: { wave: ev.payload.wave, of: ev.payload.of, modules: ev.payload.modules, status: "running" } } };
       break;
+    }
     case "conductor.review": {
       const w = v.build.waves[ev.payload.wave];
       v.build = { ...v.build, waves: { ...v.build.waves, [ev.payload.wave]: { ...(w ?? { wave: ev.payload.wave, of: 0, modules: [] }), status: "reviewing", verdict: ev.payload.verdict, goal_drift: ev.payload.goal_drift, note: ev.payload.note } } };
@@ -386,19 +399,26 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
 
     /* tickets */
     case "ticket.opened":
-    case "ticket.in_fix":
-    case "ticket.verified":
-    case "ticket.human_review":
     case "warranty.ticket":
       v.tickets = { ...v.tickets, [ev.payload.id]: { id: ev.payload.id, title: ev.payload.title, status: ev.payload.status, severity: ev.payload.severity, source: ev.payload.source, scope: ev.payload.scope } };
       break;
+    case "ticket.in_fix":
+    case "ticket.verified":
+    case "ticket.human_review": {
+      // status transition: keep the ticket's opened metadata, only advance status
+      const ex = v.tickets[ev.payload.id];
+      v.tickets = { ...v.tickets, [ev.payload.id]: { ...(ex ?? { id: ev.payload.id, title: ev.payload.title, severity: ev.payload.severity, source: ev.payload.source, scope: ev.payload.scope }), status: ev.payload.status } };
+      break;
+    }
 
     /* stage 7 + operate */
-    case "deliver.registered":
-      v.delivery = { process_id: ev.payload.process_id, version: ev.payload.version, package: ev.payload.package };
+    case "deliver.registered": {
+      const tests = ev.payload.package.tests || v.certify.certified?.tests || v.consolidate.completed?.total || 0;
+      v.delivery = { process_id: ev.payload.process_id, version: ev.payload.version, package: { ...ev.payload.package, tests } };
       v.status = "delivered";
       v.stage = 7;
       break;
+    }
     case "run.started":
       v.runs = { ...v.runs, [ev.payload.run_id]: { units: ev.payload.units, done: 0, flagged: 0, status: "running" } };
       break;

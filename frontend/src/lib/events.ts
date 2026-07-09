@@ -187,6 +187,7 @@ export interface TaskStartedPayload {
   zone: Zone;
   wave: number;
   why: string; // routing rationale (capability flags)
+  task?: string; // backend DAG task id (t_ocr…) — used to resolve wave membership
 }
 export interface TaskOutputDeltaPayload {
   module: string;
@@ -207,11 +208,12 @@ export interface WaveStartedPayload {
   wave: number;
   of: number;
   modules: string[];
+  tasks?: string[]; // DAG task ids in this wave — maps task -> wave for the board
 }
 export interface WaveReviewPayload {
   wave: number;
   verdict: "green" | "amend" | "hold";
-  goal_drift: number; // 0..1
+  goal_drift: number | null; // 0..1, null when not assessed
   note: string;
 }
 export interface WaveGreenFlagPayload {
@@ -278,6 +280,9 @@ export interface DeliverRegisteredPayload {
   process_id: string;
   version: number;
   package: { plan: boolean; docs: boolean; qa_report: boolean; tests: number };
+  frontier_calls?: number;
+  invoice_total_usd?: number;
+  goal_verdict?: "fulfilled" | "partial" | "failed";
 }
 export interface RunStartedPayload {
   run_id: string;
@@ -350,6 +355,7 @@ export interface TelemetryGpuPayload {
   util: number; // 0..100
   power_w: number;
   toks_per_s: number;
+  gpus?: number; // when the row is a node-level aggregate (backend streams per-node)
 }
 
 /* ---------- sandbox + config + notices ---------- */
