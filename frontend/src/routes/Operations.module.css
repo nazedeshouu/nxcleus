@@ -1,0 +1,234 @@
+.wrap {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: clamp(28px, 5vh, 56px) clamp(16px, 3vw, 32px);
+}
+.head {
+  margin-bottom: 28px;
+}
+.title {
+  font-size: var(--fs-h1);
+  letter-spacing: -0.02em;
+}
+.sub {
+  margin-top: 8px;
+  color: var(--text-muted);
+  max-width: 62ch;
+  line-height: 1.6;
+}
+
+/* ---------- economics money-slide ---------- */
+.econ {
+  margin: 0 0 34px;
+  padding: 26px clamp(18px, 2.4vw, 30px);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+.econHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.econTitle {
+  font-size: var(--fs-h3);
+  letter-spacing: -0.015em;
+}
+.econTitle em {
+  font-style: italic;
+  color: var(--accent-strong);
+}
+.econKicker {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+}
+.econGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: clamp(20px, 3vw, 40px);
+  align-items: center;
+}
+@media (max-width: 860px) {
+  .econGrid {
+    grid-template-columns: 1fr;
+  }
+}
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--hairline-soft);
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.tile {
+  background: var(--surface);
+  padding: 16px 18px;
+}
+.tileNum {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.tileNum.good {
+  color: var(--ok);
+}
+.tileLbl {
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* chart */
+.chart {
+  width: 100%;
+}
+.chartCap {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* ---------- registry table ---------- */
+.tableWrap {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+.tableScroll {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+.table thead th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-weight: 500;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+.table tbody tr {
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+.table tbody tr:hover {
+  background: var(--accent-wash);
+}
+.table tbody td {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--hairline-soft);
+  vertical-align: middle;
+  font-size: var(--fs-sm);
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.procName {
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.procSlug {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.mode {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.ver {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ok);
+}
+.statusChip svg {
+  width: 7px;
+  height: 7px;
+}
+.statusChip.paused {
+  color: var(--text-faint);
+}
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.warranty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--ok-wash);
+  color: var(--ok);
+}
+.warranty.open {
+  background: var(--warn-wash);
+  color: var(--warn);
+}
+.arrow {
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.table tbody tr:hover .arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+.empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}

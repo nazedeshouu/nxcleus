@@ -11,12 +11,20 @@ export function getDemoToken(): string | null {
     return null;
   }
 }
+export const DEMO_TOKEN_EVENT = "nx-demo-token";
+
 export function setDemoToken(token: string | null) {
   try {
     if (token) localStorage.setItem(TOKEN_KEY, token);
     else localStorage.removeItem(TOKEN_KEY);
   } catch {
     /* ignore */
+  }
+  // notify presenter-gated controls in the same tab (storage event only fires cross-tab)
+  try {
+    window.dispatchEvent(new CustomEvent(DEMO_TOKEN_EVENT));
+  } catch {
+    /* non-browser */
   }
 }
 export function hasDemoToken(): boolean {

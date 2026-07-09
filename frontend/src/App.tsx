@@ -3,7 +3,12 @@ import { Landing } from "./routes/Landing";
 import { PlatformLayout } from "./components/shell/PlatformLayout";
 import { JobList } from "./routes/JobList";
 import { BuildView } from "./routes/BuildView";
-import { Placeholder } from "./routes/Placeholder";
+import { Operations } from "./routes/Operations";
+import { ProcessDetail } from "./routes/ProcessDetail";
+import { Sandbox } from "./routes/Sandbox";
+import { Gallery } from "./routes/Gallery";
+import { Replay } from "./routes/Replay";
+import { Config } from "./routes/Config";
 
 export function App() {
   return (
@@ -12,18 +17,12 @@ export function App() {
       <Route element={<PlatformLayout />}>
         <Route path="/build" element={<JobList />} />
         <Route path="/build/:jobId" element={<BuildView />} />
-        <Route
-          path="/operations"
-          element={<Placeholder title="Operations" note="The process registry — versions, runs, cost trend, warranty. Wave 2." />}
-        />
-        <Route
-          path="/gallery"
-          element={<Placeholder title="Gallery" note="Five rehearsed demos with live seed kits. Wave 2." />}
-        />
-        <Route
-          path="/sandbox"
-          element={<Placeholder title="Judge sandbox" note="Three synthetic companies with browsable mock data. Every run is a real process-mode job. Wave 2." />}
-        />
+        <Route path="/operations" element={<Operations />} />
+        <Route path="/operations/:id" element={<ProcessDetail />} />
+        <Route path="/gallery" element={<Gallery />} />
+        <Route path="/replay/:kind/:id" element={<Replay />} />
+        <Route path="/sandbox" element={<Sandbox />} />
+        <Route path="/config" element={<Config />} />
       </Route>
     </Routes>
   );

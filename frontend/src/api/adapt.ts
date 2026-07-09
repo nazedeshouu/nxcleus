@@ -26,7 +26,7 @@ export const KNOWN_EVENT_TYPES: string[] = [
   "boundary.sanitized",
   "plan.started", "plan.delta", "plan.completed",
   "certify.check_started", "certify.finding", "certify.amendment", "certify.consult_opened", "certify.consult_resolved",
-  "certify.goal_set", "certify.certified", "certify.blocked",
+  "certify.consult_repaired", "certify.goal_set", "certify.certified", "certify.blocked", "plan.scope_violation",
   "quote.issued", "quote.approved",
   "fleet.profile_requested", "fleet.node_ready", "fleet.node_down",
   "task.started", "task.output_delta", "task.tests", "task.completed", "task.failed",
@@ -282,6 +282,18 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         round: num(p.round) ?? 1,
         resolution: str(p.resolution) ?? "resolved",
       });
+    case "certify.consult_repaired":
+      return env(raw, "certify.consult_repaired", {
+        id: str(p.id) ?? str(p.consult_id) ?? `cns_${raw.seq}`,
+        round: num(p.round),
+        note: str(p.note) ?? str(p.detail) ?? "scope-lock auto-repaired to a valid region",
+      });
+    case "plan.scope_violation":
+      return env(raw, "plan.scope_violation", {
+        region: str(p.region) ?? (Array.isArray(p.only_regions) ? (p.only_regions as string[]).join(", ") : undefined),
+        detail: str(p.detail) ?? str(p.reason) ?? "out-of-scope re-plan edit rejected",
+        wave: num(p.wave),
+      });
     case "certify.goal_set":
       return env(raw, "certify.goal_set", { goal: str(p.goal) ?? "" });
     case "certify.certified":
@@ -289,6 +301,7 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         tests: num(p.tests) ?? 0,
         vectors: num(p.vectors) ?? 0,
         identifiers_rehydrated: num(p.identifiers_rehydrated) ?? 0,
+        deferred_consults: num(p.deferred_consults),
       });
     case "certify.blocked":
       return env(raw, "certify.blocked", { reason: str(p.reason) ?? "blocked at certification" });

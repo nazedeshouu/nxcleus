@@ -83,6 +83,17 @@
   padding: 5px 10px;
   border-radius: var(--r-pill);
   border: 1px solid var(--hairline);
+  background: transparent;
+  font-family: inherit;
+  cursor: default;
+}
+.sovBtn {
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.sovBtn:hover:not(:disabled) {
+  border-color: var(--sov-seal);
+  transform: translateY(-1px);
 }
 .sovOn {
   color: var(--sov-seal);
@@ -116,6 +127,32 @@
 .main {
   flex: 1;
   min-height: 0;
+}
+
+/* ---- Sovereign status strip (shields up) ---- */
+.sovStrip {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 9px clamp(16px, 3vw, 32px);
+  background: var(--sov-bg);
+  color: var(--sov-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--sov-seal) 30%, transparent);
+  font-size: var(--fs-xs);
+}
+.sovStrip svg {
+  width: 15px;
+  height: 15px;
+  color: var(--sov-seal);
+  flex: none;
+}
+.sovStrip b {
+  color: var(--sov-seal);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.sovStrip span {
+  color: color-mix(in srgb, var(--sov-text) 82%, transparent);
 }
 
 /* ---- Sovereign chrome ---- */

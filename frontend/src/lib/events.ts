@@ -147,6 +147,17 @@ export interface CertifiedPayload {
   tests: number;
   vectors: number;
   identifiers_rehydrated: number;
+  deferred_consults?: number; // consults dropped at the soft cap (audit note)
+}
+export interface ConsultRepairedPayload {
+  id: string; // consult whose scope-lock was auto-repaired
+  round?: number;
+  note?: string;
+}
+export interface PlanScopeViolationPayload {
+  region?: string; // out-of-scope region a re-plan edit tried to touch (rejected)
+  detail?: string;
+  wave?: number;
 }
 export interface BlockedPayload {
   reason: string;
@@ -405,9 +416,11 @@ export type NxEvent =
   | Envelope<"certify.amendment", AmendmentPayload>
   | Envelope<"certify.consult_opened", ConsultOpenedPayload>
   | Envelope<"certify.consult_resolved", ConsultResolvedPayload>
+  | Envelope<"certify.consult_repaired", ConsultRepairedPayload>
   | Envelope<"certify.goal_set", GoalSetPayload>
   | Envelope<"certify.certified", CertifiedPayload>
   | Envelope<"certify.blocked", BlockedPayload>
+  | Envelope<"plan.scope_violation", PlanScopeViolationPayload>
   | Envelope<"quote.issued", QuoteIssuedPayload>
   | Envelope<"quote.approved", QuoteApprovedPayload>
   | Envelope<"fleet.profile_requested", FleetProfileRequestedPayload>

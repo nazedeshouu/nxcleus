@@ -38,6 +38,13 @@ export interface ConsultEntry {
   rules_applied: string[];
   brief_tokens: number;
   resolution?: string;
+  repaired?: boolean; // scope-lock was auto-repaired to a valid region
+  seq: number;
+}
+export interface ScopeViolationEntry {
+  region?: string;
+  detail?: string;
+  wave?: number;
   seq: number;
 }
 export interface CheckEntry {
@@ -137,6 +144,8 @@ export interface JobView {
     consults: ConsultEntry[];
     goal?: string;
     certified?: { tests: number; vectors: number; identifiers_rehydrated: number };
+    deferredConsults?: number;
+    scopeViolations: ScopeViolationEntry[];
   };
 
   quote: { lines: QuoteLine[]; low?: number; high?: number; approved?: number };
@@ -187,7 +196,7 @@ export function initialJobView(scope = ""): JobView {
     stage: 0,
     intake: { messages: [], acceptance: [] },
     plan: { deltaText: "", bom: [], streaming: false },
-    certify: { checks: [], amendments: [], consults: [] },
+    certify: { checks: [], amendments: [], consults: [], scopeViolations: [] },
     quote: { lines: [] },
     fleet: { nodes: {} },
     build: { waves: {}, tasks: {}, taskWave: {} },
@@ -290,11 +299,17 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
     case "certify.consult_resolved":
       v.certify = { ...v.certify, consults: v.certify.consults.map((c) => (c.id === ev.payload.id ? { ...c, resolution: ev.payload.resolution } : c)) };
       break;
+    case "certify.consult_repaired":
+      v.certify = { ...v.certify, consults: v.certify.consults.map((c) => (c.id === ev.payload.id ? { ...c, repaired: true } : c)) };
+      break;
+    case "plan.scope_violation":
+      v.certify = { ...v.certify, scopeViolations: [...v.certify.scopeViolations, { region: ev.payload.region, detail: ev.payload.detail, wave: ev.payload.wave, seq: ev.seq }] };
+      break;
     case "certify.goal_set":
       v.certify = { ...v.certify, goal: ev.payload.goal };
       break;
     case "certify.certified":
-      v.certify = { ...v.certify, certified: { tests: ev.payload.tests, vectors: ev.payload.vectors, identifiers_rehydrated: ev.payload.identifiers_rehydrated }, checks: v.certify.checks.map((c) => ({ ...c, status: "done" })) };
+      v.certify = { ...v.certify, certified: { tests: ev.payload.tests, vectors: ev.payload.vectors, identifiers_rehydrated: ev.payload.identifiers_rehydrated }, deferredConsults: ev.payload.deferred_consults ?? v.certify.deferredConsults, checks: v.certify.checks.map((c) => ({ ...c, status: "done" })) };
       break;
     case "certify.blocked":
       v.blockedReason = ev.payload.reason;
