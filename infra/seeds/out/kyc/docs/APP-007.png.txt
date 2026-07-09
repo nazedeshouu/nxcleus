@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: IN
+Surname / Given names: Kofi Haddad
+Date of birth: 1976-09-15
+Nationality: IN
+Document No.: IN1361916
+Date of issue: 2023-10-07
+Date of expiry: 2033-10-04

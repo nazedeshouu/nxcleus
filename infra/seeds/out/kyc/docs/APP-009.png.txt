@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: NG
+Surname / Given names: Raj Andersson
+Date of birth: 1963-09-13
+Nationality: NG
+Document No.: NG9180485
+Date of issue: 2018-06-16
+Date of expiry: 2028-06-13

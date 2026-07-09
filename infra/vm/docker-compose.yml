@@ -35,9 +35,9 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      # Auto-HTTPS host. Empty/localhost => internal cert; a real hostname => Let's Encrypt.
-      # sslip.io maps <reserved-ip-dashed>.sslip.io to the reserved IP; swap to nxcleus.com later.
-      - NXCLEUS_DOMAIN=${NXCLEUS_DOMAIN:-localhost}
+      # Auto-HTTPS site list (comma-separated hostnames; deploy.sh composes primary domain + sslip
+      # host). Empty/localhost => internal cert; real hostnames => Let's Encrypt per host.
+      - NXCLEUS_SITE=${NXCLEUS_SITE:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Frontend static build, served by Caddy at / (built on the Mac — static output is arch-independent).

@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Canonical deploy/redeploy wrapper for the Nxcleus control VM.
 #
-# Guarantees the auto-HTTPS domain is always set for Caddy's ${NXCLEUS_DOMAIN} substitution,
-# so a bare `docker compose up` can never silently fall back to `localhost` (which would drop
-# the Let's Encrypt cert). Precedence: exported NXCLEUS_DOMAIN > infra/vm/domain file > localhost.
+# Guarantees Caddy's auto-HTTPS site list is always set, so a bare `docker compose up` can never
+# silently fall back to `localhost` (which would drop the Let's Encrypt certs).
+#   - NXCLEUS_DOMAIN = the PRIMARY hostname (drives APP_BASE_URL). From infra/vm/domain.
+#   - NXCLEUS_SITE   = comma-separated Caddy site list = primary domain + every host in
+#                     infra/vm/extra_hosts (e.g. the sslip host), so the old URL never breaks.
+# Precedence for the primary: exported NXCLEUS_DOMAIN > infra/vm/domain file > localhost.
 #
-# Swap to the real domain later with ONE change: `echo nxcleus.com > infra/vm/domain` then rerun.
+# Swap the primary domain later with ONE change: `echo nxcleus.tech > infra/vm/domain` then rerun.
 #
 # Usage (from anywhere):
 #   infra/vm/deploy.sh up -d --build      # build + (re)start
@@ -21,6 +24,19 @@ fi
 : "${NXCLEUS_DOMAIN:=localhost}"
 export NXCLEUS_DOMAIN
 
-echo "[deploy] NXCLEUS_DOMAIN=${NXCLEUS_DOMAIN}"
+# Compose the Caddy site list: primary domain first, then any extra hosts (one per line), deduped.
+# localhost (dev) stays single-host — no LE, no extra hosts.
+NXCLEUS_SITE="${NXCLEUS_DOMAIN}"
+if [ "${NXCLEUS_DOMAIN}" != "localhost" ] && [ -f "${HERE}/extra_hosts" ]; then
+  while IFS= read -r h; do
+    h="$(printf '%s' "${h}" | tr -d '[:space:]')"
+    [ -z "${h}" ] && continue
+    [ "${h}" = "${NXCLEUS_DOMAIN}" ] && continue
+    NXCLEUS_SITE="${NXCLEUS_SITE}, ${h}"
+  done < "${HERE}/extra_hosts"
+fi
+export NXCLEUS_SITE
+
+echo "[deploy] NXCLEUS_DOMAIN=${NXCLEUS_DOMAIN}  NXCLEUS_SITE=${NXCLEUS_SITE}"
 cd "${ROOT}"
 exec docker compose -f infra/vm/docker-compose.yml "$@"

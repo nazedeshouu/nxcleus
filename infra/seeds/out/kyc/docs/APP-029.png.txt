@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: RU
+Surname / Given names: Ivan Petrov
+Date of birth: 1986-09-06
+Nationality: RU
+Document No.: RU6354673
+Date of issue: 2019-07-04
+Date of expiry: 2029-07-01

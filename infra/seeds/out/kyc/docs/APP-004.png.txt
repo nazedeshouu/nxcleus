@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: KZ
+Surname / Given names: Nadia Popova
+Date of birth: 1951-11-15
+Nationality: KZ
+Document No.: KZ8721252
+Date of issue: 2019-10-10
+Date of expiry: 2029-10-07

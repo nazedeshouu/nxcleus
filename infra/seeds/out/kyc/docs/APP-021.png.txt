@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: RU
+Surname / Given names: Elena Johnson
+Date of birth: 2002-05-23
+Nationality: RU
+Document No.: RU1585717
+Date of issue: 2019-02-21
+Date of expiry: 2029-02-18

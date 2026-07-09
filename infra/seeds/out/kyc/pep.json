@@ -1,0 +1,26 @@
+[
+ {
+  "name": "Omar Marchenko",
+  "role": "Mayor",
+  "country": "CN",
+  "since": 2023
+ },
+ {
+  "name": "Kofi Haddad",
+  "role": "Deputy Minister",
+  "country": "FR",
+  "since": 2019
+ },
+ {
+  "name": "Tomas Muller",
+  "role": "Deputy Minister",
+  "country": "RU",
+  "since": 2021
+ },
+ {
+  "name": "Raj Andersson",
+  "role": "Deputy Minister",
+  "country": "US",
+  "since": 2024
+ }
+]

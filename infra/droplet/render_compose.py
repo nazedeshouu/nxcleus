@@ -19,7 +19,10 @@ import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]      # repo root
 INFRA = ROOT / "infra"
-DEFAULT_IMAGE = "rocm/vllm:rocm7.13.0_gfx942_ubuntu24.04_py3.13_pytorch_2.10.0_vllm_0.19.1"
+# MI300X == gfx942 (CDNA3), which AMD publishes under the gfx94X-dcgpu (datacenter) family tag.
+# The literal `gfx942` tag does NOT exist on Docker Hub; verified 2026-07-09 (rocm/vllm registry:
+# HTTP 404 for gfx942, HTTP 200 for gfx94X-dcgpu on the same rocm7.13.0/vllm0.19.1 train).
+DEFAULT_IMAGE = "rocm/vllm:rocm7.13.0_gfx94X-dcgpu_ubuntu24.04_py3.13_pytorch_2.10.0_vllm_0.19.1"
 
 
 def render(profile: str, image: str, control_plane_url: str) -> str:
@@ -32,6 +35,7 @@ def render(profile: str, image: str, control_plane_url: str) -> str:
     services: dict[str, dict] = {}
     endpoints: list[str] = []
     all_gpus: set[int] = set()
+    prev_vllm: str | None = None   # for the sequential-start depends_on chain (see below)
 
     for inst in prof.get("instances", []) or []:
         mk = inst["model"]
@@ -57,6 +61,11 @@ def render(profile: str, image: str, control_plane_url: str) -> str:
             cmd += ["--quantization", inst["quantization"]]
         if inst.get("dtype"):
             cmd += ["--dtype", inst["dtype"]]
+        # --enforce-eager skips cudagraph capture: less VRAM overhead + faster startup. Needed when
+        # several instances share one GPU (first-boot tuning, D14/O4) — the capture overhead pushed
+        # the P1 A-trio past the 0.90 util sum into KV-cache OOM (live-verified 2026-07-09).
+        if inst.get("enforce_eager"):
+            cmd += ["--enforce-eager"]
 
         services[f"vllm-{inst['name']}"] = {
             "image": image,
@@ -65,7 +74,11 @@ def render(profile: str, image: str, control_plane_url: str) -> str:
             # ROCm device + IPC requirements for MI300X.
             "devices": ["/dev/kfd", "/dev/dri"],
             "security_opt": ["seccomp=unconfined"],
-            "group_add": ["video", "render"],
+            # Only "video" — the container image's /etc/group has no "render" entry (name-based
+            # group_add resolves against the CONTAINER's group file), so "render" fails to start.
+            # The container runs as root, which owns /dev/kfd, so "video" (for /dev/dri) suffices.
+            # Live-verified on gpu-amd-base (MI300X VF): torch.cuda.is_available()==True (2026-07-09).
+            "group_add": ["video"],
             "ipc": "host",
             "shm_size": "16gb",
             "ports": [f"{port}:{port}"],
@@ -83,6 +96,14 @@ def render(profile: str, image: str, control_plane_url: str) -> str:
                 "interval": "30s", "timeout": "5s", "retries": 40, "start_period": "600s",
             },
         }
+        # Sequential start: each vLLM waits for the previous to be HEALTHY before loading. vLLM
+        # profiles GPU memory GLOBALLY, so co-located instances starting concurrently over-commit
+        # and hit KV-cache OOM (live-verified 2026-07-09). Chaining on service_healthy serializes
+        # the loads so each measures free VRAM accurately.
+        svc = f"vllm-{inst['name']}"
+        if prev_vllm is not None:
+            services[svc]["depends_on"] = {prev_vllm: {"condition": "service_healthy"}}
+        prev_vllm = svc
 
     # node-agent as a slim-python sidecar (no image build needed — public amd64 base).
     services["node-agent"] = {

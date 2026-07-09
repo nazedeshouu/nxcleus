@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: KZ
+Surname / Given names: Hassan Muller
+Date of birth: 1973-07-03
+Nationality: KZ
+Document No.: KZ3549303
+Date of issue: 2024-09-15
+Date of expiry: 2034-09-13

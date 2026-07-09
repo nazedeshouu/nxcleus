@@ -85,3 +85,13 @@ The runtime container wraps `Process` with a standard FastAPI shim: `GET /health
 Beyond per-run spot-checks: a scheduler tick (asyncio, hourly by default, config) runs (a) oracle re-checks on a sample of recent live outputs, (b) one short inspector probe suite against each registered process's runtime. Findings file **warranty tickets** into the process queue (visible in Operations view) and feed Refine. Language rule everywhere (UI copy, docs, deck): *operating with a warranty* — never unattended magic.
 
 **Review queue:** `run_units` with `needs_review` render as a per-process queue; a human verdict (`approve`/`reject` + note) closes the unit and is recorded in the trace — the semi-automated mode demo beat.
+
+---
+
+## Wave-2 backend deviations (live integration, 2026-07-09)
+
+Flagged per the change protocol; implemented in `backend/`.
+
+- **Code-exec sandbox is real (§3).** `orchestrator/codeexec.py` now runs the workspace in a throwaway `python:3.12-slim` container with `--network none`, CPU/memory/PID caps, and the workspace copied into a container-private tmpfs (host mount read-only). It runs the workspace's pytest suite when one exists, else an import/compile smoke of every source file. Degrades to the Wave-1 deterministic behaviour (flagged `sandboxed:false`) when Docker is absent (dev/CI), so mock mode never hard-depends on a daemon.
+- **Stage-6 staging deploy is an in-process FastAPI shim (§3), not a per-job container image on the live path.** `runtime/staging.py` serves the assembled process over REAL HTTP on an ephemeral `127.0.0.1` port (`GET /health`, `GET /manifest`, `POST /run_unit`) — the inspector swarm probes a live endpoint, and the shim imports the process's `run_unit` entrypoint when present. Rationale: an in-process uvicorn shim gives the inspector a genuine HTTP surface without a ~per-job docker build/pull in the demo window; the container image build/tag stays as the delivery-time step. Same shim contract either way.
+- **Per-process proxy token implemented (§3).** `boundary/proxy_token.py` mints a compact HMAC token (key derived from `ADMIN_TOKEN`) scoped to `{process, seats, exp}`; the staging shim's `/run_unit` enforces it, so a token minted for process A is refused on process B (the inspector's wrong-tenant probe hits a real 401). Wiring into the model-proxy endpoint (`api/proxy.py`) is the remaining step.

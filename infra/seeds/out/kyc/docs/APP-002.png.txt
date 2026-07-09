@@ -1,0 +1,8 @@
+NATIONAL IDENTITY CARD
+Issuer: TR
+Surname / Given names: Ivan Petrov
+Date of birth: 1972-11-29
+Nationality: TR
+Document No.: TR5548857
+Date of issue: 2024-03-31
+Date of expiry: 2034-03-29

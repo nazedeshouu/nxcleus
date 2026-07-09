@@ -237,3 +237,12 @@ Last gate before delivery: the **goal-fulfillment check** (08 §1.5, D10) — th
 ## 10. Stage 7 — Delivery → operations registry
 
 Assemble the **process package** (04 §2): certified plan + amendment log (certifier + conductor origins) + consult history, **goal statement + goal-fulfillment verdict**, code or topology, test specs + vectors, connector bindings, generated docs (`trust` writes README + runbook from the plan), QA report, final metered invoice (10 §5). Register `processes` + `process_versions` v1 (goal stored on the process row), build/tag the runtime image (build mode), emit `deliver.registered`. Job closes; everything after this is the operate phase (04).
+
+---
+
+## Wave-2 backend deviation (live integration, 2026-07-09)
+
+Flagged per the change protocol.
+
+- **Consults are best-effort at stage 2 (§4.2).** A certifier consult (escalation to the planner via a scope-locked re-plan) can fail against a real model — a `planner.replan` that touches regions outside the scope lock, a timeout, or a planner refusal. `certify/stage2.py` now catches those, emits a `system.notice`, and **continues** with the certifier's already-applied local amendments, rather than failing the whole certify stage. This matches the conductor's proceed-without-review policy (§6 / 07 §3.1): a bounded escalation must not be able to hard-block certification. The certifier's consult-emission prompt (`app/seats/certifier.py`) was separately tightened (soft consult cap; scope locks must quote verbatim region ids) so consults are both rarer and honour the scope lock.
+- **Certifier output schemas relaxed for real-model variance:** `TESTS_SCHEMA` no longer requires `vectors` (a process with no numeric rules legitimately has none; the harness defaults it to `[]`); `SCENARIOS_SCHEMA` dropped the 3–5 `minItems/maxItems` cardinality. Both were forcing spurious structured-output validation failures + costly full-stage retries on live GLM output.

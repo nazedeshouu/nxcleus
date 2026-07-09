@@ -25,7 +25,11 @@ async def run(ctx) -> None:
     plan_id = draft["id"]
     policy = job.get("policy") or {}
     vault_map = await vault.get_map(ctx.job_id)
-    raw_context = {"request": (job.get("spec") or {}).get("request", ""), "vault": list(vault_map)}
+    # The certifier reads RAW (D9) and rehydrates placeholders from the vault; it needs the full
+    # placeholder->raw MAP, not just the key list. (`list(vault_map)` broke rehydrate_tokens with
+    # "'list' object has no attribute 'items'"; only surfaced live, since mock uses the placeholder
+    # certifier.) Certifier's RAW clearance is enforced by the router boundary check.
+    raw_context = {"request": (job.get("spec") or {}).get("request", ""), "vault": vault_map}
 
     certifier = seat("certifier")
     for check in _CHECKS:
@@ -51,7 +55,16 @@ async def run(ctx) -> None:
                                                  "rationale": row["rationale"]})
         elif finding.get("triage") == "consult" and consult_rounds < _CONSULT_CAP:
             consult_rounds += 1
-            await _run_consult(ctx, plan, plan_id, finding, vault_map, consult_rounds)
+            # A consult is a best-effort escalation to the planner, not a hard gate: the certifier's
+            # local amendments are already applied, and stage-4's conductor follows the same
+            # proceed-without-review policy (07 §3.1). A failed consult (scope-lock violation from a
+            # replan, timeout, planner refusal) must degrade gracefully, not block the whole build.
+            try:
+                await _run_consult(ctx, plan, plan_id, finding, vault_map, consult_rounds)
+            except Exception as exc:  # noqa: BLE001
+                await ctx.emit(E.SYSTEM_NOTICE, {
+                    "text": f"consult {finding.get('finding_id')} skipped: {type(exc).__name__}: "
+                            f"{str(exc)[:160]}", "level": "warn", "scope": "certify"})
 
     # rehydration (D9) — placeholders -> real values inside the LOCAL zone
     rehydrated = result.get("identifiers_rehydrated", await vault.count(ctx.job_id))

@@ -12,9 +12,9 @@
 # --dry-run validates config + renders compose WITHOUT GPUs/Docker/network — runs on a Mac.
 #
 # Serving image (spec 11 §8 / Docker Hub rocm/vllm): the current ROCm 7.13.0 + vLLM 0.19.1
-# train (May 2026). MI300X == gfx942 (CDNA3); the gfx942 sibling tag must be confirmed to
-# pull at first boot (the registry query surfaced the gfx110X/gfx120X siblings of this exact
-# train). Override with VLLM_ROCM_IMAGE. Upstream alternative: vllm/vllm-openai-rocm.
+# train. MI300X == gfx942 (CDNA3), published under AMD's gfx94X-dcgpu (datacenter) family tag
+# — the literal `gfx942` tag does NOT exist (verified 2026-07-09: rocm/vllm registry returns
+# 404 for gfx942, 200 for gfx94X-dcgpu). Override with VLLM_ROCM_IMAGE. Alt: vllm/vllm-openai-rocm.
 #
 # Usage:
 #   ./bootstrap.sh --profile P2 --control-plane-url https://api.nxcleus.example
@@ -24,7 +24,7 @@ set -euo pipefail
 # ── config (env-overridable) ─────────────────────────────────────────────────
 PROFILE="${PROFILE:-P2}"
 CONTROL_PLANE_URL="${CONTROL_PLANE_URL:-http://localhost:8080}"
-VLLM_ROCM_IMAGE="${VLLM_ROCM_IMAGE:-rocm/vllm:rocm7.13.0_gfx942_ubuntu24.04_py3.13_pytorch_2.10.0_vllm_0.19.1}"
+VLLM_ROCM_IMAGE="${VLLM_ROCM_IMAGE:-rocm/vllm:rocm7.13.0_gfx94X-dcgpu_ubuntu24.04_py3.13_pytorch_2.10.0_vllm_0.19.1}"
 DRY_RUN=0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -76,7 +76,21 @@ if [ "${DRY_RUN}" -eq 1 ]; then
   exit 0
 fi
 
-command -v docker >/dev/null 2>&1 || die "docker not found on this host"
+# The AMD gpu-amd-base image ships ROCm + drivers but NOT Docker — install it if missing (idempotent).
+if ! command -v docker >/dev/null 2>&1; then
+  log "docker not found — installing docker.io (gpu-amd-base has no container runtime)"
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -qq || die "apt-get update failed"
+  # docker.io = engine; the Compose v2 plugin (`docker compose`) is a SEPARATE package.
+  apt-get install -y -qq docker.io docker-compose-v2 || die "docker install failed"
+  systemctl enable --now docker 2>/dev/null || true
+fi
+# Ensure the Compose v2 plugin exists even if docker was pre-installed without it.
+docker compose version >/dev/null 2>&1 || {
+  log "installing docker compose v2 plugin"
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get install -y -qq docker-compose-v2 || apt-get install -y -qq docker-compose-plugin || die "compose plugin install failed"
+}
 command -v rocm-smi >/dev/null 2>&1 || warn "rocm-smi not found — is this an MI300X host?"
 [ -n "${HF_TOKEN:-}" ] || warn "HF_TOKEN unset — gated model downloads (Gemma) will 403"
 [ -n "${ADMIN_TOKEN:-}" ] || warn "ADMIN_TOKEN unset — node registration will be rejected"

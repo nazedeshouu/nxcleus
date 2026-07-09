@@ -1,7 +1,9 @@
-# Caddy reverse proxy (01 §5). Auto-HTTPS on the demo domain. Set APP_BASE_URL / the domain below.
-# / -> frontend static (mounted in Wave 2), /api -> uvicorn, /processes/{slug} -> runtime containers.
+# Caddy reverse proxy (01 §5). Auto-HTTPS on ALL site hostnames. NXCLEUS_SITE is a comma-separated
+# list of hostnames (deploy.sh composes it: primary domain + the sslip host so the old URL never
+# breaks). Each host gets its own Let's Encrypt cert automatically.
+# / -> frontend static, /api -> uvicorn, /processes/{slug} -> runtime containers.
 
-{$NXCLEUS_DOMAIN:localhost} {
+{$NXCLEUS_SITE:localhost} {
 	encode zstd gzip
 
 	# API + SSE (disable buffering so events stream promptly)

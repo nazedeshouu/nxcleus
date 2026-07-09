@@ -113,6 +113,8 @@ seats:
 
 **Droplet reality (deep-dive 2026-07-09, 11 §0):** AMD Dev Cloud sells **1× ($1.99/hr) and 8× ($15.92/hr) MI300X** shapes only — no mid sizes on demand. The non-brain fleet alone (~223 GB FP8) exceeds a 1× card, so every full demo session runs on one 8× droplet; the old "one droplet per node" model is superseded — **node letters (A/B/C/D) are now logical GPU partitions of the 8× droplet**, except in P1 where "A" is a real 1× droplet. Weight estimates at FP8 unless noted; leave ≥60 GB headroom for KV per multi-seat GPU.
 
+> **Exact slugs + availability (live account probe 2026-07-09, `doctl --api-url https://api-amd.digitalocean.com`):** shapes carry a **`-devcloud`** suffix — `gpu-mi300x1-192gb-devcloud` / `gpu-mi300x8-1536gb-devcloud`; region is **`atl1`-only**; base image `gpu-amd-base`. The **1× is self-serve** (`regions: ["atl1"]`). The **8× is request/allocation-gated, NOT self-serve** on this account: `available: true` but `regions: null` (vs the 1×'s populated region on the same API), and atl1's per-region inventory omits it — a create call has no enabled region to land in. **P2/P3 (the 8× hero profile) require the human to request 8× capacity via the AMD Dev Cloud console / organizers before the fleet can boot.** P1 (1×) is unblocked. Fleet automation + full findings: `infra/fleet/README.md`.
+
 | Profile | Shape | Placement | When |
 |---|---|---|---|
 | **P0 — fallback** | 0 droplets | every seat on `fallback` binding (Fireworks, AMD-hosted; demo-infra badge on) — node-B fallback is **frontier-class GLM-5.2** | always-on URL between sessions; sandbox off-hours |

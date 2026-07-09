@@ -62,3 +62,10 @@ Per process: `{build_cost_usd, refine_costs[], runs: [{run_id, ts, units, cost_u
 - Router pre-dispatch check per 07 §5.4 (Fireworks daily cap, sandbox per-run cap).
 - Per-job soft ceiling from the approved quote's upper bound ×1.5 → `system.notice` warning at 80%, park job at 100% (presenter may raise — never silently overrun a quoted price; that's a product behavior worth demoing if it ever triggers).
 - All caps and current burn visible at `/api/config/public` for the UI's cost meter.
+
+---
+
+## Wave-2 update (live integration, 2026-07-09)
+
+- **Per-token prices confirmed (§3), placeholders removed.** `infra/rates.yaml` now carries real prices from the live sheets: Anthropic `claude-fable-5` $10/$50 and `claude-opus-4-8` (planner refusal fallback) $5/$25 per 1M tok; Fireworks serverless `glm-5p2` $1.40/$4.40 and `deepseek-v4-pro` $1.74/$3.48 per 1M tok. Rate keys are the `infra/models.yaml` keys (`glm-52-hosted`, `deepseek-v4-pro`, `claude-fable-5`) so `token_rate(backend, model)` resolves the metered `model` (the registry key) directly. The money slide can cite real per-token costs.
+- **Live quote→invoice reconciliation** observed on the auto-mode KYC run: EXTERNAL (planner) is the dominant cost line, Fireworks fallback calls price in cents; a full stages-0→2 pass metered under $0.50.

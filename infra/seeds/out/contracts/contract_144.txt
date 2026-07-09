@@ -1,0 +1,19 @@
+MASTER SERVICES AGREEMENT
+
+This Agreement ("Agreement") is entered into as of 2024-08-24 by and between Lumen Systems LLC ("Client") and
+Lumen Group LLC ("Provider").
+
+1. TERM. The initial term of this Agreement is 12 months, commencing on the Effective Date.
+This Agreement does not renew automatically and expires at the end of the initial term.
+
+2. FEES. Provider shall invoice Client monthly. Total fees under this Agreement shall not exceed USD 156,678 (the 'Fee Cap').
+
+3. CONFIDENTIALITY. Each party shall protect the other's Confidential Information and shall not
+disclose it to any third party without prior written consent.
+
+4. TERMINATION. Either party may terminate for material breach upon 30 days' written notice if the
+breach remains uncured.
+
+5. GOVERNING LAW. This Agreement is governed by the laws of the State of Delaware.
+
+

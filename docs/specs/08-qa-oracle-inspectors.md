@@ -79,3 +79,13 @@ Go/no-go procedure, scripted in `backend/tests/validation/` so it's re-runnable 
 | Mixed-swarm Gemma option | same 12 scenarios on `gemma-4-26b-a4b` members | ≥7/12 completed, ≥2/4 defects → Gemma members join the swarm (third prize touchpoint); else prize story stays trust+oracle |
 
 Results (numbers + date + model IDs) recorded in this file under a "Validation results" heading when run — the deck cites this section. Seat swap = `infra/seats.yaml` edit only (02 §1).
+
+---
+
+## Wave-2 backend deviations (live integration, 2026-07-09)
+
+Flagged per the change protocol; implemented in `backend/app/qa/stage6.py`.
+
+- **Inspector probe call-site conforms to the ratified signature** `inspector.probe(complete, emit, *, scenario, tools, step_budget)` (seam ruling #1). Stage 6 builds the two egress-scoped tools — `read_manifest` and `http_request` (the latter hard-restricted to the staging host via `app.boundary.egress`) — and injects them; scenarios are passed as dicts `{id, source, title, probe}`; `probe` returns a Ticket-shaped dict or None. The placeholder inspector was conformed to the same signature so mock mode is unaffected.
+- **Staging is real HTTP (04 §3 deviation):** the swarm probes an in-process FastAPI shim on `127.0.0.1:<ephemeral>` (see 04), deployed at stage-6 start and torn down after the probes.
+- **Oracle checks run concurrently** (semaphore = 4) instead of the sequential `for vec in vectors` loop — the k=3 recompute per vector was the QA bottleneck on the Fireworks fallback. Independent per vector; DB writes still serialize on the single SQLite writer.

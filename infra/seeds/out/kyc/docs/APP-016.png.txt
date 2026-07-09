@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: UA
+Surname / Given names: Noor Kim
+Date of birth: 2000-04-12
+Nationality: UA
+Document No.: UA6458836
+Date of issue: 2021-01-19
+Date of expiry: 2031-01-17

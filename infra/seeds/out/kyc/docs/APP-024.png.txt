@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: UA
+Surname / Given names: Elena Hassan
+Date of birth: 1967-04-01
+Nationality: UA
+Document No.: UA1349911
+Date of issue: 2024-08-12
+Date of expiry: 2034-08-10

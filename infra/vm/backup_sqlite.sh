@@ -32,7 +32,9 @@ OUT="${DEST}/platform-${STAMP}.db"
 sqlite3 "$DB" ".backup '${OUT}'"
 gzip -f "$OUT"
 
-# retention: delete all but the newest $RETENTION gzipped backups
+# retention: delete all but the newest $RETENTION gzipped backups.
+# ls -1t (mtime sort) is intentional and safe here — filenames are controlled timestamps.
+# shellcheck disable=SC2012
 ls -1t "${DEST}"/platform-*.db.gz 2>/dev/null | tail -n +$((RETENTION + 1)) | xargs -r rm -f
 
 log "backup ok -> ${OUT}.gz ($(du -h "${OUT}.gz" | cut -f1)); kept newest ${RETENTION}"

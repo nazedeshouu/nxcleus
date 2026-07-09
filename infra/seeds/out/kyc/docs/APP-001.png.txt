@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: GB
+Surname / Given names: Viktor Sokolov
+Date of birth: 1979-02-14
+Nationality: GB
+Document No.: GB5514855
+Date of issue: 2020-04-27
+Date of expiry: 2030-04-25

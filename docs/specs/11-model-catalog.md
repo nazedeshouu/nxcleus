@@ -118,6 +118,7 @@ Note: P0/P1 profiles (pre-droplet dev, always-on URL, fleet-down) therefore serv
 - Qwen: HF `Qwen/Qwen3.6-35B-A3B`, `Qwen3.6-27B`, `Qwen3-Coder-Next` · qwen.ai blog (3.6-27B) · AMD Day-0 article (Coder-Next) · vLLM blog (qwen3-next GDN)
 - Devstral: HF `mistralai/Devstral-Small-2-24B-Instruct-2512` · mistral.ai/news/devstral
 - ROCm/vLLM: rocm.blogs.amd.com LLM inference README · vLLM ROCm attention-backend blog (2026-02-27) · vLLM v0.24.0 release notes · FP8 quantization docs
+  - **Serving image (verified 2026-07-09, Docker Hub `rocm/vllm`):** MI300X = gfx942 (CDNA3) ships under AMD's **`gfx94X-dcgpu`** datacenter-family tag — the literal `gfx942` tag is a **404**. Correct pin: **`rocm/vllm:rocm7.13.0_gfx94X-dcgpu_ubuntu24.04_py3.13_pytorch_2.10.0_vllm_0.19.1`** (bootstrap.sh + render_compose.py updated). Host base `gpu-amd-base` ships ROCm 7.2.4; the 7.13 container runs its own userspace — confirm kernel-driver compat at first boot.
 - Fireworks catalog: fireworks.ai/models
 - Recency: openrouter.ai June-2026 open-weights roundup · interconnects.ai open artifacts #21 · artificialanalysis.ai recent-launches
 

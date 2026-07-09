@@ -1,0 +1,8 @@
+PASSPORT
+Issuer: AE
+Surname / Given names: Fatima Sokolov
+Date of birth: 1964-05-19
+Nationality: AE
+Document No.: AE6491140
+Date of issue: 2021-07-16
+Date of expiry: 2031-07-14
