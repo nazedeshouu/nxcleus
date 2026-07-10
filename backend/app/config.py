@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     fireworks_api_key: str = ""
     fireworks_base_url: str = "https://api.fireworks.ai/inference"
+    openai_api_key: str = ""                     # OpenAI-direct planner fallback (gpt-5.5); absent => degrades on
+    openai_base_url: str = "https://api.openai.com"  # client appends /v1/chat/completions
+    openrouter_api_key: str = ""                 # flagship planner (openai/gpt-5.6-sol via OpenRouter); absent => degrades
+    openrouter_base_url: str = "https://openrouter.ai/api"  # client appends /v1/chat/completions (NOT /api/v1)
     hf_token: str = ""
     hf_token_file: str = ""                     # .env variant; resolved into hf_token at load
     digitalocean_access_token: str = ""
@@ -159,6 +163,8 @@ class Settings(BaseSettings):
             "keys_present": {
                 "anthropic": bool(self.anthropic_api_key),
                 "fireworks": bool(self.fireworks_api_key),
+                "openai": bool(self.openai_api_key),
+                "openrouter": bool(self.openrouter_api_key),
             },
             "admin_required": bool(self.admin_token),
         }

@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Bank, Heartbeat, Scales, LockKey, ShieldCheck, Lightning, CaretLeft, CaretRight, ChartLineUp, Umbrella, Books, Truck, Storefront } from "@phosphor-icons/react";
+import { Bank, Heartbeat, Scales, LockKey, CaretLeft, CaretRight, ChartLineUp, Umbrella, Books, Truck, Storefront, Trash } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { api, companyPrompts, type CompanySummary } from "../api/client";
 import { DataClassChip } from "../components/ui/DataClassChip";
+import { OriginBadge } from "../components/ui/OriginBadge";
+import { Composer, type ComposerSubmit } from "../components/build/Composer";
+import { businessValueFor } from "../lib/businessValue";
+import { useDemoToken } from "../api/useDemoToken";
 import { compact } from "../lib/format";
 import styles from "./Sandbox.module.css";
 
@@ -24,7 +28,7 @@ const FALLBACK_COMPANIES: CompanySummary[] = Object.entries({
   bank: "Meridian Bank", clinic: "Cedarline Clinic", lawfirm: "Harwick & Voss",
   exchange: "Ashford Digital", insurer: "Cascadia Mutual", ledger: "Halden Group",
   freight: "Northgate Freight", market: "Bazarline",
-}).map(([id, name]) => ({ id, name, prompts: [] }));
+}).map(([id, name]) => ({ id, name, prompts: [], origin: "builtin" as const }));
 
 // Terms are constrained to #/## headings, paragraphs, "- " lists, and **bold** — render just those.
 function inline(text: string): ReactNode[] {
@@ -146,66 +150,68 @@ function DataBrowser({ companyId }: { companyId: string }) {
 
 function AskPanel({ company }: { company: CompanySummary }) {
   const navigate = useNavigate();
-  const [prompt, setPrompt] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [flash, setFlash] = useState<string | null>(null);
+  const suggestions = useMemo(
+    () => companyPrompts(company).map((p) => ({ prompt: p, value: businessValueFor(company.id, p) })),
+    [company],
+  );
 
-  const launch = async () => {
-    const text = prompt.trim();
-    if (!text) return;
-    setBusy(true);
-    setFlash(null);
-    try {
-      const res = await api.sandboxRun({ company: company.id, prompt: text });
-      navigate(`/build/${res.job_id}`);
-    } catch (e) {
-      const status = (e as { status?: number }).status;
-      setFlash(
-        status === 429
-          ? "The sandbox is at its budget or concurrency cap. Watch a completed run in the Gallery instead."
-          : `Could not start the run: ${(e as Error).message}`,
-      );
-      setBusy(false);
-    }
+  const run = async (p: ComposerSubmit) => {
+    const res = await api.sandboxRun({ company: company.id, prompt: p.request });
+    navigate(`/build/${res.job_id}`);
   };
 
   return (
-    <div className={styles.panel}>
-      <div className={styles.panelHead}>
-        <span className={styles.panelTitle}>Ask {company.name} to build a process</span>
-      </div>
-      <div className={styles.ask}>
-        <div className={styles.askLabel}>Start from a suggested process</div>
-        <div className={styles.chips}>
-          {companyPrompts(company).map((p) => (
-            <button key={p} className={styles.chip} onClick={() => setPrompt(p)}>
-              {p}
-            </button>
-          ))}
+    <div className={styles.askCol}>
+      <div className={styles.askHeading}>Ask {company.name} to build a process</div>
+      <Composer
+        variant="sandbox"
+        boundCompany={company}
+        suggestions={suggestions}
+        placeholder={`e.g. ${companyPrompts(company)[0] ?? "Flag duplicate claims every month"}`}
+        submitLabel="Run it inside the walls"
+        onSubmit={run}
+      />
+    </div>
+  );
+}
+
+function CompanyCard({ company, selected, onSelect, onDelete }: {
+  company: CompanySummary;
+  selected: boolean;
+  onSelect: () => void;
+  onDelete?: () => void;
+}) {
+  const persona = PERSONA[company.id] ?? { icon: LockKey, desc: "Custom enterprise dataset." };
+  const Ico = persona.icon;
+  const rows = (company.tables ?? []).reduce((n, t) => n + (t.row_count ?? 0), 0);
+  const custom = !!company.origin && company.origin !== "builtin";
+  return (
+    <div className={styles.companyWrap}>
+      <button className={`${styles.company} ${selected ? styles.sel : ""}`} onClick={onSelect}>
+        <div className={styles.companyIcon}><Ico weight="fill" /></div>
+        <div className={styles.companyNameRow}>
+          <span className={styles.companyName}>{company.name}</span>
+          {custom && <OriginBadge origin={company.origin!} size="xs" />}
         </div>
-        <div className={styles.askLabel}>or describe your own</div>
-        <textarea
-          className={styles.textarea}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={`e.g. ${companyPrompts(company)[0] ?? "Flag duplicate claims every month"}`}
-        />
-        <button className={styles.run} disabled={busy || !prompt.trim()} onClick={launch}>
-          <Lightning weight="fill" /> {busy ? "Starting the run…" : "Run it inside the walls"}
+        <div className={styles.companyDesc}>{company.blurb ?? company.industry ?? persona.desc}</div>
+        {(company.tables?.length ?? 0) > 0 && (
+          <div className={styles.companyStats}>
+            {company.tables!.length} tables · {compact(rows)} rows
+          </div>
+        )}
+      </button>
+      {custom && onDelete && (
+        <button className={styles.del} onClick={onDelete} title="Delete this data source" aria-label={`Delete ${company.name}`}>
+          <Trash weight="regular" />
         </button>
-        {flash && <div className={styles.flash}>{flash}</div>}
-        <div className={styles.boundaryNote}>
-          <ShieldCheck weight="fill" />
-          <span>
-            Your data stays in {company.name}'s zone. Only a sanitized brief — no names, no account numbers — ever crosses to the frontier planner.
-          </span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
 export function Sandbox() {
+  const unlocked = useDemoToken();
+  const qc = useQueryClient();
   const companiesQ = useQuery({ queryKey: ["sb-companies"], queryFn: api.sandboxCompanies, retry: 0 });
   const companies = useMemo(() => {
     const live = companiesQ.data?.companies ?? [];
@@ -213,6 +219,16 @@ export function Sandbox() {
   }, [companiesQ.data, companiesQ.isError]);
   const [selId, setSelId] = useState<string | null>(null);
   const selected = companies.find((c) => c.id === (selId ?? companies[0]?.id));
+
+  const del = async (id: string) => {
+    try {
+      await api.deleteDataset(id);
+      if (selId === id) setSelId(null);
+      await qc.invalidateQueries({ queryKey: ["sb-companies"] });
+    } catch {
+      /* builtin refuses (400) or presenter required — leave the card in place */
+    }
+  };
 
   return (
     <div className={styles.wrap}>
@@ -224,26 +240,23 @@ export function Sandbox() {
         </p>
       </div>
 
-      <div className={styles.companies}>
-        {companies.map((c) => {
-          const persona = PERSONA[c.id] ?? { icon: LockKey, desc: "Synthetic enterprise dataset." };
-          const Ico = persona.icon;
-          const on = selected?.id === c.id;
-          const rows = (c.tables ?? []).reduce((n, t) => n + (t.row_count ?? 0), 0);
-          return (
-            <button key={c.id} className={`${styles.company} ${on ? styles.sel : ""}`} onClick={() => setSelId(c.id)}>
-              <div className={styles.companyIcon}><Ico weight="fill" /></div>
-              <div className={styles.companyName}>{c.name}</div>
-              <div className={styles.companyDesc}>{c.industry ?? persona.desc}</div>
-              {(c.tables?.length ?? 0) > 0 && (
-                <div className={styles.companyStats}>
-                  {c.tables!.length} tables · {compact(rows)} rows
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {companiesQ.isLoading && companies.length === 0 ? (
+        <div className={styles.companies}>
+          {Array.from({ length: 6 }).map((_, i) => <div key={i} className={styles.skeleton} />)}
+        </div>
+      ) : (
+        <div className={styles.companies}>
+          {companies.map((c) => (
+            <CompanyCard
+              key={c.id}
+              company={c}
+              selected={selected?.id === c.id}
+              onSelect={() => setSelId(c.id)}
+              onDelete={unlocked ? () => del(c.id) : undefined}
+            />
+          ))}
+        </div>
+      )}
 
       {selected ? (
         <div className={styles.split}>
@@ -251,7 +264,9 @@ export function Sandbox() {
           <AskPanel company={selected} />
         </div>
       ) : (
-        <div className={styles.empty}>{companiesQ.isLoading ? "Loading companies…" : "No sandbox companies available."}</div>
+        <div className={styles.empty}>
+          {companiesQ.isLoading ? "Loading companies…" : "No sandbox companies available."}
+        </div>
       )}
     </div>
   );

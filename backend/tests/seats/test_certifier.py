@@ -89,3 +89,66 @@ def test_refine_triage():
                                           refine_request="also flag adverse media"))
     assert finding["triage"] == "amend"
     assert "refine.triaged" in emits.types()
+
+
+# ---------------------------------------------------------------- certify resilience (backend-w3)
+def test_check_degrades_on_persistent_timeout():
+    """A timeout-class failure is retried ONCE, then the check degrades (records inconclusive,
+    contributes no findings) instead of raising and failing the whole stage."""
+    import asyncio
+    calls = []
+
+    async def timing_out(seat, messages, *, data_class, schema=None, **kw):
+        calls.append(1)
+        raise TimeoutError("read timeout")
+
+    async def go():
+        sem = asyncio.Semaphore(3)
+        return await certifier._run_check_guarded(
+            timing_out, Emits(), plan=PLAN, raw_context={}, check="error-coverage", sem=sem)
+
+    assert run(go()) == []
+    assert len(calls) == 2                     # original attempt + one timeout retry
+
+
+def test_check_degrades_without_retry_on_non_timeout():
+    """A non-timeout failure degrades immediately — no wasted retry."""
+    import asyncio
+    calls = []
+
+    async def boom(seat, messages, *, data_class, schema=None, **kw):
+        calls.append(1)
+        raise ValueError("bad json")
+
+    async def go():
+        return await certifier._run_check_guarded(
+            boom, Emits(), plan=PLAN, raw_context={}, check="error-coverage", sem=asyncio.Semaphore(3))
+
+    assert run(go()) == []
+    assert len(calls) == 1
+
+
+def test_semaphore_caps_check_concurrency():
+    """The 7 checks fan out under a shared semaphore so no more than _CHECK_CONCURRENCY hit the
+    backend at once (the fix for the hosted-AMD queueing that blew the seat timeout)."""
+    import asyncio
+
+    from app.seats.base import Completion
+    state = {"cur": 0, "peak": 0}
+
+    async def slow_ok(seat, messages, *, data_class, schema=None, **kw):
+        state["cur"] += 1
+        state["peak"] = max(state["peak"], state["cur"])
+        await asyncio.sleep(0.02)
+        state["cur"] -= 1
+        return Completion(text="{}", parsed={"findings": []})
+
+    async def go():
+        sem = asyncio.Semaphore(certifier._CHECK_CONCURRENCY)
+        await asyncio.gather(*[
+            certifier._run_check_guarded(slow_ok, Emits(), plan=PLAN, raw_context={}, check=c, sem=sem)
+            for c in certifier.CHECKS])
+
+    run(go())
+    assert state["peak"] <= certifier._CHECK_CONCURRENCY
+    assert state["peak"] >= 2                   # concurrency actually happened (7 checks, cap 3)

@@ -15,6 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api import (
     admin,
     connections,
+    datasets,
     economics,
     fleet,
     jobs,
@@ -64,7 +65,8 @@ def create_app() -> FastAPI:
                        allow_headers=["*"], expose_headers=["*"])
 
     for r in (jobs.router, processes.router, runs.router, fleet.router, sandbox.router,
-              admin.router, economics.router, connections.router, proxy.router, traces.router):
+              admin.router, economics.router, connections.router, datasets.router,
+              proxy.router, traces.router):
         app.include_router(r, prefix="/api")
 
     @app.exception_handler(StarletteHTTPException)

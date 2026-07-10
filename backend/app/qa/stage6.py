@@ -15,6 +15,33 @@ from app.orchestrator.seatlib import seat
 _INSPECTOR_AGENTS = 4
 _ORACLE_CONCURRENCY = 4
 _FIX_CAP = 3
+# ponytail: hard ceilings so the stage ALWAYS terminates in bounded model calls. A live freight run
+# fired 167 probes then a one-at-a-time fix loop and ran ~18min without exiting. Probes are capped to
+# a source-diverse sample; the fix loop caps TOTAL coder.fix calls. Raise only if the local fleet is
+# fast enough to make the full swarm cheap again.
+_MAX_PROBES = 40
+_FIX_ATTEMPT_BUDGET = 12
+
+
+def _sample_probes(scenarios: list[dict], cap: int) -> list[dict]:
+    """Round-robin across probe sources (ac / generic / plan) so a cap keeps every source
+    represented rather than dropping a whole class. Deterministic (input order) — reproducible probe
+    sets across reruns; returns all scenarios untouched when already within the cap."""
+    if len(scenarios) <= cap:
+        return scenarios
+    buckets: dict[str, list] = {}
+    for s in scenarios:
+        buckets.setdefault(s.get("source", "?"), []).append(s)
+    order = list(buckets.values())
+    out: list[dict] = []
+    while len(out) < cap and any(order):
+        for b in order:
+            if b:
+                out.append(b.pop(0))
+                if len(out) >= cap:
+                    break
+        order = [b for b in order if b]
+    return out
 # Per-scenario tool-step cap. The real fleet's local vLLM is fast enough for the 15-step ceiling
 # (08 §2); on the Fireworks fallback a full 15-step swarm over N scenarios overloads the shared
 # glm-5p2 endpoint and grows each turn's transcript until calls ReadTimeout. 8 keeps probing
@@ -60,6 +87,13 @@ async def run(ctx) -> None:
         scenario_dicts.append({"id": f"gen-{i}", "source": "generic", "title": txt[:70], "probe": txt})
     for i, txt in enumerate(scenarios):
         scenario_dicts.append({"id": f"plan-{i}", "source": "plan", "title": str(txt)[:70], "probe": str(txt)})
+
+    probed_total = len(scenario_dicts)
+    scenario_dicts = _sample_probes(scenario_dicts, _MAX_PROBES)  # bound the swarm (see _MAX_PROBES)
+    if len(scenario_dicts) < probed_total:
+        await ctx.emit(E.SYSTEM_NOTICE, {"scope": "qa", "level": "info",
+                       "text": f"probe swarm sampled to {len(scenario_dicts)} of {probed_total} "
+                               f"scenarios (source-diverse) to bound QA call volume"})
 
     inspector = seat("inspector")
     sem = asyncio.Semaphore(_INSPECTOR_AGENTS)
@@ -140,8 +174,13 @@ async def run(ctx) -> None:
         if handle is not None:
             await handle.stop()
 
-    # bounded fix loop (<=3): resolve fixable tickets; disagreements -> human review (08 §6)
-    await _fix_loop(ctx)
+    # bounded fix loop: resolve fixable tickets within a hard budget; disagreements -> human review
+    # (08 §6). A budget exhaustion ships with an honest partial-QA marker rather than spinning.
+    qa_partial = await _fix_loop(ctx)
+    if qa_partial:
+        await ctx.emit(E.SYSTEM_NOTICE, {"scope": "qa", "level": "warn",
+                       "text": f"QA fix budget ({_FIX_ATTEMPT_BUDGET}) exhausted — remaining tickets "
+                               "parked for human review; shipping with partial QA"})
 
     # goal-fulfillment check (D10) — the fixed star. Give the check the EVIDENCE of what was
     # delivered, not a bare {goal, mode}: in process mode the deliverable is a deployed runtime whose
@@ -193,6 +232,7 @@ async def run(ctx) -> None:
         "probes": len(scenario_dicts), "vectors": len(vectors), "tests": len(tests),
         "flagged_for_review": len(open_tickets),
         "goal_verdict": gc.get("verdict", "fulfilled"),
+        "qa_partial": qa_partial,
     })
     await ctx.advance("delivering")
 
@@ -310,17 +350,30 @@ def _add_create_tool(ctx, tools: dict) -> None:
     tools["create_tool"] = create_tool
 
 
-async def _fix_loop(ctx) -> None:
+async def _fix_loop(ctx) -> bool:
+    """Bounded fix loop (08 §6): resolve fixable tickets within a hard TOTAL attempt budget;
+    disagreements -> human review. Returns True (partial QA) if the budget was spent with fixable
+    tickets still parked for human review — an honest degraded outcome, matching the certifier's
+    degrade-to-inconclusive pattern. Always terminates in <= _FIX_ATTEMPT_BUDGET coder.fix calls."""
     coder = seat("coder")
+    attempts = 0
+    budget_parked = 0
     for _ in range(_FIX_CAP):
         open_tickets = await ctx.dao.list_tickets(scope=ctx.scope, status="open")
         if not open_tickets:
-            return
+            break
         for t in open_tickets:
             if t.get("severity") == "disagreement":
                 await ctx.dao.update_ticket(t["id"], status="human_review")
                 await ctx.emit(E.TICKET_HUMAN_REVIEW, {"ticket_id": t["id"], "reason": "oracle disagreement"})
                 continue
+            if attempts >= _FIX_ATTEMPT_BUDGET:   # budget spent — park the rest, never spin
+                await ctx.dao.update_ticket(t["id"], status="human_review")
+                await ctx.emit(E.TICKET_HUMAN_REVIEW, {"ticket_id": t["id"],
+                               "reason": "fix budget exhausted"})
+                budget_parked += 1
+                continue
+            attempts += 1
             await ctx.dao.update_ticket(t["id"], status="in_fix",
                                         fix_attempts=(t.get("fix_attempts", 0) or 0) + 1)
             await ctx.emit(E.TICKET_IN_FIX, {"ticket_id": t["id"]})
@@ -335,3 +388,4 @@ async def _fix_loop(ctx) -> None:
                 await ctx.dao.update_ticket(t["id"], status="human_review")
                 await ctx.emit(E.TICKET_HUMAN_REVIEW, {"ticket_id": t["id"],
                                "reason": f"fix inconclusive: {type(exc).__name__}"})
+    return budget_parked > 0

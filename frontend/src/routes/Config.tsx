@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Cpu, Plug, Lock, Trash, ShieldCheck, WifiHigh, WarningOctagon, Warning } from "@phosphor-icons/react";
-import { api, type ConnectionInfo, type EgressRow, type ModelInfo } from "../api/client";
+import { Cpu, Plug, Lock, Trash, ShieldCheck, WifiHigh, WarningOctagon, Warning, CheckCircle, XCircle, Pulse } from "@phosphor-icons/react";
+import { api, type ApiStyle, type ConnectionInfo, type ConnectionTest, type EgressRow, type ModelInfo } from "../api/client";
 import { ZoneBadge } from "../components/ui/ZoneBadge";
 import { DataClassChip } from "../components/ui/DataClassChip";
 import { useDemoToken } from "../api/useDemoToken";
@@ -9,6 +9,15 @@ import { MOCK_FORCED } from "../api/config";
 import { SEAT_INFO } from "../api/adapt";
 import type { Seat, Zone } from "../lib/events";
 import styles from "./Config.module.css";
+
+// Provider presets prefill the base URL + wire dialect; "Custom" leaves them blank.
+const PRESETS: { label: string; base_url: string; api_style: ApiStyle }[] = [
+  { label: "OpenAI", base_url: "https://api.openai.com/v1", api_style: "openai" },
+  { label: "Anthropic", base_url: "https://api.anthropic.com", api_style: "anthropic" },
+  { label: "Fireworks", base_url: "https://api.fireworks.ai/inference/v1", api_style: "openai" },
+  { label: "AMD local fleet", base_url: "http://localhost:8000/v1", api_style: "openai" },
+  { label: "Custom", base_url: "", api_style: "openai" },
+];
 
 // ponytail: static seat→zone/role map mirrors infra/seats.yaml; fetch /seats if bindings go dynamic
 const SEATS: { seat: Seat; zone: Zone; role: string }[] = [
@@ -65,14 +74,30 @@ function ModelRegistry({ models }: { models: ModelInfo[] }) {
 function Connections({ connections }: { connections: ConnectionInfo[] }) {
   const unlocked = useDemoToken();
   const qc = useQueryClient();
-  const [form, setForm] = useState({ name: "", base_url: "", api_key: "", data_class_ceiling: "SANITIZED", counts_as_local: false });
+  const [form, setForm] = useState<{ name: string; base_url: string; api_key: string; data_class_ceiling: string; counts_as_local: boolean; api_style: ApiStyle }>(
+    { name: "", base_url: "", api_key: "", data_class_ceiling: "SANITIZED", counts_as_local: false, api_style: "openai" },
+  );
   const [modelId, setModelId] = useState("");
   const [flags, setFlags] = useState<string[]>([]);
   const [flash, setFlash] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tests, setTests] = useState<Record<string, ConnectionTest | "busy">>({});
 
   const refetch = () => qc.invalidateQueries({ queryKey: ["connections"] });
   const toggleFlag = (f: string) => setFlags((fs) => (fs.includes(f) ? fs.filter((x) => x !== f) : [...fs, f]));
+
+  const applyPreset = (p: (typeof PRESETS)[number]) =>
+    setForm((f) => ({ ...f, base_url: p.base_url, api_style: p.api_style, name: f.name || (p.label === "Custom" ? "" : p.label) }));
+
+  const test = async (id: string) => {
+    setTests((t) => ({ ...t, [id]: "busy" }));
+    try {
+      const res = await api.testConnection(id);
+      setTests((t) => ({ ...t, [id]: res }));
+    } catch (e) {
+      setTests((t) => ({ ...t, [id]: { ok: false, error: (e as Error).message } }));
+    }
+  };
 
   const add = async () => {
     if (!form.name || !form.base_url) return;
@@ -86,7 +111,7 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
           .addConnectionModel(res.connection.id, { provider_model_id: modelId.trim(), display_name: modelId.trim(), flags })
           .catch(() => setFlash({ kind: "err", msg: "Connection saved, but the model registration failed — add it again below." }));
       }
-      setForm({ name: "", base_url: "", api_key: "", data_class_ceiling: "SANITIZED", counts_as_local: false });
+      setForm({ name: "", base_url: "", api_key: "", data_class_ceiling: "SANITIZED", counts_as_local: false, api_style: "openai" });
       setModelId("");
       setFlags([]);
       setFlash((f) => f ?? { kind: "ok", msg: "Connection registered. The key is stored write-only and returned masked." });
@@ -111,28 +136,56 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
 
   return (
     <div className={styles.body}>
-      {connections.length === 0 && <div className={styles.empty}>No BYOK connections yet.</div>}
-      {connections.map((c) => (
-        <div key={c.id} className={styles.connRow}>
-          <div>
-            <div className={styles.connName}>{c.name}</div>
-            <div className={styles.connUrl}>{c.base_url}</div>
+      {connections.length === 0 && <div className={styles.empty}>No BYOK connections yet — add one below, or the built-in local fleet serves every seat.</div>}
+      {connections.map((c) => {
+        const t = tests[c.id];
+        return (
+          <div key={c.id} className={styles.connRow}>
+            <div className={styles.connLead}>
+              <div className={styles.connName}>{c.name}</div>
+              <div className={styles.connUrl}>{c.base_url}</div>
+            </div>
+            {c.api_style && <span className={styles.apiStyle}>{c.api_style}</span>}
+            <span className={styles.seatZone}>{c.zone}</span>
+            <span className={styles.seatZone}>ceiling {c.data_class_ceiling ?? "SANITIZED"}</span>
+            {c.counts_as_local && (
+              <span className={styles.attest} title="Attested by you: this endpoint is treated as inside the walls — RAW data may route here">
+                <Warning weight="fill" /> counts as LOCAL
+              </span>
+            )}
+            <span className={`${styles.spacer} ${styles.connKey}`}>{c.api_key}</span>
+            {t && t !== "busy" && (
+              t.ok
+                ? <span className={styles.testOk}><CheckCircle weight="fill" /> {t.latency_ms != null ? `${t.latency_ms} ms` : "ok"}{t.model ? ` · ${t.model}` : ""}</span>
+                : <span className={styles.testErr} title={t.error}><XCircle weight="fill" /> {t.error ?? "failed"}</span>
+            )}
+            <button className={styles.testBtn} disabled={!unlocked || t === "busy"} onClick={() => test(c.id)} title={unlocked ? "Ping this endpoint" : "Presenter mode required"}>
+              <Pulse weight="bold" style={{ width: 12, verticalAlign: "-2px" }} /> {t === "busy" ? "Testing…" : "Test"}
+            </button>
+            <button className={styles.remove} disabled={!unlocked} onClick={() => remove(c.id)} title={unlocked ? "" : "Presenter mode required"}>
+              <Trash weight="regular" style={{ width: 12, verticalAlign: "-2px" }} /> remove
+            </button>
           </div>
-          <span className={styles.seatZone}>{c.zone}</span>
-          <span className={styles.seatZone}>ceiling {c.data_class_ceiling ?? "SANITIZED"}</span>
-          {c.counts_as_local && (
-            <span className={styles.attest} title="Attested by you: this endpoint is treated as inside the walls — RAW data may route here">
-              <Warning weight="fill" /> counts as LOCAL
-            </span>
-          )}
-          <span className={`${styles.spacer} ${styles.connKey}`}>{c.api_key}</span>
-          <button className={styles.remove} disabled={!unlocked} onClick={() => remove(c.id)} title={unlocked ? "" : "Presenter mode required"}>
-            <Trash weight="regular" style={{ width: 12, verticalAlign: "-2px" }} /> remove
-          </button>
-        </div>
-      ))}
+        );
+      })}
 
       <div className={styles.form}>
+        <div className={`${styles.field} ${styles.full}`}>
+          <label className={styles.label}>Provider preset</label>
+          <div className={styles.flagPick}>
+            {PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                className={`${styles.flagChip} ${form.base_url === p.base_url && form.api_style === p.api_style && p.label !== "Custom" ? styles.on : ""}`}
+                onClick={() => applyPreset(p)}
+                disabled={!unlocked}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className={styles.field}>
           <label className={styles.label}>Name</label>
           <input className={styles.input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Team GLM (Z.ai)" disabled={!unlocked} />
@@ -140,6 +193,13 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
         <div className={styles.field}>
           <label className={styles.label}>Base URL</label>
           <input className={styles.input} value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} placeholder="https://api.z.ai/v1" disabled={!unlocked} />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>API style</label>
+          <select className={styles.input} value={form.api_style} onChange={(e) => setForm({ ...form, api_style: e.target.value as ApiStyle })} disabled={!unlocked}>
+            <option value="openai">OpenAI-compatible</option>
+            <option value="anthropic">Anthropic</option>
+          </select>
         </div>
         <div className={styles.field}>
           <label className={styles.label}>API key (write-only)</label>
@@ -190,10 +250,12 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
   );
 }
 
-function SeatCards({ models }: { models: ModelInfo[] }) {
+function SeatCards({ models, connections }: { models: ModelInfo[]; connections: ConnectionInfo[] }) {
   const unlocked = useDemoToken();
   const modelKeys = models.map((m) => m.key);
   const servedBy = (seat: Seat) => models.filter((m) => (m.serves ?? []).some((s) => s.startsWith(seat)));
+  const openaiModel = models.find((m) => /gpt-5\.6-sol/i.test(m.key) || /gpt-5\.6-sol/i.test(m.hf_id ?? ""));
+  const openaiConfigured = !!openaiModel || connections.some((c) => c.api_style === "openai");
   const [flash, setFlash] = useState<Record<string, { kind: "ok" | "err"; msg: string } | undefined>>({});
   const [bound, setBound] = useState<Record<string, string>>({}); // optimistic override display
 
@@ -212,7 +274,10 @@ function SeatCards({ models }: { models: ModelInfo[] }) {
     <div className={styles.seatGrid}>
       {SEATS.map(({ seat, zone, role }) => {
         const serving = servedBy(seat);
-        const binding = bound[seat] ?? serving[0]?.key ?? SEAT_INFO[seat]?.model ?? "default binding";
+        const overridden = !!bound[seat];
+        const prefersOpenai = seat === "planner" && !overridden && openaiConfigured;
+        const binding = bound[seat] ?? (prefersOpenai ? (openaiModel?.key ?? "openai/gpt-5.6-sol") : (serving[0]?.key ?? SEAT_INFO[seat]?.model ?? "default binding"));
+        const why = overridden ? "override" : prefersOpenai ? "OpenRouter key configured" : "default";
         return (
           <div key={seat} className={styles.seatCard}>
             <div className={styles.seatCardHead}>
@@ -225,6 +290,13 @@ function SeatCards({ models }: { models: ModelInfo[] }) {
               <span className={styles.seatBindModel}>{binding}</span>
               <DataClassChip cls={zone === "LOCAL" ? "RAW" : "SANITIZED"} size="xs" />
             </div>
+            <div className={styles.seatWhy}>
+              <span className={`${styles.whyDot} ${overridden ? styles.whyOverride : prefersOpenai ? styles.whyPref : ""}`} />
+              {why}
+            </div>
+            {seat === "planner" && !openaiConfigured && (
+              <div className={styles.seatNote}>Prefers <code>openai/gpt-5.6-sol</code> via OpenRouter when a key is configured.</div>
+            )}
             <div className={styles.seatCardFoot}>
               <select
                 className={styles.seatSelect}
@@ -313,28 +385,23 @@ export function Config() {
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
-        <h1 className={styles.title}>Models & seats</h1>
+        <h1 className={styles.title}>Settings</h1>
         <p className={styles.sub}>
-          The routing substrate. Application code addresses seats, never models — bindings and BYOK endpoints live here, and every
+          The routing substrate. Application code addresses seats, never models — bring your own keys, bind seats to endpoints, and every
           route is checked against the seat's zone and data-class ceiling before a single token moves.
         </p>
       </div>
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <ShieldCheck weight="regular" style={{ width: 16, color: "var(--text-muted)" }} />
-          <span className={styles.sectionTitle}>Seats</span>
-          <span className={styles.sectionNote}>who does what, and which model holds the seat · overriding to an ineligible model is rejected (409)</span>
+          <Plug weight="regular" style={{ width: 16, color: "var(--text-muted)" }} />
+          <span className={styles.sectionTitle}>Model connections</span>
+          <span className={styles.sectionNote}>BYOK endpoints — keys stored write-only, returned masked</span>
         </div>
-        <div className={styles.body}>
-          <SeatCards models={models} />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionHead}>
-          <Cpu weight="regular" style={{ width: 16, color: "var(--text-muted)" }} />
-          <span className={styles.sectionTitle}>Model registry</span>
+        <Connections connections={connections} />
+        <div className={styles.subHead}>
+          <Cpu weight="regular" style={{ width: 14, color: "var(--text-faint)" }} />
+          <span className={styles.subTitle}>Model registry</span>
           <span className={styles.sectionNote}>{models.length} models · builtin + BYOK, with capability flags</span>
         </div>
         <div className={styles.body}>
@@ -344,11 +411,13 @@ export function Config() {
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <Plug weight="regular" style={{ width: 16, color: "var(--text-muted)" }} />
-          <span className={styles.sectionTitle}>BYOK connections</span>
-          <span className={styles.sectionNote}>keys stored write-only, returned masked</span>
+          <ShieldCheck weight="regular" style={{ width: 16, color: "var(--text-muted)" }} />
+          <span className={styles.sectionTitle}>Seat bindings</span>
+          <span className={styles.sectionNote}>who does what, and which model holds the seat · overriding to an ineligible model is rejected (409)</span>
         </div>
-        <Connections connections={connections} />
+        <div className={styles.body}>
+          <SeatCards models={models} connections={connections} />
+        </div>
       </section>
 
       <EgressLedger />

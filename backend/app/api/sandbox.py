@@ -92,27 +92,39 @@ def _window_expired(created_at: str | None) -> bool:
 
 @router.get("/sandbox/companies")
 async def companies() -> dict:
-    """All seed companies with industry, live table counts, and suggested prompts (the 20
-    demo-datasets use cases + the original three companies'). Additive over the wave-1 shape:
-    `prompts` is retained, `suggested_prompts`/`industry`/`tables`/`seeded` are new."""
+    """All datasets: the builtin seed companies plus custom BYOD datasets (uploads/connectors/
+    codebases). Builtins gain origin:'builtin', kind:'rows'; custom entries carry their origin+kind
+    and schema-aware suggested prompts. Additive over the wave-1 shape (nothing renamed)."""
     from app.sandbox import seeds
     out = []
     for c in COMPANIES:
         schema = seeds.company_schema(c["id"])
-        out.append({**c, "suggested_prompts": c["prompts"],
+        out.append({**c, "origin": "builtin", "kind": "rows",
+                    "suggested_prompts": c["prompts"],
                     "tables": [{"table": s["table"], "row_count": s["row_count"]} for s in schema],
                     "seeded": bool(schema)})
+    for d in await dao.list_datasets():
+        meta = d.get("meta") or {}
+        out.append({"id": d["id"], "name": d["name"], "industry": d.get("blurb") or "",
+                    "blurb": d.get("blurb") or "", "origin": d["origin"], "kind": d["kind"],
+                    "prompts": meta.get("suggested_prompts", []),
+                    "suggested_prompts": meta.get("suggested_prompts", []),
+                    "tables": [{"table": t["name"], "row_count": t["rows"]}
+                               for t in meta.get("tables", [])],
+                    "seeded": bool(meta.get("tables"))})
     return {"companies": out}
 
 
 @router.get("/sandbox/companies/{company_id}/tables")
 async def company_tables(company_id: str) -> dict:
-    db_path = _SEEDS_DIR / f"{company_id}.db"
-    if not db_path.exists():
+    from app.sandbox import seeds
+    db_path = seeds.seed_db_path(company_id)      # resolves builtins AND custom BYOD datasets
+    if db_path is None:
         return {"tables": [], "seeded": False}
-    con = sqlite3.connect(str(db_path))
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
-        rows = con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        rows = con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()
     finally:
         con.close()
     return {"tables": [r[0] for r in rows], "seeded": True}
@@ -131,15 +143,16 @@ async def company_terms(company_id: str) -> dict:
 
 @router.get("/sandbox/companies/{company_id}/tables/{table}")
 async def browse_table(company_id: str, table: str, page: int = 0, page_size: int = 50) -> dict:
-    db_path = _SEEDS_DIR / f"{company_id}.db"
-    if not db_path.exists():
+    from app.sandbox import seeds
+    db_path = seeds.seed_db_path(company_id)      # resolves builtins AND custom BYOD datasets
+    if db_path is None:
         return {"rows": [], "seeded": False}
     if not table.isidentifier():
         raise _err(400, "invalid table name")
-    con = sqlite3.connect(str(db_path))
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     try:
-        cur = con.execute(f"SELECT * FROM {table} LIMIT ? OFFSET ?", (page_size, page * page_size))
+        cur = con.execute(f'SELECT * FROM "{table}" LIMIT ? OFFSET ?', (page_size, page * page_size))
         rows = [dict(r) for r in cur.fetchall()]
     finally:
         con.close()

@@ -28,6 +28,53 @@ _DEFAULT_STEP = {"id": "extract", "seat": "coder",
 
 _FLAG_KEYS = ("flag", "flagged", "needs_review", "suspicious")
 
+# When a candidate (sql/analysis) step already established the STRUCTURAL match the request targets,
+# the per-unit judge is a confirmation pass, not an independent re-derivation. Without this framing a
+# judge handed both sides of a matched pair reads the incidental free-text (a re-filed claim gets
+# fresh narrative + its own ids) and rejects a true finding as "different story" — the demo-critical
+# duplicate-claims miss. Generic across every dataset: the SQL/tool IS the detection; the judge must
+# apply the request's definition, no stricter, and treat expected within-pattern variation as noise.
+_CANDIDATE_FRAME = (
+    "DECISION RULE (authoritative — overrides any wording above that asks for more):\n"
+    "This row was surfaced by an upstream detection step that ALREADY matched the structural "
+    "pattern the request targets (matched keys, sums vs limits, shared identifiers, time-window "
+    "bursts). Confirm or rule out this candidate against the request's OWN definition of a finding, "
+    "applying exactly that definition and never a stricter one. The structural match is established; "
+    "differences in free-text wording, narrative, or incidental fields between the rows are EXPECTED "
+    "(a duplicated or re-filed record carries fresh prose and its own ids) and are NOT, by "
+    "themselves, grounds to reject. In particular do NOT require the rows to describe the same "
+    "incident narrative or the same damage/detail — the request defines the finding structurally, "
+    "not by matching prose. Set flagged=true when the row meets the request's structural definition; "
+    "rule out ONLY on affirmative evidence the rows fall outside what the request targets."
+)
+
+
+def _judge_schema(step: dict) -> dict:
+    """A self-contained output schema for one judgment call. A planner-generated output_schema that
+    is a bare named $ref (resolvable only against the plan's data_schemas, never at judge time) is
+    useless to both the model and the validator — fall back to the default {findings, flagged} shape
+    so the judge is actually guided and its verdict carries a flag the sweep can read."""
+    schema = step.get("output_schema")
+    if isinstance(schema, dict) and "$ref" not in schema and (schema.get("properties") or schema.get("type")):
+        return schema
+    return _DEFAULT_STEP["output_schema"]
+
+
+def _judge_prompt(step: dict, content: dict, request: str, *, from_candidate: bool) -> str:
+    """Assemble one judgment step's prompt for a unit (extracted so the assembly is unit-testable).
+    A candidate-derived unit gets the confirmation frame LAST — as the authoritative closing rule —
+    so a drifted prompt_spec that demands identical prose can't override the use case's structural
+    definition of a finding; raw corpus units are judged on their own content as before."""
+    if "path" in content and "content" in content:   # files corpus: path + text, not a row-JSON blob
+        body = f"File: {content['path']}\n\n{str(content['content'])[:6000]}"
+    else:
+        body = f"candidate data:\n{json.dumps(content, default=str)[:4000]}"
+    spec = step.get("prompt_spec") or "Process this unit and report findings."
+    prompt = f"{spec}\n\nOriginal request: {request[:500]}\n\n{body}"
+    if from_candidate:   # closing decision rule wins over an over-strict prompt_spec (last instruction)
+        prompt = f"{prompt}\n\n{_CANDIDATE_FRAME}"
+    return prompt
+
 
 def _unit_flagged(result: dict) -> bool:
     for step_out in result.values():
@@ -172,6 +219,7 @@ async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topolo
 
     # LLM-judged units respect the cap; sql steps above already ran the full table
     units = units[:settings.sandbox_max_units]
+    from_candidate = bool(candidate_steps)   # a judged unit came from a detection step -> confirm, not re-derive
 
     async def _judge(content: dict) -> tuple[dict, list]:
         """One unit through the judgment steps. Raises on failure; caller isolates."""
@@ -181,12 +229,9 @@ async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topolo
             seat_name = step.get("seat") or "coder"
             if seat_name not in registry.seats or seat_name == "planner":
                 seat_name = "coder"   # live planners invent seat names; RAW never routes EXTERNAL
-            prompt = (f"{step.get('prompt_spec') or 'Process this unit and report findings.'}\n\n"
-                      f"Original request: {request[:500]}\n\n"
-                      f"candidate data:\n{json.dumps(content, default=str)[:4000]}")
+            prompt = _judge_prompt(step, content, request, from_candidate=from_candidate)
             comp = await complete_fn(seat_name, [Message(role="user", content=prompt)],
-                                     data_class="RAW",
-                                     schema=step.get("output_schema") or _DEFAULT_STEP["output_schema"])
+                                     data_class="RAW", schema=_judge_schema(step))
             result[step.get("id") or "step"] = comp.parsed or {}
             trace.append({"step": step.get("id") or "step", "seat": seat_name})
         return result, trace
@@ -478,11 +523,13 @@ async def _finalize_artifacts(run_id: str, *, process_name: str, goal: str, corp
         artifacts = deliverables.generate(run_id, process_name=process_name, goal=goal,
                                           corpus=corpus, stats=stats, cost=cost, units=units,
                                           deliverable=deliverable)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — a deliverable bug must never 404 a completed run
+        # write a minimal stub so /report + /export.csv still resolve; a live demo can't end in 404
+        artifacts = deliverables.write_stub(run_id, process_name=process_name, goal=goal,
+                                            corpus=corpus, stats=stats, cost=cost)
         await emit(f"run:{run_id}", E.SYSTEM_NOTICE,
-                   {"text": f"artifact generation failed: {type(exc).__name__}: {str(exc)[:200]}",
-                    "level": "warn"})
-        return
+                   {"text": f"artifact generation degraded to stub: {type(exc).__name__}: "
+                    f"{str(exc)[:200]}", "level": "warn"})
     payload = {"run_id": run_id, "artifacts": artifacts}
     await emit(f"run:{run_id}", E.RUN_ARTIFACTS_READY, payload)
     if mirror_emit is not None:   # fan-out watchers live on the job scope

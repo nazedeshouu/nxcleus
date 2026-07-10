@@ -10,10 +10,12 @@
 # where, and when".
 #
 # Fields:
-#   provider   local | fireworks | anthropic  — resolves the backend + zone.
-#                 local     -> LOCAL zone (self-hosted MI300X, vLLM/ROCm)
-#                 fireworks -> AMD_HOSTED zone (availability fallback only, D7 — badged)
-#                 anthropic -> EXTERNAL zone (the one designed-in non-local seat: planner)
+#   provider   local | fireworks | anthropic | openai | openrouter — resolves the backend + zone.
+#                 local      -> LOCAL zone (self-hosted MI300X, vLLM/ROCm)
+#                 fireworks  -> AMD_HOSTED zone (availability fallback only, D7 — badged)
+#                 anthropic  -> EXTERNAL zone (external frontier seat; kept for fallback)
+#                 openai     -> EXTERNAL zone (OpenAI-direct; no builtin models — kept for direct bindings)
+#                 openrouter -> EXTERNAL zone (flagship openai/gpt-5.6-sol + fallback openai/gpt-5.5)
 #   hf_id      exact HF repo (local) OR provider model id (fireworks/anthropic).
 #   serving    vram_gb / precision / context. hosted entries carry {hosted: true, context}.
 #   flags      capability vocabulary (spec 02 §7.2), values: strong | ok | weak.
@@ -236,7 +238,56 @@ models:
     serves: ["coder pool fallback (P0/fleet-down)"]
     vllm_rocm: "n/a — Fireworks serving"
 
-  # THE PLANNER — the single designed-in non-local seat (D7). EXTERNAL zone.
+  # THE FLAGSHIP PLANNER — served via OpenRouter (2026-07-10). EXTERNAL zone. Catalogue-verified
+  # 2026-07-10: id `openai/gpt-5.6-sol`, $5/Mtok in + $30/Mtok out, 1,050,000 ctx. OpenAI-compatible
+  # chat-completions (env OPENROUTER_API_KEY, base https://openrouter.ai/api). The registry KEY keeps
+  # the provider's slash verbatim (it is a dict key / JSON body field, never a URL path segment).
+  # Sees ONLY the sanitized planner brief (SANITIZED ceiling, enforced). gpt-5.5 (OpenRouter) and anthropic are fallbacks.
+  "openai/gpt-5.6-sol":
+    provider: openrouter
+    hf_id: "openai/gpt-5.6-sol"                # provider model id on the wire (kept verbatim, slash and all)
+    serving: {hosted: true, context: 1050000}
+    flags:                                     # documentary — the planner seat is not pool-routed
+      greenfield-codegen: strong
+      refactor-edit: strong
+      sql-data: strong
+      test-writing: strong
+      docs-writing: strong
+      extraction: strong
+      math: strong
+      agentic-tool-use: strong
+      long-context: strong
+      merge-review: strong
+    evidence: "flagship planner (topology + BoM authoring); structured outputs; 1.05M input ctx (OpenRouter catalogue, verified 2026-07-10)"
+    license: "proprietary (hosted API; SANITIZED-only egress)"
+    serves: ["planner (default)"]
+    vllm_rocm: "n/a — OpenRouter API"
+
+  # PLANNER FALLBACK — gpt-5.5 served via OpenRouter (2026-07-11, founder call: one key, one
+  # provider surface, OpenRouter handles availability). Catalogue-verified id/price/ctx. EXTERNAL zone.
+  # Same env OPENROUTER_API_KEY as the flagship; a per-model failure on gpt-5.6-sol falls through here
+  # at call time even though both hops share backend readiness.
+  "openai/gpt-5.5":
+    provider: openrouter
+    hf_id: "openai/gpt-5.5"                   # provider model id on the wire (kept verbatim, slash and all)
+    serving: {hosted: true, context: 1050000}
+    flags:                                     # documentary — the planner seat is not pool-routed
+      greenfield-codegen: strong
+      refactor-edit: strong
+      sql-data: strong
+      test-writing: strong
+      docs-writing: strong
+      extraction: strong
+      math: strong
+      agentic-tool-use: strong
+      long-context: strong
+      merge-review: strong
+    evidence: "planner fallback (topology + BoM authoring); structured outputs; 1.05M input ctx (OpenRouter catalogue, verified 2026-07-11)"
+    license: "proprietary (hosted API; SANITIZED-only egress)"
+    serves: ["planner (fallback)"]
+    vllm_rocm: "n/a — OpenRouter API"
+
+  # THE PRIOR PLANNER — external fallback now (D7). EXTERNAL zone.
   # Sees ONLY the sanitized planner brief (SANITIZED ceiling, enforced).
   claude-fable-5:
     provider: anthropic

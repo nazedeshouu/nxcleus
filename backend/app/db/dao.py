@@ -432,13 +432,14 @@ async def incr_sandbox_runs(session_id: str) -> None:
 
 # ============================================================ connections / custom models / overrides
 async def create_connection(*, name: str, base_url: str, api_key_ref: str, zone: str = "CUSTOM",
-                            data_class_ceiling: str = "SANITIZED", counts_as_local: bool = False) -> str:
+                            data_class_ceiling: str = "SANITIZED", counts_as_local: bool = False,
+                            api_style: str = "openai") -> str:
     cid = new_id("connection")
     await db.execute(
-        "INSERT INTO api_connections (id, name, base_url, api_key_ref, zone, data_class_ceiling, "
-        "counts_as_local, created_at) VALUES (:id, :n, :u, :kr, :z, :dc, :col, :ts)",
-        {"id": cid, "n": name, "u": base_url, "kr": api_key_ref, "z": zone, "dc": data_class_ceiling,
-         "col": 1 if counts_as_local else 0, "ts": now_iso()},
+        "INSERT INTO api_connections (id, name, base_url, api_key_ref, api_style, zone, "
+        "data_class_ceiling, counts_as_local, created_at) VALUES (:id, :n, :u, :kr, :st, :z, :dc, :col, :ts)",
+        {"id": cid, "n": name, "u": base_url, "kr": api_key_ref, "st": api_style, "z": zone,
+         "dc": data_class_ceiling, "col": 1 if counts_as_local else 0, "ts": now_iso()},
     )
     return cid
 
@@ -484,6 +485,32 @@ async def set_seat_override(*, seat: str, model_key: str, scope: str = "global")
 
 async def list_seat_overrides() -> list[dict]:
     return await db.fetchall("SELECT * FROM seat_overrides ORDER BY seat")
+
+
+# ============================================================ datasets (bring-your-own-data)
+async def register_dataset(*, dataset_id: str, name: str, blurb: str, origin: str, kind: str,
+                           db_path: str, meta: dict | None = None) -> None:
+    await db.execute(
+        "INSERT INTO datasets (id, name, blurb, origin, kind, db_path, meta_json, created_at) "
+        "VALUES (:id, :n, :b, :o, :k, :p, :m, :ts) "
+        "ON CONFLICT(id) DO UPDATE SET name=:n, blurb=:b, origin=:o, kind=:k, db_path=:p, meta_json=:m",
+        {"id": dataset_id, "n": name, "b": blurb, "o": origin, "k": kind, "p": db_path,
+         "m": _j(meta or {}), "ts": now_iso()},
+    )
+
+
+async def get_dataset(dataset_id: str) -> dict | None:
+    return _load(await db.fetchone("SELECT * FROM datasets WHERE id = :id", {"id": dataset_id}),
+                 "meta_json")
+
+
+async def list_datasets() -> list[dict]:
+    return [_load(r, "meta_json") for r in await db.fetchall(
+        "SELECT * FROM datasets ORDER BY created_at DESC")]
+
+
+async def delete_dataset(dataset_id: str) -> None:
+    await db.execute("DELETE FROM datasets WHERE id = :id", {"id": dataset_id})
 
 
 # ============================================================ egress queries

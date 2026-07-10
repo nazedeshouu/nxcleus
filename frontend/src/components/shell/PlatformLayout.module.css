@@ -1,9 +1,8 @@
 .app {
   min-height: 100dvh;
+  display: flex;
   background: var(--paper);
   color: var(--text);
-  display: flex;
-  flex-direction: column;
   transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
 }
 /* the sealed interior: a faint architectural field behind the instrument panels */
@@ -20,39 +19,99 @@
   background-position: center;
 }
 
-.bar {
+/* ---------- sidebar ---------- */
+.sidebar {
   position: sticky;
   top: 0;
-  z-index: 50;
-  height: var(--nav-h);
+  z-index: 40;
+  flex: none;
+  width: 236px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 14px;
+  background: color-mix(in srgb, var(--surface-sunk) 72%, transparent);
+  border-right: 1px solid var(--hairline-soft);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  transition: width var(--dur-2) var(--ease);
+}
+[data-collapsed="true"] .sidebar {
+  width: 68px;
+}
+.sidebarTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 clamp(16px, 3vw, 32px);
-  background: color-mix(in srgb, var(--paper) 78%, transparent);
-  backdrop-filter: saturate(160%) blur(16px);
-  -webkit-backdrop-filter: saturate(160%) blur(16px);
-  border-bottom: 1px solid var(--hairline-soft);
-  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.03);
-}
-.left {
-  display: flex;
-  align-items: center;
-  gap: clamp(16px, 3vw, 34px);
+  padding: 4px 8px 0;
 }
 .brand {
   display: inline-flex;
 }
-.nav {
+.railToggle {
+  display: inline-flex;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.railToggle:hover {
+  color: var(--ink);
+  background: var(--surface-sunk);
+}
+.railToggle svg {
+  width: 17px;
+  height: 17px;
+}
+[data-collapsed="true"] .railToggle {
+  display: none;
+}
+
+/* New process CTA */
+.cta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0.6em;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--paper);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  box-shadow: var(--glow-accent);
+  transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.cta:hover {
+  background: var(--accent-strong);
+  transform: translateY(-1px);
+}
+.cta svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+[data-collapsed="true"] .cta {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 .link {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
   font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
-  padding: 7px 12px;
+  padding: 9px 12px;
   border-radius: var(--r-sm);
   transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
 }
@@ -64,11 +123,88 @@
   color: var(--accent-strong);
   background: var(--accent-wash);
 }
+.linkIcon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+[data-collapsed="true"] .link {
+  justify-content: center;
+  padding: 9px 0;
+}
+[data-collapsed="true"] .ctaLabel,
+[data-collapsed="true"] .linkLabel {
+  display: none;
+}
+
+/* ---------- content column ---------- */
+.content {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: var(--nav-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 clamp(16px, 3vw, 32px);
+  background: color-mix(in srgb, var(--paper) 74%, transparent);
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.crumbSep {
+  width: 11px;
+  height: 11px;
+  color: var(--text-faint);
+  flex: none;
+}
+.crumbLink {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color var(--dur-1) var(--ease);
+}
+a.crumbLink:hover {
+  color: var(--accent-strong);
+}
+.crumbHere {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex: none;
 }
 .fallback,
 .sov,
@@ -114,7 +250,6 @@
   background: var(--sov-surface);
   border-color: color-mix(in srgb, var(--sov-seal) 40%, transparent);
 }
-
 .conn {
   color: var(--text-muted);
 }
@@ -141,13 +276,10 @@
 .main {
   flex: 1;
   min-height: 0;
-  position: relative;
-  z-index: 1;
-  /* crossing the wall: one gentle settle as you enter the interior */
-  animation: enterInside 0.7s var(--ease) both;
+  animation: enterInside 0.6s var(--ease) both;
 }
 @keyframes enterInside {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -177,20 +309,35 @@
   color: color-mix(in srgb, var(--sov-text) 82%, transparent);
 }
 
-/* Sovereign chrome is token-driven: [data-temp="inside"][data-sovereign="true"]
-   in tokens.css re-tints every semantic var toward the sealed teal. */
-
-@media (max-width: 720px) {
-  .fallback span,
-  .sov,
-  .conn {
+@media (max-width: 860px) {
+  .hideSm {
     display: none;
   }
-  .nav {
-    gap: 0;
+  .sov,
+  .fallback {
+    padding: 6px;
   }
+}
+/* narrow screens: force the sidebar to a slim icon rail so nav stays reachable */
+@media (max-width: 720px) {
+  .sidebar {
+    width: 60px;
+    gap: 12px;
+    padding: 14px 8px;
+  }
+  .railToggle,
+  .ctaLabel,
+  .linkLabel {
+    display: none;
+  }
+  .cta,
   .link {
-    padding: 7px 9px;
+    justify-content: center;
+    padding: 9px 0;
+  }
+  .sidebarTop {
+    justify-content: center;
+    padding: 4px 0 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -199,5 +346,8 @@
   }
   .main {
     animation: none;
+  }
+  .sidebar {
+    transition: none;
   }
 }

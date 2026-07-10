@@ -18,6 +18,8 @@ import json
 import re
 from dataclasses import dataclass
 
+import httpx
+
 from app.boundary.egress import http_client
 from app.config import REPO_ROOT
 
@@ -159,7 +161,11 @@ class _OpenAICompatClient:
             payload["response_format"] = rf
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         url = f"{self.base_url}/v1/chat/completions"
-        resp = await http_client.post(url, json=payload, headers=headers, timeout=timeout or 120.0)
+        # ponytail: read window = the seat's timeout_s (external reasoning seats like the planner
+        # carry 300s in seats.yaml; a bare float would also stretch connect to 300s). Keep connect
+        # short so a dead host fails fast instead of hanging the whole read window.
+        to = httpx.Timeout(timeout or 120.0, connect=10.0)
+        resp = await http_client.post(url, json=payload, headers=headers, timeout=to)
         resp.raise_for_status()
         data = resp.json()
         text = data["choices"][0]["message"]["content"]
@@ -191,10 +197,13 @@ class FireworksClient(_OpenAICompatClient):
 class AnthropicClient:
     backend = "anthropic"
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, base_url: str | None = None) -> None:
         from anthropic import AsyncAnthropic
 
-        self._client = AsyncAnthropic(api_key=api_key, http_client=http_client)
+        kw = {"api_key": api_key, "http_client": http_client}
+        if base_url:                       # BYOK anthropic-style endpoint (custom base_url)
+            kw["base_url"] = base_url
+        self._client = AsyncAnthropic(**kw)
 
     async def complete(
         self, messages: list[dict], *, model: str, schema: dict | None = None,

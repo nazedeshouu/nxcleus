@@ -68,7 +68,11 @@ downstream judge needs (both sides of a pair, the sum and the limit, the burst w
 like *_narrative, notes, memo, description): meaning must be read, not keyword-matched — a \
 paraphrase carries the same signal as the phrasing you would grep for, so SQL LIKE-patterns \
 are blind here by construction. Route each row/candidate through a judgment step whose \
-prompt_spec names the MEANING to look for.
+prompt_spec names the MEANING to look for. When a judgment step CONFIRMS candidates from a \
+sql/analysis step, its prompt_spec must confirm against the detection's STRUCTURAL definition \
+(the matched keys/sums/identifiers/window), NOT demand that the rows share identical free-text \
+or describe the same underlying story — a genuine duplicate or ring member is routinely re-filed \
+with fresh wording, so requiring matching prose silently drops true findings.
   - kind:"analysis" — multi-hop or statistical logic no single query expresses: chain/layer \
 tracing, circular-flow detection, concert-party accumulation, fuzzy matching, cross-record \
 consistency, distribution outliers. Emit {id, kind:"analysis", per_unit:false, purpose, \

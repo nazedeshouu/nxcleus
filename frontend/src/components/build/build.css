@@ -49,6 +49,37 @@
 .bv-blocked-banner p { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 3px; line-height: 1.5; word-break: break-word; }
 .bv-blocked-banner a { color: var(--accent-strong); font-weight: 500; white-space: nowrap; }
 
+/* completion cross-links — offered once a build finishes */
+.bv-complete-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  background: var(--ok-wash);
+  border: 1px solid color-mix(in srgb, var(--ok) 32%, transparent);
+  border-radius: var(--r-md);
+}
+.bv-complete-lbl { font-weight: 600; color: var(--ink); font-size: var(--fs-sm); }
+.bv-complete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--accent-strong);
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--surface);
+  transition: border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.bv-complete-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+.bv-complete-btn svg { width: 13px; height: 13px; }
+.bv-complete-ghost { margin-left: auto; color: var(--text-muted); border-color: var(--hairline); }
+.bv-complete-ghost:hover { color: var(--ink); }
+
 /* ---- top: title + stage rail + goal + meter ---- */
 .bv-top {
   margin-bottom: 16px;

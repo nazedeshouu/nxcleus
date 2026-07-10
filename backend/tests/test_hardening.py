@@ -240,3 +240,36 @@ async def test_build_agents_get_isolated_folders_and_consolidate():
     version = await dao.get_version(procs[0]["id"], 1)
     merged = {p.name for p in (Path(version["package_path"]) / "src").glob("*.py")}
     assert {"mod_ocr.py", "mod_risk.py"} <= merged, merged
+
+
+# ---------------------------------------------------------------- abort must stick (backend-w3)
+async def test_abort_survives_a_stage_finishing_late():
+    """The evidence: abort landed mid-stage, then stage 2 called advance('quoted') and clobbered it.
+    Reproduce the race directly — abort lands, THEN the stage tries to advance — and assert the
+    terminal status is not overwritten."""
+    from app.orchestrator.engine import StageContext, _persist_status
+    job_id = await dao.create_job(title="abort", request="do a thing")
+    await dao.update_job(job_id, status="certifying")          # engine is mid-stage
+    ctx = StageContext(await dao.get_job(job_id))
+    await dao.update_job(job_id, status="aborted")             # abort lands mid-stage
+    await ctx.advance("quoted")                                # stage finishes, tries to advance
+    assert (await dao.get_job(job_id))["status"] == "aborted"  # not clobbered
+
+    assert await _persist_status(job_id, "aborted") is True    # terminal->terminal write still allowed
+    assert await _persist_status(job_id, "building") is False  # forward transition suppressed
+    assert (await dao.get_job(job_id))["status"] == "aborted"
+
+
+async def test_abort_stops_the_engine_drive_loop():
+    """A job already aborted must make the driver return without advancing, and the task must end."""
+    job_id = await dao.create_job(title="abort2", request="do a thing")
+    await dao.update_job(job_id, status="aborted")
+    engine.submit_job(job_id)
+    for _ in range(200):
+        t = engine._tasks.get(job_id)
+        if t is not None and t.done():
+            break
+        await asyncio.sleep(0.02)
+    t = engine._tasks.get(job_id)
+    assert t is not None and t.done()
+    assert (await dao.get_job(job_id))["status"] == "aborted"

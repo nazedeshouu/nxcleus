@@ -1,0 +1,30 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.xs {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+}
+.builtin {
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+}
+.upload {
+  background: var(--zone-custom-wash);
+  color: var(--zone-custom);
+}
+.connector {
+  background: var(--zone-amd-wash);
+  color: var(--zone-amd);
+}
+.codebase {
+  background: var(--zone-external-wash);
+  color: var(--zone-external);
+}

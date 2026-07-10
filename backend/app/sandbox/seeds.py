@@ -12,9 +12,34 @@ from app.config import REPO_ROOT
 _SEEDS_DIR = REPO_ROOT / "infra" / "seeds" / "out"
 
 
+def _custom_db_path(dataset_id: str) -> Path | None:
+    """Sync read of a custom dataset's db_path from the platform-DB registry (BYOD). Read-only so
+    it's safe against the async writer; falls through (None) when the table/row/file is absent."""
+    from app.config import settings
+
+    dbfile = settings.sqlite_file
+    if not dbfile.exists():
+        return None
+    try:
+        con = sqlite3.connect(f"file:{dbfile}?mode=ro", uri=True)
+        try:
+            row = con.execute("SELECT db_path FROM datasets WHERE id = ?", (dataset_id,)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return None
+    if row and row[0]:
+        p = Path(row[0])
+        return p if p.exists() else None
+    return None
+
+
 def seed_db_path(company: str | None) -> Path | None:
     if not company or not company.replace("_", "").isalnum():
         return None
+    custom = _custom_db_path(company)      # BYOD dataset overrides the builtin seed path
+    if custom is not None:
+        return custom
     p = _SEEDS_DIR / f"{company}.db"
     return p if p.exists() else None
 
@@ -78,7 +103,8 @@ def load_units(company: str | None, *, source: str | None, noun: str, cap: int,
     units = []
     for i, row in enumerate(rows):
         d = dict(row)
-        ref = str(d.get("id") or d.get(f"{table.rstrip('s')}_id") or i)
+        # files corpus (kind='files') has no id column — the file path is the natural unit ref
+        ref = str(d.get("id") or d.get("path") or d.get(f"{table.rstrip('s')}_id") or i)
         units.append((f"{table}-{ref}", d))
     return units
 

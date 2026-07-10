@@ -4,10 +4,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Lightning, Copy, ArrowsClockwise, Lock, CaretDown, CaretRight,
   FileText, Receipt, CheckCircle, ShieldCheck, GitBranch, X, Printer,
-  DownloadSimple, ArrowSquareOut, MagnifyingGlass, Compass,
+  DownloadSimple, ArrowSquareOut, MagnifyingGlass, Compass, Play,
 } from "@phosphor-icons/react";
 import { api, type EconProcess, type NextStep, type PackageInvoice, type PackageManifest, type ProcessSummary, type ProcessVersion, type RunUnit, type VersionDiff } from "../api/client";
 import { useDemoToken } from "../api/useDemoToken";
+import { useBreadcrumb } from "../components/shell/breadcrumbs";
 import { usd } from "../lib/format";
 import styles from "./ProcessDetail.module.css";
 
@@ -464,6 +465,9 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
                 ))}
               </div>
             )}
+            <Link className={styles.inspectLink} to={`/replay/run/${run.run_id}`}>
+              <Play weight="fill" /> Replay
+            </Link>
             <Link className={styles.inspectLink} to={`/traces?scope=${encodeURIComponent(`run:${run.run_id}`)}`}>
               <MagnifyingGlass weight="bold" /> Inspect prompts
             </Link>
@@ -550,6 +554,8 @@ export function ProcessDetail() {
   const versions = procQ.data?.versions ?? [];
   const econ = econQ.data?.processes.find((p) => p.process_id === id);
   const runs = econ?.runs ?? [];
+
+  useBreadcrumb([{ label: "Operations", to: "/operations" }, { label: process?.name ?? "Process" }]);
 
   if (procQ.isLoading) return <div className={styles.wrap}><div className={styles.loading}>Loading process…</div></div>;
   if (!process) return <div className={styles.wrap}><Link to="/operations" className={styles.back}><ArrowLeft weight="bold" /> Operations</Link><div className={styles.loading}>Process not found.</div></div>;

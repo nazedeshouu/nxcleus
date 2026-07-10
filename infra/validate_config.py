@@ -23,7 +23,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 MI300X_GB = 192.0
 NODE_A_HEADROOM_MIN_GB = 60.0
 
-PROVIDER_ZONE = {"local": "LOCAL", "fireworks": "AMD_HOSTED", "anthropic": "EXTERNAL"}
+PROVIDER_ZONE = {"local": "LOCAL", "fireworks": "AMD_HOSTED", "anthropic": "EXTERNAL",
+                 "openai": "EXTERNAL", "openrouter": "EXTERNAL"}
 
 
 def load(name: str) -> dict:

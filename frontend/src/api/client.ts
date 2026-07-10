@@ -132,14 +132,29 @@ export interface Ticket {
   body?: unknown;
 }
 
-/* ---------- sandbox ---------- */
+/* ---------- sandbox / datasets ---------- */
+export type DatasetOrigin = "builtin" | "upload" | "connector" | "codebase";
+export type DatasetKind = "rows" | "files";
 export interface CompanySummary {
   id: string;
   name: string;
   prompts?: string[]; // older shape
   suggested_prompts?: string[]; // hardening-wave shape
   industry?: string;
+  blurb?: string;
+  origin?: DatasetOrigin; // custom datasets carry provenance; builtins are "builtin"
+  kind?: DatasetKind; // "rows" (tabular) | "files" (codebase / documents)
   tables?: Array<{ table: string; row_count: number }>;
+}
+/** Result of registering a custom data source (upload / connector / codebase). */
+export interface Dataset {
+  id: string;
+  name: string;
+  blurb?: string;
+  origin: DatasetOrigin;
+  kind: DatasetKind;
+  tables: Array<{ name: string; rows: number }>;
+  meta?: Record<string, unknown>; // {snapshot_at,rows_copied,capped} | {files,code_map}
 }
 /** Tolerant accessor: the prompts field moved names across backend waves. */
 export const companyPrompts = (c: CompanySummary): string[] => c.suggested_prompts ?? c.prompts ?? [];
@@ -161,6 +176,7 @@ export interface ModelInfo {
   evidence?: string;
   serving?: Record<string, unknown>;
 }
+export type ApiStyle = "openai" | "anthropic";
 export interface ConnectionInfo {
   id: string;
   name: string;
@@ -168,7 +184,14 @@ export interface ConnectionInfo {
   zone: string;
   data_class_ceiling?: string;
   counts_as_local?: boolean;
+  api_style?: ApiStyle; // wire dialect — how the router frames requests to this endpoint
   api_key: string; // masked by the backend
+}
+export interface ConnectionTest {
+  ok: boolean;
+  latency_ms?: number;
+  model?: string;
+  error?: string;
 }
 
 /* ---------- egress ---------- */
@@ -241,7 +264,9 @@ export interface ApiError {
 }
 
 async function req<T>(path: string, init?: RequestInit & { demo?: boolean }): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json", ...(init?.headers as Record<string, string>) };
+  // FormData must set its own multipart boundary — never force a JSON content-type on it.
+  const isForm = init?.body instanceof FormData;
+  const headers: Record<string, string> = { ...(isForm ? {} : { "Content-Type": "application/json" }), ...(init?.headers as Record<string, string>) };
   if (init?.demo) {
     const t = getDemoToken();
     if (t) headers["X-Demo-Token"] = t;
@@ -293,7 +318,7 @@ export const api = {
   getJobFull: (id: string) => req<Record<string, unknown>>(`/jobs/${id}`),
   answerJob: (id: string, answers: Array<{ id: string; answer: string }>) =>
     req<unknown>(`/jobs/${id}/answers`, { method: "POST", body: JSON.stringify({ answers }), demo: true }),
-  createJob: (body: { title?: string; request: string; policy_text?: string; sovereign?: boolean }) =>
+  createJob: (body: { title?: string; request: string; policy_text?: string; sovereign?: boolean; company?: string }) =>
     req<{ job: JobSummary }>("/jobs", { method: "POST", body: JSON.stringify(body), demo: true }),
   postMessage: (id: string, content: string) =>
     req<unknown>(`/jobs/${id}/messages`, { method: "POST", body: JSON.stringify({ content }), demo: true }),
@@ -348,9 +373,10 @@ export const api = {
   /* models + connections + seats */
   listModels: () => req<{ models: ModelInfo[] }>("/models"),
   listConnections: () => req<{ connections: ConnectionInfo[] }>("/connections"),
-  addConnection: (body: { name: string; base_url: string; api_key: string; data_class_ceiling?: string; counts_as_local?: boolean }) =>
+  addConnection: (body: { name: string; base_url: string; api_key: string; data_class_ceiling?: string; counts_as_local?: boolean; api_style?: ApiStyle }) =>
     req<{ connection: ConnectionInfo }>("/connections", { method: "POST", body: JSON.stringify(body), demo: true }),
   removeConnection: (id: string) => req<unknown>(`/connections/${id}`, { method: "DELETE", demo: true }),
+  testConnection: (id: string) => req<ConnectionTest>(`/connections/${id}/test`, { method: "POST", demo: true }),
   addConnectionModel: (id: string, body: { provider_model_id: string; display_name: string; flags: string[]; context_len?: number }) =>
     req<unknown>(`/connections/${id}/models`, { method: "POST", body: JSON.stringify(body), demo: true }),
   bindSeat: (seat: string, body: { model_key: string; scope?: string }) =>
@@ -365,6 +391,20 @@ export const api = {
   sandboxRun: (body: { company: string; prompt: string }) =>
     req<{ job_id: string; queue_position?: number }>("/sandbox/runs", { method: "POST", body: JSON.stringify(body) }),
   sandboxQueue: () => req<{ pending: Array<{ job_id: string; company?: string; position?: number }>; max_concurrent: number }>("/sandbox/queue"),
+
+  /* custom data sources (F-datasets): upload files, connect a live DB, or point at a codebase */
+  addDataset: (files: File[], meta?: { name?: string; blurb?: string }) => {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    if (meta?.name) fd.append("name", meta.name);
+    if (meta?.blurb) fd.append("blurb", meta.blurb);
+    return req<Dataset>("/datasets", { method: "POST", body: fd, demo: true });
+  },
+  connectDataset: (body: { url: string; name?: string }) =>
+    req<Dataset>("/datasets/connect", { method: "POST", body: JSON.stringify(body), demo: true }),
+  codebaseDataset: (body: { path?: string; git_url?: string; name?: string }) =>
+    req<Dataset>("/datasets/codebase", { method: "POST", body: JSON.stringify(body), demo: true }),
+  deleteDataset: (id: string) => req<unknown>(`/datasets/${id}`, { method: "DELETE", demo: true }),
 
   /* replay */
   replay: (scope: string) => req<{ scope: string; events: unknown[] }>(`/replay/${scope}`),

@@ -33,6 +33,18 @@ backends:
       out_per_mtok: 25.00
     default: {in_per_mtok: 10.00, out_per_mtok: 50.00}
 
+  # EXTERNAL — planner flagship + fallback via OpenRouter (2026-07-10/11). SANITIZED egress only.
+  openrouter:
+    "openai/gpt-5.6-sol":           # models.yaml key: openai/gpt-5.6-sol (wire id: openai/gpt-5.6-sol)
+      provider_id: "openai/gpt-5.6-sol"
+      in_per_mtok: 5.00             # catalogue-verified 2026-07-10 (OpenRouter)
+      out_per_mtok: 30.00           # catalogue-verified 2026-07-10 (OpenRouter)
+    "openai/gpt-5.5":               # models.yaml key: openai/gpt-5.5 (wire id: openai/gpt-5.5)
+      provider_id: "openai/gpt-5.5"
+      in_per_mtok: 5.00             # catalogue-verified 2026-07-11 (OpenRouter)
+      out_per_mtok: 30.00           # catalogue-verified 2026-07-11 (OpenRouter)
+    default: {in_per_mtok: 5.00, out_per_mtok: 30.00}
+
   # AMD_HOSTED — availability fallback only (D7), badged. LIVE-VERIFIED ids (fw catalog 2026-07-09).
   fireworks:
     glm-52-hosted:                # wire id: accounts/fireworks/models/glm-5p2

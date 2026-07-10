@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { WarningOctagon, Warning } from "@phosphor-icons/react";
+import { WarningOctagon, Warning, Play, ArrowRight, MagnifyingGlass } from "@phosphor-icons/react";
 
 import "../components/build/build.css";
+import { useBreadcrumb } from "../components/shell/breadcrumbs";
 import { useJobStream } from "../store/useJobStream";
 import { sovereignViolationEvent } from "../fixtures/kycJob";
 import type { JobView } from "../store/jobStore";
@@ -21,7 +22,7 @@ import { EgressMonitor } from "../components/build/EgressMonitor";
 
 /** The cockpit chrome + panel grid, driven purely by a folded view. Shared by
  *  the live BuildView and the replay player — same fold, same panels. */
-export function CockpitFrame({ view, top, jobId }: { view: JobView; top: ReactNode; jobId?: string }) {
+export function CockpitFrame({ view, top, jobId, completion }: { view: JobView; top: ReactNode; jobId?: string; completion?: ReactNode }) {
   const blocked = view.status === "blocked" || view.status === "aborted";
   return (
     <div className="bv-root">
@@ -42,11 +43,12 @@ export function CockpitFrame({ view, top, jobId }: { view: JobView; top: ReactNo
             <b>Run {view.status} at stage {view.stage}.</b>
             <p>{view.blockedReason ?? "The engine halted this run."}</p>
           </div>
-          <Link to="/gallery">Watch a completed run →</Link>
+          <Link to="/build">Build another process →</Link>
         </div>
       )}
 
       {top}
+      {completion}
 
       <div className="bv-grid">
         <div className="bv-col bv-col-left bv-col-side">
@@ -74,9 +76,28 @@ export function CockpitFrame({ view, top, jobId }: { view: JobView; top: ReactNo
   );
 }
 
+function CompletionBar({ jobId, processId }: { jobId: string; processId?: string }) {
+  return (
+    <div className="bv-complete-bar" role="status">
+      <span className="bv-complete-lbl">Build complete.</span>
+      <Link to={`/replay/job/${jobId}`} className="bv-complete-btn">
+        <Play weight="fill" /> Replay this build
+      </Link>
+      <Link to={processId ? `/operations/${processId}` : "/operations"} className="bv-complete-btn">
+        <ArrowRight weight="bold" /> View process
+      </Link>
+      <Link to={`/traces?scope=${encodeURIComponent(`job:${jobId}`)}`} className="bv-complete-btn bv-complete-ghost">
+        <MagnifyingGlass weight="bold" /> Inspect prompts
+      </Link>
+    </div>
+  );
+}
+
 function Cockpit({ jobId }: { jobId: string }) {
   const { view, conn, inject } = useJobStream(jobId, { speed: 16 });
   const simulateBreach = () => inject(sovereignViolationEvent(view.lastSeq + 1000));
+  const done = view.status === "done" || view.status === "delivered";
+  useBreadcrumb([{ label: "Build", to: "/build" }, { label: view.title ?? "Mission control" }]);
 
   const top = (
     <TopStrip
@@ -86,7 +107,8 @@ function Cockpit({ jobId }: { jobId: string }) {
       onRestart={() => location.reload()}
     />
   );
-  return <CockpitFrame view={view} top={top} jobId={jobId} />;
+  const completion = done ? <CompletionBar jobId={jobId} processId={view.delivery?.process_id} /> : undefined;
+  return <CockpitFrame view={view} top={top} jobId={jobId} completion={completion} />;
 }
 
 export function BuildView() {

@@ -36,15 +36,20 @@ seats:
       sovereign: default
       fallback:  {backend: fireworks, model: glm-52-hosted, demo_exception: true}  # ⚠️ badge
 
-  # ── Stage 1 — the ONLY designed-in non-local seat (D7) ─────────────────────────
+  # ── Stage 1 — the external frontier seat (D7). Flagship via OpenRouter (openai/gpt-5.6-sol) ─────
+  # The `fallback:` list is an ORDERED chain: on a missing key (readiness) OR a call-time dispatch
+  # failure (404/credit/timeout), the router walks openrouter -> openai -> anthropic, then a
+  # hosted-AMD last resort (auto), then mock. Every non-primary hop is badged fallback-serving.
   planner:
     data_class_max: SANITIZED          # hard ceiling — the one seat that can never see RAW
     temperature: 0.4
     timeout_s: 300
     bindings:
-      default:   {backend: anthropic, model: claude-fable-5}
-      sovereign: {backend: local, node: B, model: glm-46}          # zero non-local calls
-      fallback:  {backend: fireworks, model: glm-52-hosted, demo_exception: true}  # ⚠️ frontier-class
+      default:   {backend: openrouter, model: "openai/gpt-5.6-sol"}  # flagship (env OPENROUTER_API_KEY)
+      sovereign: {backend: local, node: B, model: glm-46}            # zero non-local calls
+      fallback:
+        - {backend: openrouter, model: "openai/gpt-5.5"}             # same key; call-time hop if 5.6-sol fails
+        - {backend: anthropic, model: claude-fable-5}                # prior flagship; else mock (auto)
 
   # ── Stage 2 / refine — plan completion, rehydration, certification, goal ───────
   certifier:

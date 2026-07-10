@@ -18,9 +18,15 @@ ZONE = {
     "local": "LOCAL",
     "fireworks": "AMD_HOSTED",
     "anthropic": "EXTERNAL",
+    "openai": "EXTERNAL",          # OpenAI-direct planner fallback (gpt-5.5) — external, like anthropic
+    "openrouter": "EXTERNAL",      # flagship planner (openai/gpt-5.6-sol) — external, like anthropic
     "custom": "CUSTOM",
     "mock": "LOCAL",
 }
+
+# hosted-AMD last resort for the auto-mode call-time chain (Fix 2): the always-on hosted brain,
+# served on the Fireworks account. SANITIZED-safe; RAW only under the badged demo exception.
+_LAST_RESORT_MODEL = "glm-52-hosted"
 
 
 @dataclass
@@ -42,14 +48,27 @@ class SeatDef:
     timeout_s: float = 120.0
     default: Binding | None = None
     sovereign: Binding | None = None
-    fallback: Binding | None = None
+    fallback: Binding | None = None            # first declared fallback (back-compat; == fallbacks[0])
+    fallbacks: list[Binding] = field(default_factory=list)   # ordered fallback chain (>=1 hop allowed)
     pool: list[Binding] = field(default_factory=list)
     self_consistency: int = 1
 
-    def binding_for(self, *, sovereign: bool) -> Binding:
+    def _primary(self, *, sovereign: bool) -> Binding | None:
         if sovereign and self.sovereign is not None:
             return self.sovereign
-        return self.default or (self.pool[0] if self.pool else self.fallback)  # type: ignore
+        return self.default or (self.pool[0] if self.pool else None)
+
+    def binding_for(self, *, sovereign: bool) -> Binding:
+        return self._primary(sovereign=sovereign) or self.fallback  # type: ignore
+
+    def candidates(self, *, sovereign: bool) -> list[Binding]:
+        """Ordered dispatch preference: primary then each declared fallback. Sovereign is local-only
+        (zero non-local calls, D7) so its chain is just the sovereign binding — no external/hosted fallback."""
+        if sovereign and self.sovereign is not None:
+            return [self.sovereign]
+        primary = self._primary(sovereign=sovereign)
+        fbs = self.fallbacks or ([self.fallback] if self.fallback else [])
+        return ([primary] if primary else []) + list(fbs)
 
 
 @dataclass
@@ -68,6 +87,21 @@ class Resolved:
 
 # per-seat timeouts (02 §2.2)
 _TIMEOUTS = {"planner": 300.0, "coder": 240.0}
+
+
+def _backend_ready(binding: Binding, local_ready: bool) -> bool:
+    """A binding is dispatchable now: local node up, or the provider key is present (02 §2)."""
+    if binding.backend == "local":
+        return local_ready
+    if binding.backend == "anthropic":
+        return bool(settings.anthropic_api_key)
+    if binding.backend == "openai":
+        return bool(settings.openai_api_key)
+    if binding.backend == "openrouter":
+        return bool(settings.openrouter_api_key)
+    if binding.backend == "fireworks":
+        return bool(settings.fireworks_api_key)
+    return binding.backend == "custom"
 
 
 def _builtin_seats() -> dict[str, SeatDef]:
@@ -138,13 +172,18 @@ def _seats_from_yaml(data: dict) -> dict[str, SeatDef]:
             pool = _pool_from_specs(sd.get("pool"))
             default = _binding_from_yaml(raw_default)
         sovereign = _binding_from_yaml(bindings.get("sovereign")) or default or (pool[0] if pool else None)
-        fallback = _binding_from_yaml(bindings.get("fallback"))
+        # `fallback:` is a single dict (one hop) OR a list of dicts (an ordered chain, seats.yaml
+        # planner style). `.fallback` stays the first hop for back-compat; `.fallbacks` holds the chain.
+        raw_fb = bindings.get("fallback")
+        fallbacks = _pool_from_specs(raw_fb) if isinstance(raw_fb, list) else \
+            ([fb] if (fb := _binding_from_yaml(raw_fb)) else [])
         out[name] = SeatDef(
             name=name,
             data_class_max=sd.get("data_class_max", "SANITIZED"),
             temperature=sd.get("temperature", 0.3),
             timeout_s=sd.get("timeout_s", _TIMEOUTS.get(name, 120.0)),
-            default=default, sovereign=sovereign, fallback=fallback, pool=pool,
+            default=default, sovereign=sovereign,
+            fallback=(fallbacks[0] if fallbacks else None), fallbacks=fallbacks, pool=pool,
             self_consistency=sd.get("self_consistency", 1),
         )
     return out
@@ -185,6 +224,13 @@ class Registry:
             raise KeyError(f"unknown seat {name!r}")
         return self.seats[name]
 
+    def _mk(self, sd: SeatDef, b: Binding, *, use_mock: bool, badge: str | None) -> Resolved:
+        return Resolved(
+            seat=sd.name, backend=b.backend, zone=b.zone, model=b.model, node=b.node,
+            data_class_max=sd.data_class_max, temperature=sd.temperature, timeout_s=sd.timeout_s,
+            use_mock=use_mock, badge=badge,
+        )
+
     def resolve(
         self,
         seat: str,
@@ -193,39 +239,69 @@ class Registry:
         healthy_local_nodes: set[str] | None = None,
         override: Binding | None = None,
     ) -> Resolved:
+        """Pick ONE binding to dispatch: mock/live pass the primary through; auto walks the seat's
+        candidate chain (primary -> declared fallbacks) and returns the first backend that is ready
+        now (a missing key or a downed node skips to the next hop), badging any non-primary as
+        `fallback-serving`; nothing ready -> mock. Call-time (dispatch-failure) fallback is a
+        separate concern — see `resolve_chain` + the router's dispatch loop (Fix 2)."""
         sd = self.seat(seat)
-        healthy_local_nodes = healthy_local_nodes or set()
+        healthy = healthy_local_nodes or set()
 
-        binding = override or sd.binding_for(sovereign=sovereign)
-        badge: str | None = None
+        def ready(b: Binding) -> bool:
+            return _backend_ready(b, b.backend == "local" and b.node in healthy)
 
-        # backend health: a local binding is real only if its node is registered+ready.
-        local_ready = binding.backend == "local" and binding.node in healthy_local_nodes
+        if override is not None:
+            if settings.model_mode == "mock":
+                return self._mk(sd, override, use_mock=True, badge="mock")
+            if settings.model_mode == "live":
+                return self._mk(sd, override, use_mock=False, badge=None)
+            rdy = ready(override)
+            return self._mk(sd, override, use_mock=not rdy, badge=None if rdy else "mock")
 
+        chain = sd.candidates(sovereign=sovereign)
+        primary = chain[0]
         if settings.model_mode == "mock":
-            use_mock = True
-            badge = "mock"
-        elif settings.model_mode == "live":
-            use_mock = False
-        else:  # auto
-            if binding.backend == "local" and not local_ready and sd.fallback is not None:
-                binding = sd.fallback           # fleet down -> fallback (badged)
-                badge = "fallback-serving"
-            real_ok = (
-                (binding.backend == "anthropic" and bool(settings.anthropic_api_key))
-                or (binding.backend == "fireworks" and bool(settings.fireworks_api_key))
-                or (binding.backend == "local" and local_ready)
-                or binding.backend == "custom"
-            )
-            use_mock = not real_ok
-            if use_mock and badge is None:
-                badge = "mock"
+            return self._mk(sd, primary, use_mock=True, badge="mock")
+        if settings.model_mode == "live":
+            return self._mk(sd, primary, use_mock=False, badge=None)
+        for i, b in enumerate(chain):        # auto: first ready hop wins
+            if ready(b):
+                return self._mk(sd, b, use_mock=False, badge=None if i == 0 else "fallback-serving")
+        return self._mk(sd, primary, use_mock=True, badge="mock")
 
-        return Resolved(
-            seat=seat, backend=binding.backend, zone=binding.zone, model=binding.model,
-            node=binding.node, data_class_max=sd.data_class_max, temperature=sd.temperature,
-            timeout_s=sd.timeout_s, use_mock=use_mock, badge=badge,
-        )
+    def resolve_chain(
+        self,
+        seat: str,
+        *,
+        sovereign: bool,
+        healthy_local_nodes: set[str] | None = None,
+        override: Binding | None = None,
+    ) -> list[Resolved]:
+        """Ordered dispatch candidates for auto-mode call-time fallback (Fix 2): each ready hop of
+        the seat's chain, then a hosted-AMD last resort (never in sovereign), then mock as terminal.
+        The router tries them in order, advancing on an availability failure. Non-auto/override
+        collapse to a single Resolved (the resolve() result), so behavior there is unchanged."""
+        healthy = healthy_local_nodes or set()
+        if override is not None or settings.model_mode != "auto":
+            return [self.resolve(seat, sovereign=sovereign, healthy_local_nodes=healthy, override=override)]
+
+        sd = self.seat(seat)
+
+        def ready(b: Binding) -> bool:
+            return _backend_ready(b, b.backend == "local" and b.node in healthy)
+
+        out: list[Resolved] = []
+        seen = set()
+        for i, b in enumerate(sd.candidates(sovereign=sovereign)):
+            if ready(b):
+                out.append(self._mk(sd, b, use_mock=False, badge=None if i == 0 else "fallback-serving"))
+                seen.add(b.backend)
+        if not sovereign and "fireworks" not in seen and settings.fireworks_api_key:
+            lr = Binding("fireworks", _LAST_RESORT_MODEL)
+            out.append(self._mk(sd, lr, use_mock=False, badge="fallback-serving"))
+        # terminal mock (deterministic; keyless dev/CI and the last-resort of last resorts)
+        out.append(self._mk(sd, sd.candidates(sovereign=sovereign)[0], use_mock=True, badge="mock"))
+        return out
 
     def provider_id(self, model_key: str) -> str:
         """Resolve a models.yaml KEY to the id sent on the wire (its `hf_id` / provider model id).

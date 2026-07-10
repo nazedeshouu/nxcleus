@@ -24,8 +24,11 @@ async def create_job(body: dict) -> dict:
     if not request:
         raise _err(400, "request is required")
     policy = {"sources": [{"kind": "text", "ref": body["policy_text"]}]} if body.get("policy_text") else None
+    # optional corpus binding: any dataset id (builtin or BYOD) -> spec["company"], so a customer
+    # job fans out over a real corpus exactly like a sandbox run (hardening 2026-07-10)
     job_id = await dao.create_job(title=body.get("title", "Untitled job"), request=request,
-                                  sovereign=bool(body.get("sovereign")), policy=policy)
+                                  sovereign=bool(body.get("sovereign")), policy=policy,
+                                  company=body.get("company") or None)
     await emit(f"job:{job_id}", E.JOB_CREATED, {"title": body.get("title", ""),
                                                 "sovereign": bool(body.get("sovereign"))})
     engine.submit_job(job_id)

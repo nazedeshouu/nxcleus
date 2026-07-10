@@ -23,6 +23,8 @@ dependencies = [
     "pillow>=12.3.0",
     "pypdf>=6.14.2",
     "pytesseract>=0.3.13",
+    "psycopg[binary]>=3.2",
+    "pymysql>=1.1",
 ]
 
 [project.optional-dependencies]

@@ -38,21 +38,20 @@ def _flagged_units(units: list[dict]) -> list[dict]:
 
 def generate(run_id: str, *, process_name: str, goal: str, corpus: str | None, stats: dict,
              cost: dict, units: list[dict], deliverable: dict | None) -> list[dict]:
-    """Write the run's artifacts; returns [{kind, url}] for the API/SSE surface."""
-    prefs = {**DEFAULT_DELIVERABLE, **(deliverable or {})}
-    formats = prefs.get("formats") or DEFAULT_DELIVERABLE["formats"]
-    d = run_dir(run_id)
-    artifacts: list[dict] = []
+    """Write the run's artifacts; returns [{kind, url}] for the API/SSE surface.
 
-    if "csv" in formats:
-        _write_csv(d / "findings.csv", units)
-        artifacts.append({"kind": "csv", "url": f"/api/runs/{run_id}/export.csv"})
-    if "report" in formats or "pdf" in formats:   # "pdf" is report.html via browser print
-        (d / "report.html").write_text(_report_html(
-            run_id, process_name=process_name, goal=goal, corpus=corpus, stats=stats, cost=cost,
-            units=units, granularity=prefs.get("granularity", "per_entity")), encoding="utf-8")
-        artifacts.append({"kind": "report", "url": f"/api/runs/{run_id}/report"})
-    return artifacts
+    ALWAYS writes both endpoint-backed artifacts (findings.csv + report.html): /export.csv and
+    /report are fixed API surface, so a planner deliverable spec that names only one format — or
+    an unexpected casing — must never 404 the other download (never-404, T2). `granularity` still
+    shapes the report content; `formats` is advisory for future export kinds."""
+    prefs = {**DEFAULT_DELIVERABLE, **(deliverable or {})}
+    d = run_dir(run_id)
+    _write_csv(d / "findings.csv", units)
+    (d / "report.html").write_text(_report_html(
+        run_id, process_name=process_name, goal=goal, corpus=corpus, stats=stats, cost=cost,
+        units=units, granularity=prefs.get("granularity", "per_entity")), encoding="utf-8")
+    return [{"kind": "csv", "url": f"/api/runs/{run_id}/export.csv"},
+            {"kind": "report", "url": f"/api/runs/{run_id}/report"}]
 
 
 def existing_artifacts(run_id: str) -> list[dict]:
@@ -128,6 +127,29 @@ _CSS = """
 """
 
 
+def _no_findings_note(stats: dict, goal: str) -> str:
+    """A zero-findings run still tells the reader what was done: candidates examined, how many
+    cleared, and what was checked — so a clean result reads as a completed audit, not a blank page."""
+    examined = stats.get("sql_rows") or stats.get("units", 0)
+    cleared = stats.get("ok", stats.get("units", 0))
+    checked = html.escape(goal) if goal else "the requested detection"
+    return (f'<p class="note"><strong>No findings flagged.</strong> {examined} candidate(s) '
+            f'examined, {cleared} cleared. Checked: {checked}.</p>')
+
+
+def write_stub(run_id: str, *, process_name: str, goal: str, corpus: str | None, stats: dict,
+               cost: dict) -> list[dict]:
+    """Last-resort artifacts when the full generator raises: a headers-only findings.csv and a
+    minimal report.html, so GET /report and /export.csv never 404 on a completed run."""
+    d = run_dir(run_id)
+    _write_csv(d / "findings.csv", [])          # header row only
+    (d / "report.html").write_text(_report_html(
+        run_id, process_name=process_name, goal=goal, corpus=corpus, stats=stats, cost=cost,
+        units=[], granularity="per_entity"), encoding="utf-8")
+    return [{"kind": "csv", "url": f"/api/runs/{run_id}/export.csv"},
+            {"kind": "report", "url": f"/api/runs/{run_id}/report"}]
+
+
 def _dl_table(row: dict) -> str:
     cells = []
     flat: dict = {}
@@ -192,7 +214,7 @@ def _report_html(run_id: str, *, process_name: str, goal: str, corpus: str | Non
   </div>
   <p class="note">Corpus: {html.escape(corpus or 'n/a')} · Run {html.escape(run_id)} ·
      Generated {now_iso()} · All inference executed inside the boundary.</p>
-  {''.join(cases) if cases else '<p class="note">No flagged entities in this run.</p>'
+  {''.join(cases) if cases else _no_findings_note(stats, goal)
     if granularity != 'summary' else ''}
   <footer>Nxcleus — adaptive sovereign process platform. This report was generated from run
   {html.escape(run_id)}; print this page for a PDF case file.</footer>

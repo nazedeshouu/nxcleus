@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS sandbox_sessions (
 CREATE TABLE IF NOT EXISTS api_connections (      -- BYOK custom endpoints (D13, 02 §8)
   id TEXT PRIMARY KEY, name TEXT, base_url TEXT,
   api_key_ref TEXT,                               -- pointer to encrypted secret; NEVER the key
+  api_style TEXT NOT NULL DEFAULT 'openai',       -- 'openai' (chat-completions) | 'anthropic'
   zone TEXT NOT NULL DEFAULT 'CUSTOM',
   data_class_ceiling TEXT NOT NULL DEFAULT 'SANITIZED',  -- RAW only via boundary attestation
   counts_as_local INTEGER NOT NULL DEFAULT 0,     -- attested on-prem endpoint (sovereign-eligible)
@@ -168,6 +169,19 @@ CREATE TABLE IF NOT EXISTS seat_overrides (       -- user-configurable seat bind
 -- encrypted secret store for BYOK keys — api_key_ref points here; value is Fernet ciphertext
 CREATE TABLE IF NOT EXISTS secrets (
   ref TEXT PRIMARY KEY, ciphertext TEXT NOT NULL, created_at TEXT
+);
+
+-- bring-your-own-data registry (hardening 2026-07-10). Builtins stay in api/sandbox COMPANIES;
+-- this table holds CUSTOM datasets (uploads/connectors/codebases). seeds.seed_db_path resolves
+-- db_path from here so every sandbox browse endpoint works over custom corpora too.
+CREATE TABLE IF NOT EXISTS datasets (
+  id TEXT PRIMARY KEY,                             -- slug (alnum/underscore)
+  name TEXT, blurb TEXT,
+  origin TEXT NOT NULL,                            -- upload | connector | codebase (builtin = COMPANIES)
+  kind TEXT NOT NULL,                              -- rows | files
+  db_path TEXT,                                    -- local read-only sqlite backing the dataset
+  meta_json TEXT,                                  -- {tables, code_map, snapshot_at, rows_copied, ...}
+  created_at TEXT
 );
 
 -- job/run-scoped scratch backing StageContext.checkpoint() for resumability (07 §1, §4).

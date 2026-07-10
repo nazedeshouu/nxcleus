@@ -27,6 +27,8 @@ _STAGE_MODULES: dict[str, tuple[str, str]] = {
 
 # statuses the driver stops on (parked or terminal)
 _STOP = {"quoted", "blocked", "done", "aborted", "awaiting_input"}
+# terminal statuses a forward transition must never overwrite (an abort landing mid-stage must stick)
+_TERMINAL = {"aborted", "done", "blocked"}
 
 # whole-stage watchdog seconds (07 §3)
 _WATCHDOG = {
@@ -38,6 +40,20 @@ _MAX_STAGE_ATTEMPTS = 2
 # stage number for the UI (03 §1)
 _STAGE_NUM = {"intake": 0, "awaiting_input": 0, "planning": 1, "certifying": 2, "quoted": 3,
               "building": 4, "consolidating": 5, "qa": 6, "delivering": 7, "done": 7}
+
+
+async def _persist_status(job_id: str, status: str) -> bool:
+    """Write jobs.status + emit job.stage_changed together (07 §2 — state can't diverge). A forward
+    transition first RE-READS the row: if a terminal status (e.g. an abort) landed concurrently mid-
+    stage, the write is suppressed so the abort sticks instead of being clobbered. Returns False when
+    suppressed."""
+    if status not in _TERMINAL:
+        cur = await dao.get_job(job_id)
+        if cur and cur["status"] in _TERMINAL:
+            return False
+    await dao.update_job(job_id, status=status, current_stage=_STAGE_NUM.get(status, 0))
+    await emit(f"job:{job_id}", E.JOB_STAGE_CHANGED, {"status": status, "stage": _STAGE_NUM.get(status, 0)})
+    return True
 
 
 class StageContext:
@@ -70,10 +86,9 @@ class StageContext:
         return await dao.get_checkpoint(self.scope, key)
 
     async def advance(self, status: str) -> None:
-        """Write jobs.status + emit job.stage_changed together (07 §2 — state can't diverge)."""
-        await dao.update_job(self.job_id, status=status, current_stage=_STAGE_NUM.get(status, 0))
-        await emit(self.scope, E.JOB_STAGE_CHANGED,
-                   {"status": status, "stage": _STAGE_NUM.get(status, 0)})
+        """Write jobs.status + emit job.stage_changed together (07 §2 — state can't diverge). Guarded:
+        a stage that finishes just after an abort landed must not overwrite the terminal status."""
+        await _persist_status(self.job_id, status)
 
     async def refresh(self) -> dict:
         self.job = await dao.get_job(self.job_id) or self.job
@@ -115,10 +130,9 @@ class Engine:
 
     # -------------------------------------------------------------- transitions
     async def set_stage(self, job_id: str, status: str) -> None:
-        """Write jobs.status + emit job.stage_changed together (07 §2 — state can't diverge)."""
-        await dao.update_job(job_id, status=status, current_stage=_STAGE_NUM.get(status, 0))
-        await emit(f"job:{job_id}", E.JOB_STAGE_CHANGED,
-                   {"status": status, "stage": _STAGE_NUM.get(status, 0)})
+        """Write jobs.status + emit job.stage_changed together (07 §2 — state can't diverge). Guarded
+        so a forward transition (e.g. quote-approve -> building) can't un-stick a terminal abort."""
+        await _persist_status(job_id, status)
 
     # -------------------------------------------------------------- driver
     async def _drive_job(self, job_id: str) -> None:

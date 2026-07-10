@@ -32,6 +32,8 @@ from app.seats.base import Completion, Message
 # representative hosts per backend intent (used for the egress ledger, incl. mock dispatches)
 _HOST = {
     "anthropic": "api.anthropic.com",
+    "openai": "api.openai.com",
+    "openrouter": "openrouter.ai",
     "fireworks": "api.fireworks.ai",
     "local": "fleet.local",
     "custom": "custom.endpoint",
@@ -84,7 +86,7 @@ async def _resolve_override(seat: str, scope: str) -> tuple[Binding | None, dict
     model_key = row["model_key"]
     cm = await db.fetchone(
         "SELECT cm.provider_model_id AS pmid, c.base_url, c.zone, c.data_class_ceiling AS ceiling, "
-        "c.counts_as_local AS col, c.api_key_ref AS keyref FROM custom_models cm "
+        "c.counts_as_local AS col, c.api_key_ref AS keyref, c.api_style AS api_style FROM custom_models cm "
         "JOIN api_connections c ON c.id = cm.connection_id WHERE cm.id = :id",
         {"id": model_key},
     )
@@ -97,7 +99,8 @@ async def _resolve_override(seat: str, scope: str) -> tuple[Binding | None, dict
         return None, None
     binding = Binding(backend="custom", model=cm["pmid"], node=None)
     attrs = {"base_url": cm["base_url"], "zone": cm["zone"], "ceiling": cm["ceiling"],
-             "counts_as_local": bool(cm["col"]), "keyref": cm["keyref"]}
+             "counts_as_local": bool(cm["col"]), "keyref": cm["keyref"],
+             "api_style": cm["api_style"] or "openai"}
     return binding, attrs
 
 
@@ -158,12 +161,45 @@ class Router:
         if conn_attrs:
             r.zone = conn_attrs["zone"]
 
-        # --- seat data-class ceiling (02 §1 — e.g. planner can never see RAW, enforced) ----------
+        # --- seat data-class ceiling (02 §1 — e.g. planner can never see RAW; seat-level, once) ----
         if data_class == "RAW" and r.data_class_max == "SANITIZED":
             await egress.record(scope=scope, host=_HOST.get(r.backend, r.zone.lower()), zone=r.zone,
                                 seat=seat, bytes_out=0, bytes_in=0)
             raise BoundaryViolation(f"seat {seat!r} has a SANITIZED ceiling; RAW data refused")
 
+        msgs = _as_dicts(messages)
+        opts = dict(schema=schema, temperature=temperature, max_tokens=max_tokens, stream=stream,
+                    scope=scope, data_class=data_class, sovereign=sovereign)
+
+        # BYOK override or non-auto mode: exactly one candidate — behavior unchanged.
+        if conn_attrs is not None or settings.model_mode != "auto":
+            return await self._serve_one(r, seat, msgs, conn_attrs=conn_attrs, **opts)
+
+        # auto mode: ordered dispatch chain with CALL-TIME fallback (Fix 2). A dispatch that raises
+        # an availability error (404 model, credit-too-low, timeout) advances to the next ready
+        # backend — flagship -> openai -> anthropic -> hosted-AMD last resort -> mock. Boundary,
+        # sovereign, and budget stops are HARD: never fall around them.
+        chain = registry.resolve_chain(
+            seat, sovereign=sovereign, healthy_local_nodes=health.ready_node_names())
+        for i, rc in enumerate(chain):
+            try:
+                return await self._serve_one(rc, seat, msgs, conn_attrs=None, **opts)
+            except (BoundaryViolation, SovereignViolation, BudgetExceeded):
+                raise
+            except Exception as exc:  # noqa: BLE001 — availability failure: try the next backend
+                if i >= len(chain) - 1:
+                    raise
+                await emit(scope, E.SYSTEM_NOTICE,
+                           {"text": f"seat {seat}: {rc.backend} dispatch failed "
+                            f"({type(exc).__name__}: {str(exc)[:120]}); falling back to next backend",
+                            "level": "warn", "badge": "fallback-serving"})
+        raise RuntimeError(f"empty dispatch chain for seat {seat!r}")  # unreachable: ends with mock
+
+    async def _serve_one(self, r: Resolved, seat: str, msgs: list[dict], *, conn_attrs: dict | None,
+                         schema, temperature, max_tokens, stream, scope, data_class,
+                         sovereign) -> Completion:
+        """One candidate: boundary check -> budget guard -> dispatch (+ repair round). Raised by the
+        auto-chain loop on an availability failure; boundary/sovereign/budget stops propagate as-is."""
         # --- boundary check (fail closed; log the attempt for the network monitor) ---------------
         badge, violation = _check_boundary(r, data_class, sovereign, conn_attrs)
         if violation is not None:
@@ -183,8 +219,7 @@ class Router:
         # metering / egress / model.call happen per dispatch (a repair round is a second LLM call,
         # 10 §1), so the ledger shows both.
         return await self._dispatch_with_repair(
-            r, seat, _as_dicts(messages), schema, conn_attrs, temperature, max_tokens, stream,
-            scope=scope, badge=badge,
+            r, seat, msgs, schema, conn_attrs, temperature, max_tokens, stream, scope=scope, badge=badge,
         )
 
     async def _budget_guard(self, r: Resolved, scope: str) -> None:
@@ -201,8 +236,8 @@ class Router:
     async def _dispatch_with_repair(self, r, seat, messages, schema, conn_attrs,
                                     temperature, max_tokens, stream, *, scope, badge):
         msgs = messages
-        if schema is not None and r.backend == "fireworks":
-            # Fireworks JSON mode needs the schema in the prompt (02 §2.1)
+        if schema is not None and r.backend in ("fireworks", "openai", "openrouter"):
+            # OpenAI-compat JSON mode needs the schema (and the word JSON) in the prompt (02 §2.1)
             msgs = [{"role": "system", "content": "Respond ONLY with JSON matching this schema:\n"
                      + json.dumps(schema)}] + msgs
 
@@ -267,6 +302,12 @@ class Router:
             return None
         except jsonschema.ValidationError as e:
             return re.sub(r"\s+", " ", str(e.message))[:200]
+        except Exception:  # noqa: BLE001 — an unresolvable $ref / malformed schema is a SCHEMA bug
+            # (e.g. a planner-generated step output_schema is a bare named $ref, resolvable only
+            # against the plan's data_schemas, not at dispatch time). It must NEVER turn a real
+            # completion into a validation error — that erroed every unit of a live run. We cannot
+            # enforce a schema we cannot resolve, so accept the parsed completion unvalidated.
+            return None
 
     async def _call(self, r: Resolved, seat, messages, schema, conn_attrs,
                     temperature, max_tokens, stream) -> ClientResult:
@@ -281,6 +322,15 @@ class Router:
             return await self._anthropic_client().complete(messages, model=wire, schema=schema,
                                                            seat=seat, temperature=temp,
                                                            max_tokens=max_tokens, timeout=r.timeout_s)
+        if r.backend in ("openai", "openrouter"):
+            # OpenAI-compatible chat-completions (reuse FireworksClient); base_url + /v1/chat/completions.
+            # OpenRouter is the flagship path; OpenAI-direct is the fallback. wire id keeps its slash.
+            base, key = ((settings.openrouter_base_url, settings.openrouter_api_key)
+                         if r.backend == "openrouter"
+                         else (settings.openai_base_url, settings.openai_api_key))
+            client = FireworksClient(base, key)
+            return await client.complete(messages, model=wire, schema=schema, seat=seat,
+                                         temperature=temp, max_tokens=max_tokens, timeout=r.timeout_s, stream=stream)
         if r.backend == "fireworks":
             # base_url + '/v1/chat/completions' -> .../inference/v1/chat/completions (Fireworks path)
             client = FireworksClient(settings.fireworks_base_url, settings.fireworks_api_key)
@@ -294,7 +344,11 @@ class Router:
         if r.backend == "custom":
             base = (conn_attrs or {}).get("base_url", "")
             api_key = await self._secret(conn_attrs)
-            client = FireworksClient(base, api_key)   # OpenAI-compatible
+            if (conn_attrs or {}).get("api_style") == "anthropic":
+                client = AnthropicClient(api_key or "", base_url=base or None)
+                return await client.complete(messages, model=wire, schema=schema, seat=seat,
+                                             temperature=temp, max_tokens=max_tokens, timeout=r.timeout_s)
+            client = FireworksClient(base, api_key)   # OpenAI-compatible (default)
             return await client.complete(messages, model=wire, schema=schema, seat=seat,
                                          temperature=temp, max_tokens=max_tokens, timeout=r.timeout_s, stream=stream)
         # I2: unknown backend is a config error — silent mock output would fake a live dispatch.

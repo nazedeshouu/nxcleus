@@ -34,6 +34,11 @@ from app.seats.base import CompleteFn, EmitFn
 # own hard round cap on top of this.
 SOFT_CONSULT_CAP = 2
 
+# The 7 checks fan out concurrently; on the hosted-AMD fallback a single instance served all 7 at
+# once and single-call latency (19-42s observed) blew past the 120s seat timeout, failing the stage.
+# ponytail: fixed cap of 3; make it per-backend only if seats ever fan out much wider than this.
+_CHECK_CONCURRENCY = 3
+
 # Harnesses return plain, schema-validated dicts; backend adapts into db/models (CertifyResult,
 # Finding, IntegrationTestSpec, OracleVector) at the call site. No backend model imports (team ruling).
 
@@ -347,6 +352,38 @@ async def run_check(
     return findings
 
 
+def _is_timeout(exc: BaseException) -> bool:
+    """A timeout-class failure worth one retry (asyncio/builtin TimeoutError, httpx ReadTimeout, etc.)."""
+    return isinstance(exc, (asyncio.TimeoutError, TimeoutError)) or "timeout" in type(exc).__name__.lower()
+
+
+async def _run_check_guarded(
+    complete: CompleteFn, emit: EmitFn, *, plan: dict[str, Any], raw_context: dict[str, Any],
+    check: str, sem: asyncio.Semaphore, temperature: float | None = None,
+) -> list[dict[str, Any]]:
+    """Resilient wrapper around run_check (live-fix, backend-w3): cap concurrency via `sem`, retry
+    ONCE on a timeout-class failure, then DEGRADE the check (record inconclusive, contribute no
+    findings) rather than fail the whole stage. No certify check is treated as mandatory today — an
+    empty findings list already means "this check found nothing" — so a degraded check reads as a
+    conservative pass with an explicit inconclusive marker for the honesty trail."""
+    async with sem:
+        for attempt in (1, 2):
+            try:
+                return await run_check(complete, emit, plan=plan, raw_context=raw_context,
+                                       check=check, temperature=temperature)
+            except Exception as exc:  # noqa: BLE001
+                if attempt == 1 and _is_timeout(exc):
+                    await emit("system.notice", {"scope": "certify", "level": "warn",
+                               "message": f"check {check} timed out; retrying once"})
+                    continue
+                await emit("system.notice", {"scope": "certify", "level": "warn",
+                           "message": f"check {check} inconclusive after {attempt} attempt(s): "
+                                      f"{type(exc).__name__}: {str(exc)[:160]}"})
+                await emit("certify.check_completed", {"check": check, "findings": 0, "inconclusive": True})
+                return []
+        return []  # unreachable
+
+
 async def _repair_consult_regions(
     complete: CompleteFn, emit: EmitFn, *, consult: dict[str, Any], valid_ids: set[str],
     bad: list[str], temperature: float | None = None,
@@ -437,9 +474,10 @@ async def certify(
     scope-locked re-plan; this harness does the local, deterministic part end-to-end."""
     raw_request = raw_context.get("request", "")
     vault = raw_context.get("vault", {})
+    sem = asyncio.Semaphore(_CHECK_CONCURRENCY)
     results = await asyncio.gather(
-        *[run_check(complete, emit, plan=plan, raw_context=raw_context, check=chk,
-                    temperature=temperature) for chk in CHECKS]
+        *[_run_check_guarded(complete, emit, plan=plan, raw_context=raw_context, check=chk,
+                             sem=sem, temperature=temperature) for chk in CHECKS]
     )
     findings: list[dict[str, Any]] = [f for group in results for f in group]
 

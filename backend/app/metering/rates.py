@@ -20,6 +20,14 @@ _DEFAULTS: dict = {
             "claude-fable-5": {"in_per_mtok": 3.0, "out_per_mtok": 15.0},
             "default": {"in_per_mtok": 3.0, "out_per_mtok": 15.0},
         },
+        "openrouter": {   # flagship + gpt-5.5 fallback — catalogue-verified 2026-07-10/11
+            "openai/gpt-5.6-sol": {"in_per_mtok": 5.0, "out_per_mtok": 30.0},
+            "openai/gpt-5.5": {"in_per_mtok": 5.0, "out_per_mtok": 30.0},
+            "default": {"in_per_mtok": 5.0, "out_per_mtok": 30.0},
+        },
+        "openai": {   # no builtin models; kept for direct bindings — UNVERIFIED placeholder
+            "default": {"in_per_mtok": 10.0, "out_per_mtok": 50.0},
+        },
         "fireworks": {
             "default": {"in_per_mtok": 0.90, "out_per_mtok": 0.90},
         },

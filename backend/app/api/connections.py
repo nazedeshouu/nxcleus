@@ -39,15 +39,19 @@ async def create_connection(body: dict) -> dict:
     name = body.get("name", "")
     base_url = body.get("base_url", "")
     api_key = body.get("api_key", "")
+    api_style = body.get("api_style", "openai")
     if not (name and base_url and api_key):
         raise _err(400, "name, base_url, api_key required")
+    if api_style not in ("openai", "anthropic"):
+        raise _err(400, "api_style must be 'openai' or 'anthropic'")
     key_ref = await secrets.store_secret(api_key)
     cid = await dao.create_connection(name=name, base_url=base_url, api_key_ref=key_ref,
                                       data_class_ceiling=body.get("data_class_ceiling", "SANITIZED"),
-                                      counts_as_local=bool(body.get("counts_as_local")))
+                                      counts_as_local=bool(body.get("counts_as_local")),
+                                      api_style=api_style)
     await emit("system", E.CONFIG_CONNECTION_ADDED, {"name": name, "host": host_of(base_url),
                                                      "ceiling": body.get("data_class_ceiling", "SANITIZED")})
-    return {"connection": {"id": cid, "name": name, "base_url": base_url,
+    return {"connection": {"id": cid, "name": name, "base_url": base_url, "api_style": api_style,
                            "api_key": secrets.mask(api_key)}}
 
 
@@ -55,9 +59,43 @@ async def create_connection(body: dict) -> dict:
 async def list_connections() -> dict:
     rows = await dao.list_connections()
     return {"connections": [{"id": r["id"], "name": r["name"], "base_url": r["base_url"],
+                             "api_style": r.get("api_style") or "openai",
                              "zone": r["zone"], "data_class_ceiling": r["data_class_ceiling"],
                              "counts_as_local": bool(r["counts_as_local"]), "api_key": "••••"}
                             for r in rows]}
+
+
+@router.post("/connections/{connection_id}/test", dependencies=[Depends(require_demo_token)])
+async def test_connection(connection_id: str, body: dict | None = None) -> dict:
+    """One minimal live completion through the connection's client (tiny max_tokens). Never echoes
+    the key — returns only {ok, latency_ms, model?, error?}."""
+    import time
+
+    from app.models.clients import AnthropicClient, FireworksClient
+
+    conn = await dao.get_connection(connection_id)
+    if not conn:
+        raise _err(404, "connection not found")
+    body = body or {}
+    model = body.get("model") or next(
+        (m["provider_model_id"] for m in await dao.list_custom_models()
+         if m["connection_id"] == connection_id), "")
+    if not model:
+        return {"ok": False, "latency_ms": 0, "error": "no model to test (add a model or pass one)"}
+    key = await secrets.decrypt_ref(conn["api_key_ref"])
+    style = conn.get("api_style") or "openai"
+    msgs = [{"role": "user", "content": "ping"}]
+    t0 = time.monotonic()
+    try:
+        if style == "anthropic":
+            client = AnthropicClient(key or "", base_url=conn["base_url"] or None)
+        else:
+            client = FireworksClient(conn["base_url"], key)
+        await client.complete(msgs, model=model, max_tokens=8, timeout=20.0)
+        return {"ok": True, "latency_ms": int((time.monotonic() - t0) * 1000), "model": model}
+    except Exception as exc:  # noqa: BLE001 — a failed probe is the answer, said out loud (never the key)
+        return {"ok": False, "latency_ms": int((time.monotonic() - t0) * 1000),
+                "model": model, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
 
 @router.delete("/connections/{connection_id}", dependencies=[Depends(require_demo_token)])

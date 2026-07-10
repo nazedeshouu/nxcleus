@@ -63,6 +63,7 @@ class Database:
         "ALTER TABLE processes ADD COLUMN corpus_company TEXT",
         "ALTER TABLE runs ADD COLUMN params_json TEXT",
         "ALTER TABLE runs ADD COLUMN next_steps_json TEXT",
+        "ALTER TABLE api_connections ADD COLUMN api_style TEXT DEFAULT 'openai'",
     )
 
     async def apply_schema(self) -> None:

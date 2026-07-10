@@ -66,9 +66,15 @@ async def run(ctx) -> None:
     ctx_pack = spec.get("context_pack", {}) if isinstance(spec, dict) else {}
     db_schemas = list(ctx_pack.get("db_schemas", []))
     company = spec.get("company") if isinstance(spec, dict) else None
+    corpus_is_files = False
     if company:
         from app.sandbox import seeds
-        db_schemas += seeds.company_schema(company)
+        db_schemas += seeds.company_schema(company)   # files corpus -> the files(path,ext,...) table
+        dset = await ctx.dao.get_dataset(company)
+        if dset and dset.get("kind") == "files":
+            # CODEBASE corpus: inject its code_map so the planner scopes to files, not rows (hardening)
+            corpus_is_files = True
+            ctx_pack = {**ctx_pack, "code_map": (dset.get("meta") or {}).get("code_map") or {}}
     await ctx.emit(E.INTAKE_CONTEXT_MAPPED, {
         "files": ctx_pack.get("code_map", {}).get("files", 0),
         "symbols": len(ctx_pack.get("code_map", {}).get("modules", [])),
@@ -90,6 +96,9 @@ async def run(ctx) -> None:
     )
     if company:
         sanitized_spec["company"] = company     # survives the spec overwrite; fan-out needs it
+    if corpus_is_files:
+        # operate reads spec.context_pack.code_map; carry it across the spec overwrite
+        sanitized_spec.setdefault("context_pack", {})["code_map"] = ctx_pack.get("code_map", {})
     if answers:
         sanitized_spec["clarification_answers"] = answers
     deliverable = spec.get("deliverable") if isinstance(spec, dict) else None
