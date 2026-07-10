@@ -70,6 +70,8 @@ async def run(ctx) -> None:
 
     built: set[str] = set()
     for idx, wave in enumerate(waves):
+        for t in wave:
+            t["_wave"] = idx                    # persist wave membership on build_tasks (07 §3.1)
         await ctx.emit(E.CONDUCTOR_WAVE_STARTED, {"wave": idx + 1, "of": total,
                                                   "tasks": [t["task"] for t in wave]})
         outputs = await asyncio.gather(*[
@@ -113,12 +115,26 @@ async def _build_task(ctx, task, module, plan, tests, coder_pool, load, slots) -
         interfaces = [i for i in plan.get("interfaces", []) if module_id in i.get("consumers", [])
                       or i.get("producer") == module_id]
         module_tests = [t for t in tests if t.get("module") == module_id]
-        result = await coder.build_module(ctx.complete, ctx.emit, module=module,
-                                          interfaces=interfaces, tests=module_tests)
-        written = workspace.write_files(ctx.job_id, result.get("files", []))
+        try:
+            result = await coder.build_module(ctx.complete, ctx.emit, module=module,
+                                              interfaces=interfaces, tests=module_tests)
+        except Exception as exc:
+            # per-task failure surfaces as task.failed before the stage-level retry policy
+            # (07 §3) takes over; resume skips already-done siblings on the retry
+            await ctx.dao.upsert_build_task(task_id=task_id, job_id=ctx.job_id, module_id=module_id,
+                                            wave=task.get("_wave", 0), status="failed",
+                                            assigned_backend=chosen.model, attempts=1)
+            await ctx.emit(E.TASK_FAILED, {"task": task.get("task"), "module": module_id,
+                                           "backend": chosen.model,
+                                           "error": f"{type(exc).__name__}: {str(exc)[:200]}"})
+            raise
+        # T9: each coder writes ONLY its own agents/<module_id>/ folder; its test run mounts
+        # that folder alone (isolation = mount scope). Consolidation merges agents/*/ later.
+        written = workspace.write_files(ctx.job_id, result.get("files", []), agent=module_id)
 
-        test_result = await codeexec.run_tests(workspace=str(workspace.job_dir(ctx.job_id)),
-                                               tests=module_tests, module_id=module_id)
+        test_result = await codeexec.run_tests(
+            workspace=str(workspace.agent_dir(ctx.job_id, module_id)),
+            tests=module_tests, module_id=module_id)
         await ctx.emit(E.TASK_TESTS, {"module": module_id, "passed": test_result["passed"],
                                       "failed": test_result["failed"], "total": test_result["total"]})
 

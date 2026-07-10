@@ -9,6 +9,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # app/config.py -> app -> backend -> repo root
@@ -64,7 +65,11 @@ class Settings(BaseSettings):
 
     # --- boundary / sovereign
     sovereign_default: bool = False
-    allow_raw_on_amd_hosted: bool = True        # demo exception; badge in UI. false => show enforcement
+    # fail closed by default (I1); the demo env opts in explicitly (ALLOW_RAW_ON_AMD_HOSTED=1 or
+    # the NXCLEUS_-prefixed spelling), which badges every such dispatch in the UI
+    allow_raw_on_amd_hosted: bool = Field(
+        default=False, validation_alias=AliasChoices(
+            "allow_raw_on_amd_hosted", "nxcleus_allow_raw_on_amd_hosted"))
 
     # --- whisper (policy dictation, O9)
     whisper_model_path: str = ""                # empty => voice input disabled
@@ -74,6 +79,12 @@ class Settings(BaseSettings):
     fireworks_daily_budget_usd: float = 15.0
     sandbox_run_budget_usd: float = 0.50
     sandbox_max_concurrent: int = 1
+    sandbox_max_units: int = 250                # per-run scope guard (09 §4) — LLM-judged units only
+    sql_step_row_cap: int = 5000                # sql topology steps: max candidate rows returned
+    sql_step_timeout_s: float = 10.0
+
+    # --- prompt trace layer (LOCAL-only debugging; rows never leave the box)
+    trace_prompts: bool = True
 
     # --- auth / ops
     admin_token: str = ""                       # empty => demo/admin writes are open in dev
@@ -138,6 +149,7 @@ class Settings(BaseSettings):
             "model_mode": self.model_mode,
             "sovereign_default": self.sovereign_default,
             "allow_raw_on_amd_hosted": self.allow_raw_on_amd_hosted,
+            "trace_prompts": self.trace_prompts,
             "voice_input_enabled": bool(self.whisper_model_path),
             "budgets": {
                 "fireworks_daily_usd": self.fireworks_daily_budget_usd,

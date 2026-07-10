@@ -33,7 +33,9 @@ export function useJobStream(jobId: string, opts: { speed?: number; forceMock?: 
 
     if (isMock) {
       setConn("open");
-      const handle = playEvents(KYC_EVENTS, apply, { speed: opts.speed ?? 16, onDone: () => setConn("closed") });
+      // maxGap 2600: only the clarification park exceeds the default clamp at 16x —
+      // give that hero beat a readable pause instead of a 220ms flash
+      const handle = playEvents(KYC_EVENTS, apply, { speed: opts.speed ?? 16, maxGap: 2600, onDone: () => setConn("closed") });
       return () => handle.stop();
     }
 

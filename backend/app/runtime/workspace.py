@@ -1,7 +1,15 @@
-"""Per-job workspace + immutable process package layout (01 §4, 04 §2)."""
+"""Per-job workspace + immutable process package layout (01 §4, 04 §2).
+
+Hardening 2026-07-10 (T9): agents are folder-isolated — each writes only its own
+agents/<slug>/ subtree; shared/ carries read-only interface specs; the consolidator is the
+single cross-folder reader (merge_agent_src). Real isolation is the sandbox MOUNT scope
+(codeexec callers pass the narrowest folder), not convention.
+"""
 from __future__ import annotations
 
 import json
+import re
+import shutil
 from pathlib import Path
 
 from app.config import settings
@@ -13,8 +21,18 @@ def job_dir(job_id: str) -> Path:
     return d
 
 
-def write_files(job_id: str, files: list[dict]) -> list[str]:
-    base = job_dir(job_id)
+def agent_dir(job_id: str, slug: str) -> Path:
+    """One agent's isolated folder: data/workspaces/<job_id>/agents/<slug>/."""
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "-", slug or "agent").strip("-") or "agent"
+    d = job_dir(job_id) / "agents" / safe
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def write_files(job_id: str, files: list[dict], agent: str | None = None) -> list[str]:
+    """Write files under the job dir, or under agents/<agent>/ when an agent slug is given
+    (default keeps the flat wave-1 behavior for compat)."""
+    base = agent_dir(job_id, agent) if agent else job_dir(job_id)
     written = []
     for f in files:
         rel = f.get("path", "")
@@ -25,6 +43,36 @@ def write_files(job_id: str, files: list[dict]) -> list[str]:
         target.write_text(f.get("content", ""))
         written.append(rel)
     return written
+
+
+def write_shared_interfaces(job_id: str, interfaces: list) -> None:
+    """Stage 2 publishes the plan's interfaces read-only for all agents (shared/interfaces.json)."""
+    d = job_dir(job_id) / "shared"
+    d.mkdir(exist_ok=True)
+    (d / "interfaces.json").write_text(json.dumps(interfaces, indent=2))
+
+
+def merge_agent_src(job_id: str) -> list[str]:
+    """Consolidation-time merge (the single cross-folder read): agents/*/src/** and each agent's
+    root .py files into the job-level src/ tree. Later agents win on collisions — the plan's
+    interfaces, not shared paths, are the coordination surface."""
+    base = job_dir(job_id)
+    merged: list[str] = []
+    agents_root = base / "agents"
+    if not agents_root.exists():
+        return merged
+    for adir in sorted(p for p in agents_root.iterdir() if p.is_dir()):
+        src = adir / "src"
+        if src.exists():
+            for p in sorted(src.rglob("*.py")):
+                rel = Path("src") / p.relative_to(src)
+                (base / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(p, base / rel)
+                merged.append(str(rel))
+        for p in sorted(adir.glob("*.py")):   # module-root files (e.g. a generated process.py)
+            shutil.copyfile(p, base / p.name)
+            merged.append(p.name)
+    return merged
 
 
 def read_src(job_id: str) -> list[dict]:

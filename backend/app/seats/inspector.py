@@ -33,6 +33,11 @@ Each turn you take exactly ONE action:
 have not).
   - http_request: send a request to the process (method + path + optional headers/body). Only \
 the process's staging URL is reachable — any other host is blocked.
+  - create_tool: when a probe needs COMPUTATION you cannot do by inspection — parsing a \
+response corpus, aggregating across requests, a statistical comparison — commission a small \
+deterministic tool (give purpose + example args); on success it becomes callable by name.
+  - call_tool: invoke a tool you commissioned earlier by name with args; you get its dict \
+result back in the transcript.
   - submit_finding: end the scenario. Set defect=true with a REPRODUCIBLE request/response \
 pair, suspected modules, and a severity if you broke it; set defect=false if, after genuinely \
 trying, the claim holds.
@@ -63,12 +68,21 @@ ACTION_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
     "properties": {
         "thought": {"type": "string"},
-        "tool": {"enum": ["read_manifest", "http_request", "submit_finding"]},
+        "tool": {"enum": ["read_manifest", "http_request", "create_tool", "call_tool",
+                          "submit_finding"]},
         "http_request": {
             "type": "object",
             "properties": {"method": {"type": "string"}, "path": {"type": "string"},
                            "headers": {"type": "object"}, "body": {}},
             "required": ["method", "path"]},
+        "create_tool": {
+            "type": "object",
+            "properties": {"purpose": {"type": "string"}, "args_example": {"type": "object"}},
+            "required": ["purpose"]},
+        "call_tool": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}, "args": {"type": "object"}},
+            "required": ["name"]},
         "submit_finding": {
             "type": "object",
             "properties": {
@@ -155,6 +169,18 @@ async def probe(
                 method=req.get("method", "GET"), path=req.get("path", "/"),
                 headers=req.get("headers"), body=req.get("body"))
             transcript.append({"step": step, "action": "http_request", "request": req, "result": result})
+        elif tool == "create_tool" and "create_tool" in tools:
+            req = action.get("create_tool", {}) or {}
+            # the backend closure registers the new tool into this SAME dict on success (T8)
+            result = await tools["create_tool"](purpose=req.get("purpose", ""),
+                                                args_example=req.get("args_example") or {})
+            transcript.append({"step": step, "action": "create_tool", "request": req, "result": result})
+        elif tool == "call_tool":
+            req = action.get("call_tool", {}) or {}
+            fn = tools.get(req.get("name", ""))
+            result = await fn(args=req.get("args") or {}) if fn is not None else \
+                {"error": f"unknown tool {req.get('name')!r} — create_tool it first"}
+            transcript.append({"step": step, "action": "call_tool", "request": req, "result": result})
         else:  # unknown tool — record and continue (defensive)
             transcript.append({"step": step, "action": "unknown", "raw": action})
 

@@ -33,14 +33,18 @@ def _load(row: dict | None, *fields: str) -> dict | None:
 # ============================================================ jobs
 async def create_job(*, title: str, request: str, origin: str = "customer", mode: str | None = None,
                      sovereign: bool = False, policy: dict | None = None,
-                     sandbox_session_id: str | None = None, parent_process_id: str | None = None) -> str:
+                     sandbox_session_id: str | None = None, parent_process_id: str | None = None,
+                     company: str | None = None) -> str:
     jid = new_id("job")
+    spec: dict = {"request": request}
+    if company:
+        spec["company"] = company               # sandbox corpus binding (09 §3)
     await db.execute(
         "INSERT INTO jobs (id, created_at, title, origin, mode, sovereign, status, current_stage, "
-        "spec_json, policy_json, goal, sandbox_session_id, parent_process_id) VALUES "
-        "(:id, :ts, :title, :origin, :mode, :sov, 'intake', 0, :spec, :policy, NULL, :sbx, :ppid)",
+        "request, spec_json, policy_json, goal, sandbox_session_id, parent_process_id) VALUES "
+        "(:id, :ts, :title, :origin, :mode, :sov, 'intake', 0, :req, :spec, :policy, NULL, :sbx, :ppid)",
         {"id": jid, "ts": now_iso(), "title": title, "origin": origin, "mode": mode,
-         "sov": 1 if sovereign else 0, "spec": _j({"request": request}), "policy": _j(policy),
+         "sov": 1 if sovereign else 0, "req": request, "spec": _j(spec), "policy": _j(policy),
          "sbx": sandbox_session_id, "ppid": parent_process_id},
     )
     return jid
@@ -275,16 +279,16 @@ async def create_run(*, process_id: str, version: int, kind: str, input_ref: str
 
 async def get_run(run_id: str) -> dict | None:
     return _load(await db.fetchone("SELECT * FROM runs WHERE id = :id", {"id": run_id}),
-                 "stats_json", "cost_json")
+                 "stats_json", "cost_json", "params_json", "next_steps_json")
 
 
 async def list_runs(process_id: str) -> list[dict]:
-    return [_load(r, "stats_json", "cost_json") for r in await db.fetchall(
+    return [_load(r, "stats_json", "cost_json", "params_json") for r in await db.fetchall(
         "SELECT * FROM runs WHERE process_id = :p ORDER BY started_at DESC", {"p": process_id})]
 
 
 async def update_run(run_id: str, **fields: Any) -> None:
-    for k in ("stats", "cost"):
+    for k in ("stats", "cost", "params", "next_steps"):
         if k in fields:
             fields[f"{k}_json"] = _j(fields.pop(k))
     sets = ", ".join(f"{k} = :{k}" for k in fields)
@@ -302,6 +306,11 @@ async def add_run_unit(*, run_id: str, unit_ref: str, status: str, result: dict,
          "ts": now_iso()},
     )
     return uid
+
+
+async def get_run_unit(unit_id: str) -> dict | None:
+    return _load(await db.fetchone("SELECT * FROM run_units WHERE id = :id", {"id": unit_id}),
+                 "result_json", "trace_json")
 
 
 async def list_run_units(run_id: str, status: str | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
@@ -396,14 +405,20 @@ async def node_heartbeat(node_id: str) -> None:
 
 
 # ============================================================ sandbox sessions
-async def create_sandbox_session(*, company: str, client_hash: str) -> str:
-    sid = new_id("sandbox_session")
+async def create_sandbox_session(*, company: str, client_hash: str, session_id: str | None = None) -> str:
+    # session_id = the visitor's cookie sid; minting a different id here would orphan the cookie
+    sid = session_id or new_id("sandbox_session")
     await db.execute(
         "INSERT INTO sandbox_sessions (id, company, created_at, client_hash, runs_used, tokens_used) "
-        "VALUES (:id, :c, :ts, :ch, 0, 0)",
+        "VALUES (:id, :c, :ts, :ch, 0, 0) ON CONFLICT(id) DO NOTHING",
         {"id": sid, "c": company, "ts": now_iso(), "ch": client_hash},
     )
     return sid
+
+
+async def reset_sandbox_window(session_id: str) -> None:
+    await db.execute("UPDATE sandbox_sessions SET runs_used = 0, created_at = :ts WHERE id = :id",
+                     {"ts": now_iso(), "id": session_id})
 
 
 async def get_sandbox_session(session_id: str) -> dict | None:

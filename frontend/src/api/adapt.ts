@@ -41,11 +41,18 @@ export const KNOWN_EVENT_TYPES: string[] = [
   "sandbox.queued", "sandbox.started",
   "config.connection_added", "config.model_registered", "config.seat_bound",
   "system.notice",
+  // hardening wave: previously-dead named events (EventSource drops unregistered types)
+  "qa.probe_started", "qa.probe_passed", "qa.probe_timeout", "qa.probe_exhausted", "qa.oracle_vote",
+  "certify.consult_requested", "certify.scenarios_emitted", "certify.rehydrated", "certify.check_completed",
+  "plan.replanned", "intake.turn", "intake.mode_classified", "task.fix_applied", "task.files_written",
+  "conductor.goal_drift", "deliver.docs_generated", "boundary.sweep",
+  "intake.clarification_requested", "intake.clarification_answered", "run.artifacts_ready", "model.trace",
+  "ticket.fix_applied", "run.sql_step", "tool.created", "tool.invoked",
 ];
 
 /* backend sometimes sends a status-name where a numeric stage belongs */
 const STAGE_BY_NAME: Record<string, Stage> = {
-  created: 0, intake: 0,
+  created: 0, intake: 0, awaiting_input: 0,
   planning: 1,
   certifying: 2, certify: 2,
   quoted: 3, quote: 3,
@@ -62,7 +69,7 @@ function toStage(v: unknown, fallback: Stage = 0): Stage {
 }
 
 /** Display model + zone per seat, sourced from infra/models.yaml semantics. */
-const SEAT_INFO: Record<string, { model: string; zone: Zone }> = {
+export const SEAT_INFO: Record<string, { model: string; zone: Zone }> = {
   trust: { model: "Gemma-4-26B", zone: "LOCAL" },
   planner: { model: "Frontier planner", zone: "EXTERNAL" },
   certifier: { model: "GLM-4.6", zone: "LOCAL" },
@@ -146,8 +153,20 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
     case "intake.message":
       return env(raw, "intake.message", {
         role: (str(p.role) as never) ?? "customer",
-        content: str(p.content) ?? "",
+        content: str(p.content) ?? str(p.text) ?? "",
       });
+    case "intake.turn": {
+      // backend shape: {ready: bool, missing: string[]} — voice it as a trust line
+      const missing = arr<string>(p.missing);
+      const content =
+        str(p.content) ??
+        (p.ready === true
+          ? "Spec is complete — moving on."
+          : missing.length
+            ? `Still need: ${missing.join(", ")}.`
+            : "Working through the spec with you.");
+      return env(raw, "intake.message", { role: (str(p.role) as never) ?? "trust", content });
+    }
     case "intake.spec_updated": {
       const spec = (p.spec ?? {}) as Record<string, unknown>;
       return env(raw, "intake.spec_updated", {
@@ -155,9 +174,29 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
       });
     }
     case "intake.classified":
+    case "intake.mode_classified": // backend alias; carries {recommended}
       return env(raw, "intake.classified", {
-        mode: (str(p.mode) as never) ?? "build",
-        rationale: str(p.rationale) ?? "",
+        mode: (str(p.mode) as never) ?? (str(p.recommended) as never) ?? "build",
+        rationale: str(p.rationale) ?? str(p.reason) ?? "",
+      });
+    case "intake.clarification_requested": {
+      const KINDS = ["delivery", "threshold", "population", "scope"];
+      const qs = arr<Record<string, unknown>>(p.questions).length
+        ? arr<Record<string, unknown>>(p.questions)
+        : arr<Record<string, unknown>>(p.clarifications);
+      return env(raw, "intake.clarification_requested", {
+        questions: qs.map((q, i) => ({
+          id: str(q.id) ?? `q${i}`,
+          question: str(q.question) ?? str(q.text) ?? "",
+          kind: (KINDS.includes(str(q.kind) ?? "") ? str(q.kind) : "scope") as never,
+          options: arr<string>(q.options).length ? arr<string>(q.options) : undefined,
+          required: q.required !== false,
+        })),
+      });
+    }
+    case "intake.clarification_answered":
+      return env(raw, "intake.clarification_answered", {
+        answers: num(p.answers) ?? (arr(p.answers).length || undefined),
       });
     case "intake.policy_registered": {
       const split = (p.split ?? {}) as Record<string, unknown>;
@@ -203,6 +242,14 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
       });
     }
 
+    case "boundary.sweep":
+      // backend shape: {clean, residuals} (residuals = count)
+      return env(raw, "boundary.sweep", {
+        clean: p.clean !== false && !(num(p.findings) ?? num(p.residuals) ?? 0),
+        checked: num(p.checked) ?? num(p.hosts) ?? num(p.endpoints),
+        findings: num(p.findings) ?? num(p.residuals),
+      });
+
     /* ---------- stage 1 ---------- */
     case "plan.started": {
       const sovereign = p.sovereign === true;
@@ -234,9 +281,40 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
       });
     }
 
+    case "plan.replanned": {
+      // backend shape: {only_regions, added_regions} (string arrays)
+      const only = arr<string>(p.only_regions);
+      const added = arr<string>(p.added_regions);
+      const built = [
+        only.length ? `scoped to ${only.join(", ")}` : "",
+        added.length ? `added ${added.join(", ")}` : "",
+      ].filter(Boolean).join(" · ");
+      return env(raw, "plan.replanned", {
+        note: str(p.note) ?? str(p.summary) ?? str(p.reason) ?? (built || undefined),
+        wave: num(p.wave),
+      });
+    }
+
     /* ---------- stage 2 ---------- */
     case "certify.check_started":
       return env(raw, "certify.check_started", { check: str(p.check) ?? "check" });
+    case "certify.check_completed":
+      return env(raw, "certify.check_completed", { check: str(p.check) ?? "check" });
+    case "certify.scenarios_emitted":
+      return env(raw, "certify.scenarios_emitted", {
+        count: num(p.count) ?? num(p.scenarios) ?? arr(p.scenarios).length,
+      });
+    case "certify.rehydrated":
+      return env(raw, "certify.rehydrated", {
+        identifiers: num(p.identifiers) ?? num(p.identifiers_rehydrated) ?? num(p.count) ?? 0,
+      });
+    case "certify.consult_requested":
+      // backend shape: {finding_id, only_regions}
+      return env(raw, "certify.consult_requested", {
+        id: str(p.id) ?? str(p.consult_id) ?? str(p.finding_id) ?? `cns_${raw.seq}`,
+        scope: scopeText(p.scope) || (Array.isArray(p.only_regions) ? (p.only_regions as string[]).join(", ") : undefined),
+        reason: str(p.reason) ?? str(p.why) ?? str(p.question) ?? str(p.finding_id),
+      });
     case "certify.finding":
       return env(raw, "certify.finding", {
         check: str(p.check) ?? "check",
@@ -382,6 +460,31 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         ok: false,
         reason: str(p.reason) ?? str(p.notes),
       });
+    case "task.fix_applied": {
+      // backend shape: {ticket: title string, files: paths[]}
+      const ticket = str(p.ticket);
+      const files = arr<string>(p.files);
+      const module = str(p.module) ?? str(p.task) ?? ticket ?? "module";
+      return env(raw, "task.fix_applied", {
+        module,
+        note:
+          str(p.note) ?? str(p.fix) ?? str(p.summary) ??
+          (ticket && ticket !== module ? ticket : undefined) ??
+          (files.length ? `${files.length} file${files.length === 1 ? "" : "s"} touched` : undefined),
+      });
+    }
+    case "task.files_written":
+      return env(raw, "task.files_written", {
+        module: str(p.module) ?? str(p.task) ?? "module",
+        files: num(p.files) ?? num(p.count) ?? arr(p.files).length,
+      });
+    case "conductor.goal_drift":
+      // backend shape: {description}
+      return env(raw, "conductor.goal_drift", {
+        wave: num(p.wave),
+        drift: num(p.drift) ?? num(p.goal_drift) ?? null,
+        note: str(p.note) ?? str(p.description) ?? str(p.assessment) ?? str(p.detail),
+      });
     case "conductor.wave_started":
       return env(raw, "conductor.wave_started", {
         wave: num(p.wave) ?? 1,
@@ -422,6 +525,31 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         scenario: str(p.scenario) ?? "scenario",
         probe: str(p.probe) ?? (p.found === true ? "found" : "clear"),
       });
+    case "qa.probe_started":
+    case "qa.probe_passed":
+    case "qa.probe_timeout":
+    case "qa.probe_exhausted":
+      // backend shapes: started {scenario, source}; others {scenario, steps}
+      return env(raw, "qa.probe_update", {
+        scenario: str(p.scenario) ?? str(p.check) ?? "scenario",
+        probe: str(p.probe) ?? str(p.name) ?? str(p.scenario) ?? "probe",
+        status: t.slice("qa.probe_".length) as never,
+        detail:
+          str(p.detail) ?? str(p.reason) ??
+          (num(p.steps) != null ? `${num(p.steps)} steps` : str(p.source)),
+      });
+    case "qa.oracle_vote": {
+      // backend shape: {vector, votes: array, expected, uncertain: bool}
+      const votes = arr(p.votes);
+      return env(raw, "qa.oracle_vote", {
+        vector: str(p.vector) ?? "V",
+        vote:
+          p.uncertain === true ? "uncertain"
+          : votes.length ? votes.map(String).join("/")
+          : str(p.vote) ?? str(p.verdict) ?? "vote",
+        round: num(p.round) ?? num(p.k),
+      });
+    }
     case "qa.finding":
       return env(raw, "qa.finding", {
         scenario: str(p.scenario) ?? "scenario",
@@ -449,11 +577,13 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
     /* ---------- tickets ---------- */
     case "ticket.opened":
     case "ticket.in_fix":
+    case "ticket.fix_applied": // {ticket_id, retested:false} — fix landed, not yet retested
     case "ticket.verified":
     case "ticket.human_review":
     case "warranty.ticket": {
       const status =
         t === "ticket.in_fix" ? "in_fix"
+        : t === "ticket.fix_applied" ? "fix_applied"
         : t === "ticket.verified" ? "verified"
         : t === "ticket.human_review" ? "human_review"
         : "opened";
@@ -490,10 +620,45 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         goal_verdict: str(p.goal_verdict) as never,
       });
     }
+    case "deliver.docs_generated": {
+      // backend shape: {readme_chars, runbook_chars}
+      const named = arr<string>(p.docs).length ? arr<string>(p.docs) : arr<string>(p.files);
+      const docs = named.length
+        ? named
+        : ([num(p.readme_chars) && "README", num(p.runbook_chars) && "runbook"].filter(Boolean) as string[]);
+      return env(raw, "deliver.docs_generated", { docs });
+    }
     case "run.started":
       return env(raw, "run.started", {
         run_id: str(p.run_id) ?? scopeId(raw.scope),
         units: num(p.units) ?? num(p.total) ?? 0,
+      });
+    case "run.artifacts_ready":
+      return env(raw, "run.artifacts_ready", {
+        run_id: str(p.run_id) ?? scopeId(raw.scope),
+        artifacts: arr<Record<string, unknown>>(p.artifacts).map((a) => ({
+          kind: str(a.kind) ?? "report",
+          url: str(a.url) ?? "",
+        })),
+      });
+    case "run.sql_step":
+      return env(raw, "run.sql_step", {
+        run_id: str(p.run_id) ?? scopeId(raw.scope),
+        step: str(p.step),
+        label: str(p.label) ?? str(p.step) ?? "sql step",
+        rows: num(p.rows) ?? 0,
+      });
+    case "tool.created":
+      return env(raw, "tool.created", {
+        name: str(p.name) ?? "tool",
+        description: str(p.description),
+        agent: str(p.agent) ?? str(p.created_by_seat),
+      });
+    case "tool.invoked":
+      return env(raw, "tool.invoked", {
+        name: str(p.name) ?? "tool",
+        ms: num(p.ms) ?? num(p.latency_ms),
+        ok: p.ok !== false,
       });
     case "run.unit_completed":
       return env(raw, "run.unit_completed", {
@@ -544,6 +709,20 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         tokens_in: num(p.tokens_in) ?? 0,
         tokens_out: num(p.tokens_out) ?? 0,
         cost_usd: num(p.cost_usd) ?? 0,
+      });
+    }
+    case "model.trace": {
+      const zone = (str(p.zone) as Zone) ?? "LOCAL";
+      return env(raw, "model.trace", {
+        id: str(p.id) ?? str(p.trace_id),
+        seat: (str(p.seat) ?? "coder") as Seat,
+        backend: str(p.backend) ?? str(p.model) ?? "local",
+        zone,
+        tokens_in: num(p.tokens_in) ?? 0,
+        tokens_out: num(p.tokens_out) ?? 0,
+        cost_usd: num(p.cost_usd) ?? 0,
+        latency_ms: num(p.latency_ms),
+        badge: str(p.badge),
       });
     }
     case "meter.tick":

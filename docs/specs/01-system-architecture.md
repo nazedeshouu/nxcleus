@@ -128,6 +128,7 @@ WHISPER_MODEL_PATH=                  # whisper.cpp model for policy dictation (O
 FIREWORKS_DAILY_BUDGET_USD=15
 SANDBOX_RUN_BUDGET_USD=0.50
 SANDBOX_MAX_CONCURRENT=1
+SANDBOX_MAX_UNITS=250                # per-run corpus scope guard (09 §4)
 ADMIN_TOKEN=                         # admin endpoints + node registration
 DISCORD_WEBHOOK_URL=                 # idle-fleet + budget alerts (optional)
 ```

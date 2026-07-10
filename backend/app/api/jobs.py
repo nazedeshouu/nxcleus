@@ -42,7 +42,47 @@ async def get_job(job_id: str) -> dict:
     job = await dao.get_job(job_id)
     if not job:
         raise _err(404, "job not found")
-    return {"job": job, "policy_summary": job.get("policy"), "goal": job.get("goal")}
+    out = {"job": job, "policy_summary": job.get("policy"), "goal": job.get("goal")}
+    if job.get("status") == "awaiting_input":
+        out["clarifications"] = await dao.get_checkpoint(f"job:{job_id}", "clarifications") or []
+    return out
+
+
+@router.post("/jobs/{job_id}/answers", dependencies=[Depends(require_demo_token)])
+async def post_answers(job_id: str, body: dict) -> dict:
+    """Clarifying-intake resume (hardening 2026-07-10): fold the customer's answers into the
+    spec and re-run intake — the trust seat re-composes the brief with the answers binding."""
+    job = await dao.get_job(job_id)
+    if not job:
+        raise _err(404, "job not found")
+    if job["status"] != "awaiting_input":
+        raise _err(409, f"job is not awaiting input (status {job['status']})")
+    answers = [a for a in (body.get("answers") or []) if isinstance(a, dict)]
+    if not answers:
+        raise _err(400, "answers[] is required")
+    spec = job.get("spec") if isinstance(job.get("spec"), dict) else {}
+    spec["clarification_answers"] = answers
+    questions = await dao.get_checkpoint(f"job:{job_id}", "clarifications") or []
+    kinds = {q.get("id"): q.get("kind") for q in questions}
+    for a in answers:
+        if kinds.get(a.get("id")) == "delivery" and a.get("answer"):
+            spec["deliverable"] = _deliverable_from_answer(str(a["answer"]))
+    await dao.update_job(job_id, spec=spec, status="intake", current_stage=0)
+    await emit(f"job:{job_id}", E.INTAKE_CLARIFICATION_ANSWERED,
+               {"auto": False, "answers": [{"id": a.get("id"), "answer": a.get("answer")}
+                                           for a in answers]})
+    engine.submit_job(job_id)
+    return {"job": await dao.get_job(job_id)}
+
+
+def _deliverable_from_answer(answer: str) -> dict:
+    a = answer.lower()
+    formats = [f for f in ("csv", "report") if f in a]
+    if ("pdf" in a or "case file" in a) and "report" not in formats:
+        formats.append("report")
+    return {"formats": formats or ["csv", "report"],
+            "granularity": "summary" if "summary" in a else "per_entity",
+            "audience": ""}
 
 
 @router.post("/jobs/{job_id}/messages", dependencies=[Depends(require_demo_token)])

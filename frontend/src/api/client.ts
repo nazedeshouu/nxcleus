@@ -7,6 +7,7 @@ export interface PublicConfig {
   fallback_serving: boolean; // Fireworks badge
   profile: string;
   demo: boolean;
+  trace_prompts?: boolean; // prompt/response tracing enabled (LOCAL-only store)
   keys?: { anthropic?: boolean; fireworks?: boolean };
   budgets?: { fireworks_daily_usd?: number; sandbox_run_usd?: number; sandbox_max_concurrent?: number };
 }
@@ -85,6 +86,10 @@ export interface RunCost {
   cost_per_unit: number;
   frontier_calls: number;
 }
+export interface RunArtifactInfo {
+  kind: string; // "report" | "csv"
+  url: string;
+}
 export interface RunDetail {
   id: string;
   process_id: string;
@@ -96,6 +101,12 @@ export interface RunDetail {
   finished_at?: string;
   stats: RunStats;
   cost: RunCost;
+  artifacts?: RunArtifactInfo[];
+}
+export interface NextStep {
+  title: string;
+  why: string;
+  action: { kind: "refine" | "export" | "review" | "rerun"; params?: Record<string, unknown> };
 }
 export interface RunUnit {
   id: string;
@@ -125,8 +136,13 @@ export interface Ticket {
 export interface CompanySummary {
   id: string;
   name: string;
-  prompts: string[];
+  prompts?: string[]; // older shape
+  suggested_prompts?: string[]; // hardening-wave shape
+  industry?: string;
+  tables?: Array<{ table: string; row_count: number }>;
 }
+/** Tolerant accessor: the prompts field moved names across backend waves. */
+export const companyPrompts = (c: CompanySummary): string[] => c.suggested_prompts ?? c.prompts ?? [];
 export interface TablePage {
   rows: Array<Record<string, unknown>>;
   page?: number;
@@ -156,6 +172,44 @@ export interface ConnectionInfo {
 }
 
 /* ---------- egress ---------- */
+/* ---------- traces (prompt inspector — LOCAL-only, contains RAW data) ---------- */
+export interface TraceSummary {
+  id: string;
+  ts: string;
+  scope: string;
+  seat: string;
+  backend: string;
+  model?: string;
+  zone: string;
+  tokens_in: number;
+  tokens_out: number;
+  cost_usd: number;
+  latency_ms: number;
+  badge?: string; // e.g. "parsed_ok"
+  messages_preview?: string;
+  response_preview?: string;
+}
+export interface TraceDetail extends TraceSummary {
+  messages?: Array<{ role?: string; content?: unknown }>; // authoritative: already parsed
+  messages_json?: unknown; // raw string also on the row; prefer `messages`
+  response_text?: string;
+}
+
+/* ---------- runtime-commissioned tools (F7) ---------- */
+export interface ToolInfo {
+  id: string;
+  ts?: string;
+  scope?: string;
+  agent_dir?: string;
+  name: string;
+  description?: string;
+  args_schema?: unknown;
+  code?: string;
+  self_test_passed?: boolean;
+  created_by_seat?: string;
+  model?: string;
+}
+
 export interface EgressRow {
   id: string;
   ts: string;
@@ -221,6 +275,7 @@ function mapPublicConfig(raw: Record<string, unknown>): PublicConfig {
     fallback_serving: (raw.fallback_serving as boolean) ?? (raw.model_mode === "fireworks"),
     profile: (raw.profile as string) ?? (raw.model_mode as string) ?? "demo",
     demo: (raw.demo as boolean) ?? !(raw.admin_required as boolean),
+    trace_prompts: raw.trace_prompts as boolean | undefined,
     keys: { anthropic: keys.anthropic, fireworks: keys.fireworks },
     budgets: raw.budgets as PublicConfig["budgets"],
   };
@@ -234,6 +289,10 @@ export const api = {
   listJobs: (params?: { origin?: string; status?: string }) =>
     req<{ jobs: JobSummary[] }>(`/jobs${qs(params)}`),
   getJob: (id: string) => req<JobSummary>(`/jobs/${id}`),
+  /** Raw job payload — clarification questions ride on the job (field name varies). */
+  getJobFull: (id: string) => req<Record<string, unknown>>(`/jobs/${id}`),
+  answerJob: (id: string, answers: Array<{ id: string; answer: string }>) =>
+    req<unknown>(`/jobs/${id}/answers`, { method: "POST", body: JSON.stringify({ answers }), demo: true }),
   createJob: (body: { title?: string; request: string; policy_text?: string; sovereign?: boolean }) =>
     req<{ job: JobSummary }>("/jobs", { method: "POST", body: JSON.stringify(body), demo: true }),
   postMessage: (id: string, content: string) =>
@@ -248,7 +307,8 @@ export const api = {
   listProcesses: () => req<{ processes: ProcessSummary[] }>("/processes"),
   getProcess: (id: string) => req<{ process: ProcessSummary; versions: ProcessVersion[] }>(`/processes/${id}`),
   getVersionDiff: (id: string, v: number) => req<{ diff: VersionDiff }>(`/processes/${id}/versions/${v}/diff`),
-  runBatch: (id: string, body: { input_ref: string; version?: number }) =>
+  // extra keys (sample, budget, …) pass through opaquely — next-steps rerun params ride here
+  runBatch: (id: string, body: { input_ref: string; version?: number; corpus?: { company: string } } & Record<string, unknown>) =>
     req<{ run: RunDetail }>(`/processes/${id}/runs`, { method: "POST", body: JSON.stringify({ ...body, kind: "batch" }), demo: true }),
   refineProcess: (id: string, request: string) =>
     req<{ job: JobSummary }>(`/processes/${id}/refine`, { method: "POST", body: JSON.stringify({ request }), demo: true }),
@@ -260,6 +320,20 @@ export const api = {
   getRunUnits: (id: string, status?: string) => req<{ units: RunUnit[] }>(`/runs/${id}/units${qs({ status })}`),
   reviewUnit: (unitId: string, verdict: "approve" | "reject", note?: string) =>
     req<unknown>(`/units/${unitId}/review`, { method: "POST", body: JSON.stringify({ verdict, note }), demo: true }),
+  /** POST generates (idempotent on the backend), GET reads; tolerate either failing. */
+  nextSteps: async (runId: string): Promise<NextStep[]> => {
+    await req(`/runs/${runId}/next-steps`, { method: "POST", demo: true }).catch(() => undefined);
+    const res = await req<{ next_steps: NextStep[] }>(`/runs/${runId}/next-steps`);
+    return res?.next_steps ?? [];
+  },
+
+  /* traces (prompt inspector) */
+  traces: (params?: { scope?: string; seat?: string; limit?: number; offset?: number }) =>
+    req<{ traces: TraceSummary[] }>(`/traces${qs(params)}`),
+  trace: (id: string) => req<{ trace: TraceDetail }>(`/traces/${id}`).then((r) => r.trace),
+
+  /* runtime-commissioned tools (F7) */
+  tools: (scope?: string) => req<{ tools: ToolInfo[] }>(`/tools${qs({ scope })}`),
 
   /* economics + tickets */
   economics: () => req<{ processes: EconProcess[] }>("/economics/summary"),
@@ -285,6 +359,7 @@ export const api = {
   /* sandbox */
   sandboxCompanies: () => req<{ companies: CompanySummary[] }>("/sandbox/companies"),
   sandboxTables: (companyId: string) => req<{ tables: string[]; seeded?: boolean }>(`/sandbox/companies/${companyId}/tables`),
+  sandboxTerms: (companyId: string) => req<{ markdown: string; seeded: boolean }>(`/sandbox/companies/${companyId}/terms`),
   sandboxTable: (companyId: string, table: string, page = 1) =>
     req<TablePage>(`/sandbox/companies/${companyId}/tables/${table}${qs({ page })}`),
   sandboxRun: (body: { company: string; prompt: string }) =>

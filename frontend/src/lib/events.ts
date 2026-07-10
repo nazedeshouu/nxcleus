@@ -18,6 +18,7 @@ export type DeliveryMode = "build" | "process" | "semi-automated";
 export type JobStatus =
   | "created"
   | "intake"
+  | "awaiting_input"
   | "planning"
   | "certifying"
   | "quoted"
@@ -275,7 +276,7 @@ export interface QaPassedPayload {
 }
 
 /* ---------- tickets ---------- */
-export type TicketStatus = "opened" | "in_fix" | "verified" | "human_review";
+export type TicketStatus = "opened" | "in_fix" | "fix_applied" | "verified" | "human_review";
 export type TicketSeverity = "low" | "medium" | "high";
 export interface TicketPayload {
   id: string;
@@ -369,6 +370,107 @@ export interface TelemetryGpuPayload {
   gpus?: number; // when the row is a node-level aggregate (backend streams per-node)
 }
 
+/* ---------- hardening wave: mid-task clarity + clarifications + traces ---------- */
+/** qa.probe_started/passed/timeout/exhausted, normalized to one UI event. */
+export interface QaProbeUpdatePayload {
+  scenario: string;
+  probe: string;
+  status: "started" | "passed" | "timeout" | "exhausted";
+  detail?: string;
+}
+export interface OracleVotePayload {
+  vector: string;
+  vote: string; // "match" | "mismatch" | "uncertain" | free-form
+  round?: number;
+}
+export interface ConsultRequestedPayload {
+  id: string;
+  scope?: string;
+  reason?: string;
+}
+export interface ScenariosEmittedPayload {
+  count: number;
+}
+export interface RehydratedPayload {
+  identifiers: number;
+}
+export interface CheckCompletedPayload {
+  check: string;
+}
+export interface PlanReplannedPayload {
+  note?: string;
+  wave?: number;
+}
+export interface FixAppliedPayload {
+  module: string;
+  note?: string;
+}
+export interface FilesWrittenPayload {
+  module: string;
+  files: number;
+}
+export interface GoalDriftPayload {
+  wave?: number;
+  drift?: number | null;
+  note?: string;
+}
+export interface DocsGeneratedPayload {
+  docs: string[];
+}
+export interface BoundarySweepPayload {
+  clean: boolean;
+  checked?: number;
+  findings?: number;
+}
+export interface ClarifyQuestion {
+  id: string;
+  question: string;
+  kind: "delivery" | "threshold" | "population" | "scope";
+  options?: string[];
+  required?: boolean;
+}
+export interface ClarificationRequestedPayload {
+  questions: ClarifyQuestion[];
+}
+export interface ClarificationAnsweredPayload {
+  answers?: number;
+}
+export interface RunArtifact {
+  kind: string; // "report" | "csv"
+  url: string;
+}
+export interface RunArtifactsReadyPayload {
+  run_id?: string;
+  artifacts: RunArtifact[];
+}
+export interface ModelTracePayload {
+  id?: string;
+  seat: Seat;
+  backend: string;
+  zone: Zone;
+  tokens_in: number;
+  tokens_out: number;
+  cost_usd: number;
+  latency_ms?: number;
+  badge?: string;
+}
+export interface RunSqlStepPayload {
+  run_id?: string;
+  step?: string;
+  label: string;
+  rows: number;
+}
+export interface ToolCreatedPayload {
+  name: string;
+  description?: string;
+  agent?: string;
+}
+export interface ToolInvokedPayload {
+  name: string;
+  ms?: number;
+  ok: boolean;
+}
+
 /* ---------- sandbox + config + notices ---------- */
 export interface SandboxQueuedPayload {
   position: number;
@@ -448,6 +550,7 @@ export type NxEvent =
   | Envelope<"ticket.in_fix", TicketPayload>
   | Envelope<"ticket.verified", TicketPayload>
   | Envelope<"ticket.human_review", TicketPayload>
+  | Envelope<"ticket.fix_applied", TicketPayload>
   | Envelope<"deliver.registered", DeliverRegisteredPayload>
   | Envelope<"run.started", RunStartedPayload>
   | Envelope<"run.unit_completed", RunUnitCompletedPayload>
@@ -468,7 +571,26 @@ export type NxEvent =
   | Envelope<"config.connection_added", ConnectionAddedPayload>
   | Envelope<"config.model_registered", ModelRegisteredPayload>
   | Envelope<"config.seat_bound", SeatBoundPayload>
-  | Envelope<"system.notice", SystemNoticePayload>;
+  | Envelope<"system.notice", SystemNoticePayload>
+  | Envelope<"qa.probe_update", QaProbeUpdatePayload>
+  | Envelope<"qa.oracle_vote", OracleVotePayload>
+  | Envelope<"certify.consult_requested", ConsultRequestedPayload>
+  | Envelope<"certify.scenarios_emitted", ScenariosEmittedPayload>
+  | Envelope<"certify.rehydrated", RehydratedPayload>
+  | Envelope<"certify.check_completed", CheckCompletedPayload>
+  | Envelope<"plan.replanned", PlanReplannedPayload>
+  | Envelope<"task.fix_applied", FixAppliedPayload>
+  | Envelope<"task.files_written", FilesWrittenPayload>
+  | Envelope<"conductor.goal_drift", GoalDriftPayload>
+  | Envelope<"deliver.docs_generated", DocsGeneratedPayload>
+  | Envelope<"boundary.sweep", BoundarySweepPayload>
+  | Envelope<"intake.clarification_requested", ClarificationRequestedPayload>
+  | Envelope<"intake.clarification_answered", ClarificationAnsweredPayload>
+  | Envelope<"run.artifacts_ready", RunArtifactsReadyPayload>
+  | Envelope<"model.trace", ModelTracePayload>
+  | Envelope<"run.sql_step", RunSqlStepPayload>
+  | Envelope<"tool.created", ToolCreatedPayload>
+  | Envelope<"tool.invoked", ToolInvokedPayload>;
 
 export type NxEventType = NxEvent["type"];
 

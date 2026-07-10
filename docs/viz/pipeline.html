@@ -1,0 +1,1174 @@
+<!doctype html>
+<html lang="en" data-temp="inside">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nxcleus — Build Pipeline &amp; Orchestrator</title>
+<style>
+/* ============================================================ palette
+   Sealed-midnight, lifted from frontend/src/styles/tokens.css
+   [data-temp="inside"] scope. One accent, 1px low-alpha hairlines. */
+:root{
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  --zone-local:#4cb4dc; --zone-local-wash:rgba(76,180,220,.10);
+  --zone-amd:#e2a35e;   --zone-amd-wash:rgba(226,163,94,.10);
+  --zone-custom:#8fa0cd;--zone-custom-wash:rgba(143,160,205,.10);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.08);
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.10);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.10);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.10);
+  --seal:#3fd8c4;
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --maxw:1100px; --sb:264px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so the near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(56,166,210,.10), transparent 60%),
+    radial-gradient(900px 520px at 6% 4%, rgba(63,216,196,.05), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{color:#a7e2f7}
+code,pre,.mono{font-family:var(--font-mono)}
+
+/* ============================================================ shell */
+.layout{display:grid; grid-template-columns:var(--sb) minmax(0,1fr); gap:0; max-width:1500px; margin:0 auto}
+
+/* -------- sidebar TOC -------- */
+.sidebar{position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:var(--sp7) var(--sp5) var(--sp6) var(--sp6); border-right:1px solid var(--hairline-soft)}
+.brand{display:flex; align-items:center; gap:10px; margin-bottom:var(--sp2)}
+.brand .mark{width:26px;height:26px;flex:0 0 auto}
+.brand .name{font-weight:650; letter-spacing:.02em; font-size:.98rem}
+.brand .sub{color:var(--text-faint); font-size:.7rem; letter-spacing:.16em; text-transform:uppercase; margin:2px 0 0 36px}
+.toc{margin-top:var(--sp6); list-style:none; padding:0; border-left:1px solid var(--hairline-soft)}
+.toc li{margin:0}
+.toc a{display:flex; gap:10px; align-items:baseline; padding:7px 0 7px 16px; margin-left:-1px;
+  border-left:2px solid transparent; color:var(--text-muted); font-size:.85rem; line-height:1.35}
+.toc a .n{color:var(--text-faint); font-family:var(--font-mono); font-size:.72rem; min-width:16px}
+.toc a:hover{color:var(--text)}
+.toc a.active{color:var(--accent-strong); border-left-color:var(--accent)}
+.toc .foot{margin-top:var(--sp5); padding-left:16px; color:var(--text-faint); font-size:.68rem; line-height:1.5}
+
+/* -------- content column -------- */
+.main{min-width:0; padding:0 var(--sp7) var(--sp8)}
+.wrap{max-width:var(--maxw); margin:0 auto}
+section{padding-top:var(--sp8); scroll-margin-top:24px}
+section:first-of-type{padding-top:var(--sp7)}
+
+.overline{font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+  font-weight:600; display:block; margin-bottom:var(--sp3)}
+h1{font-size:clamp(2.3rem,4.6vw,3.5rem); line-height:1.04; letter-spacing:-.02em; margin:0 0 var(--sp4);
+  font-weight:680}
+h2{font-size:clamp(1.6rem,2.6vw,2.15rem); line-height:1.12; letter-spacing:-.015em; margin:0 0 var(--sp4);
+  font-weight:660}
+h3{font-size:1.22rem; letter-spacing:-.01em; margin:var(--sp6) 0 var(--sp3); font-weight:620}
+h4{font-size:.96rem; margin:var(--sp5) 0 var(--sp2); font-weight:620; color:var(--text)}
+p{margin:0 0 var(--sp4); color:var(--text-muted)}
+.lede{font-size:clamp(1.05rem,1.5vw,1.24rem); line-height:1.55; color:var(--text); max-width:44em}
+strong{color:var(--text); font-weight:620}
+.hl{color:var(--accent-strong)}
+.mut{color:var(--text-faint)}
+
+/* ============================================================ hero */
+.hero{border-bottom:1px solid var(--hairline-soft); padding-bottom:var(--sp7)}
+.hero .meta{display:flex; flex-wrap:wrap; gap:var(--sp2); margin-top:var(--sp5)}
+.statgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin-top:var(--sp6);
+  background:var(--hairline-soft); border:1px solid var(--hairline-soft); border-radius:14px; overflow:hidden}
+.statgrid .cell{background:var(--surface); padding:var(--sp5) var(--sp4)}
+.statgrid .k{font-family:var(--font-mono); font-size:1.55rem; color:var(--accent-strong); font-weight:600; line-height:1}
+.statgrid .l{font-size:.76rem; color:var(--text-muted); margin-top:8px; letter-spacing:.01em}
+@media(max-width:720px){.statgrid{grid-template-columns:repeat(2,1fr)}}
+
+/* ============================================================ chips / badges */
+.chip{display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:.74rem;
+  padding:3px 9px; border:1px solid var(--hairline); border-radius:999px; color:var(--text-muted);
+  background:var(--surface-sunk); white-space:nowrap}
+.chip.file{color:var(--accent-strong); border-color:var(--accent-mid)}
+.chip.ev{color:var(--text-muted)}
+.chip.ev::before{content:""; width:5px;height:5px;border-radius:999px;background:var(--accent);opacity:.7}
+.seat{display:inline-flex; align-items:center; gap:6px; font-size:.76rem; font-weight:560;
+  padding:3px 10px; border-radius:999px; background:var(--accent-wash); color:var(--accent-strong);
+  border:1px solid rgba(56,166,210,.28)}
+.zone{display:inline-flex; align-items:center; gap:7px; font-size:.72rem; font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase; padding:3px 10px; border-radius:999px}
+.zone::before{content:""; width:7px;height:7px;border-radius:999px;background:currentColor}
+.zone.local{color:var(--zone-local); background:var(--zone-local-wash); border:1px solid rgba(76,180,220,.3)}
+.zone.external{color:var(--zone-external); background:var(--zone-external-wash); border:1px solid rgba(146,164,174,.3)}
+.zone.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border:1px solid rgba(226,163,94,.3)}
+.zone.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border:1px solid rgba(143,160,205,.3)}
+.dc{display:inline-flex; align-items:center; font-size:.68rem; font-weight:700; letter-spacing:.08em;
+  padding:2px 8px; border-radius:5px}
+.dc.raw{background:var(--raw); color:var(--raw-on); border:1px solid #14313c}
+.dc.san{background:transparent; color:var(--sanitized); border:1px solid rgba(56,166,210,.5)}
+
+/* ============================================================ pipeline flow (centerpiece) */
+.flow{position:relative; margin-top:var(--sp6)}
+.flow::before{content:""; position:absolute; left:23px; top:18px; bottom:34px; width:2px;
+  background:linear-gradient(var(--zone-local),var(--accent) 22%,var(--accent-mid) 78%,var(--seal));
+  opacity:.6}
+.stage{position:relative; display:grid; grid-template-columns:48px minmax(0,1fr); gap:var(--sp4);
+  margin-bottom:var(--sp5)}
+.stage-num{position:relative; z-index:2; width:48px; height:48px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:640;
+  font-size:1.05rem; color:var(--paper); background:var(--accent);
+  box-shadow:0 0 0 5px var(--paper), 0 0 0 6px var(--hairline)}
+.stage.local .stage-num{background:var(--zone-local)}
+.stage.external .stage-num{background:var(--zone-external); color:#0b1418}
+.stage.substep .stage-num{width:38px;height:38px;font-size:.85rem;margin:5px 0 0 5px;
+  background:var(--surface-raised); color:var(--accent-strong); box-shadow:0 0 0 5px var(--paper),0 0 0 6px var(--hairline)}
+.card{background:var(--surface); border:1px solid var(--hairline); border-radius:14px;
+  padding:var(--sp5); border-left:3px solid var(--accent)}
+.stage.local .card{border-left-color:var(--zone-local)}
+.stage.external .card{border-left-color:var(--zone-external)}
+.stage.substep .card{background:var(--surface-sunk); border-style:dashed}
+.card-hd{display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp3) var(--sp4); margin-bottom:var(--sp3)}
+.card-hd .title{font-size:1.16rem; font-weight:640; letter-spacing:-.01em; margin-right:auto}
+.card-hd .title small{display:block; color:var(--text-faint); font-weight:500; font-size:.72rem;
+  letter-spacing:.14em; text-transform:uppercase; margin-bottom:3px}
+.chiprow{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.card p{margin:0 0 var(--sp3); font-size:.92rem}
+.io{display:grid; grid-template-columns:1fr auto 1fr; gap:var(--sp3); align-items:stretch;
+  margin:var(--sp3) 0; background:var(--surface-sunk); border:1px solid var(--hairline-soft);
+  border-radius:10px; padding:var(--sp3) var(--sp4)}
+.io .col h5{margin:0 0 6px; font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint)}
+.io .col ul{margin:0; padding-left:0; list-style:none}
+.io .col li{font-size:.82rem; color:var(--text-muted); padding:2px 0; line-height:1.4}
+.io .col li code{font-size:.78rem; color:var(--accent-strong)}
+.io .arrow{display:flex; align-items:center; color:var(--accent); font-size:1.3rem}
+@media(max-width:640px){.io{grid-template-columns:1fr}.io .arrow{transform:rotate(90deg);justify-content:center}}
+.meta-line{display:flex; flex-wrap:wrap; gap:var(--sp2) var(--sp5); margin-top:var(--sp3);
+  padding-top:var(--sp3); border-top:1px dashed var(--hairline-soft); font-size:.8rem}
+.meta-line .grp{display:flex; flex-wrap:wrap; gap:6px; align-items:baseline}
+.meta-line .lab{color:var(--text-faint); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; margin-right:2px}
+
+/* ============================================================ generic cards / grids */
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp4)}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sp4)}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+.panel{background:var(--surface); border:1px solid var(--hairline); border-radius:14px; padding:var(--sp5)}
+.panel h4{margin-top:0}
+.panel.soft{background:var(--surface-sunk)}
+.panel ul{margin:var(--sp2) 0 0; padding-left:1.1em}
+.panel li{color:var(--text-muted); font-size:.9rem; margin:5px 0}
+.panel li code{color:var(--accent-strong); font-size:.82rem}
+
+/* deflist */
+.dl{display:grid; grid-template-columns:auto 1fr; gap:8px var(--sp4); margin:var(--sp3) 0; font-size:.88rem}
+.dl dt{font-family:var(--font-mono); color:var(--accent-strong); font-size:.8rem; white-space:nowrap}
+.dl dd{margin:0; color:var(--text-muted)}
+
+/* ============================================================ code excerpt */
+figure.code{margin:var(--sp4) 0}
+figure.code pre{margin:0; background:var(--surface-sunk); border:1px solid var(--hairline);
+  border-radius:12px 12px 0 0; padding:var(--sp4) var(--sp5); overflow-x:auto; font-size:.8rem; line-height:1.62}
+figure.code pre code{color:#c6dbe3; white-space:pre}
+figure.code figcaption{background:var(--surface); border:1px solid var(--hairline); border-top:none;
+  border-radius:0 0 12px 12px; padding:8px var(--sp5); font-family:var(--font-mono); font-size:.72rem;
+  color:var(--text-faint); display:flex; gap:10px; align-items:center}
+figure.code figcaption::before{content:""; width:6px;height:6px;border-radius:2px;background:var(--accent)}
+.tok-k{color:#7fd4c4}.tok-s{color:#c9b98a}.tok-c{color:var(--text-faint);font-style:italic}
+.tok-f{color:var(--accent-strong)}.tok-n{color:#d9a3d0}
+
+/* ============================================================ callouts */
+.callout{border:1px solid var(--hairline); border-left:3px solid var(--warn); background:var(--warn-wash);
+  border-radius:0 12px 12px 0; padding:var(--sp4) var(--sp5); margin:var(--sp4) 0}
+.callout .tag{font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; font-weight:700;
+  color:var(--warn); display:flex; align-items:center; gap:8px; margin-bottom:8px}
+.callout p{margin:0; color:var(--text); font-size:.9rem}
+.callout p+p{margin-top:8px}
+.callout.info{border-left-color:var(--accent); background:var(--accent-wash)}
+.callout.info .tag{color:var(--accent-strong)}
+
+/* real vs stub strip */
+.rs{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp4); margin-top:var(--sp5)}
+@media(max-width:820px){.rs{grid-template-columns:1fr}}
+.rs .col{border:1px solid var(--hairline); border-radius:14px; overflow:hidden}
+.rs .col h4{margin:0; padding:var(--sp3) var(--sp5); font-size:.78rem; letter-spacing:.12em; text-transform:uppercase;
+  display:flex; align-items:center; gap:9px}
+.rs .real h4{background:var(--ok-wash); color:var(--ok); border-bottom:1px solid var(--hairline)}
+.rs .stub h4{background:var(--warn-wash); color:var(--warn); border-bottom:1px solid var(--hairline)}
+.rs .col h4::before{content:""; width:8px;height:8px;border-radius:50%; background:currentColor}
+.rs ul{margin:0; padding:var(--sp4) var(--sp5) var(--sp4) calc(var(--sp5) + 1em); list-style:none}
+.rs li{position:relative; font-size:.86rem; color:var(--text-muted); margin:0 0 var(--sp3); line-height:1.45}
+.rs li:last-child{margin-bottom:0}
+.rs li::before{content:""; position:absolute; left:-1em; top:.6em; width:6px;height:6px;border-radius:1px}
+.rs .real li::before{background:var(--ok)} .rs .stub li::before{background:var(--warn)}
+.rs li b{color:var(--text); font-weight:620}
+.rs li code{color:var(--accent-strong); font-size:.8rem}
+
+/* diagram frame */
+.diagram{background:var(--surface-sunk); border:1px solid var(--hairline); border-radius:14px;
+  padding:var(--sp5); margin:var(--sp4) 0; overflow-x:auto}
+.diagram svg{display:block; max-width:100%; height:auto; margin:0 auto}
+.dcap{font-size:.76rem; color:var(--text-faint); margin-top:var(--sp3); text-align:center}
+svg text{font-family:var(--font-sans)}
+.svg-mono{font-family:var(--font-mono)}
+
+/* status legend for state machine */
+.legend{display:flex; flex-wrap:wrap; gap:var(--sp3) var(--sp5); margin-top:var(--sp3); font-size:.78rem; color:var(--text-muted)}
+.legend .it{display:flex; align-items:center; gap:7px}
+.legend .sw{width:12px;height:12px;border-radius:3px}
+
+hr.rule{border:none; border-top:1px solid var(--hairline-soft); margin:var(--sp7) 0}
+.foot-note{color:var(--text-faint); font-size:.8rem; border-top:1px solid var(--hairline-soft);
+  margin-top:var(--sp8); padding-top:var(--sp5)}
+
+@media(max-width:960px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .main{padding:0 var(--sp5) var(--sp7)}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ============================================================ SIDEBAR -->
+<aside class="sidebar">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <circle cx="16" cy="16" r="14" stroke="var(--accent)" stroke-width="1.5" opacity=".5"/>
+      <circle cx="16" cy="16" r="5" fill="var(--seal)"/>
+      <circle cx="16" cy="16" r="9.5" stroke="var(--accent-strong)" stroke-width="1.5" stroke-dasharray="3 4"/>
+    </svg>
+    <span class="name">Nxcleus</span>
+  </div>
+  <div class="sub">Engine Reference</div>
+  <nav>
+    <ul class="toc">
+      <li><a href="#overview"><span class="n">00</span> Overview</a></li>
+      <li><a href="#pipeline"><span class="n">01</span> The Pipeline 0→7</a></li>
+      <li><a href="#engine"><span class="n">02</span> Engine Mechanics</a></li>
+      <li><a href="#waves"><span class="n">03</span> Wave Orchestration</a></li>
+      <li><a href="#amend"><span class="n">04</span> Amendments &amp; Consults</a></li>
+      <li><a href="#qa"><span class="n">05</span> QA · Oracle · Goal</a></li>
+      <li><a href="#sandbox"><span class="n">06</span> Code-Exec Sandbox</a></li>
+      <li><a href="#boundary"><span class="n">07</span> Routing &amp; Boundary</a></li>
+      <li><a href="#truth"><span class="n">08</span> Spec vs Code · Real vs Stub</a></li>
+    </ul>
+    <div class="foot">Source of truth: <span class="mono">backend/app/</span> as committed.<br>Spec refs (03/07/08) noted where code diverges.</div>
+  </nav>
+</aside>
+
+<!-- ============================================================ MAIN -->
+<main class="main"><div class="wrap">
+
+<!-- ---------------------------------------------------------- OVERVIEW -->
+<section id="overview" class="hero">
+  <span class="overline">Build Pipeline &amp; Orchestrator</span>
+  <h1>Nxcleus turns a sanitized brief into a certified, tested, deployed process — event by event.</h1>
+  <p class="lede">A single <strong>event-sourced asyncio engine</strong> drives every job through stages
+  0→7. Each stage is an <span class="hl">asyncio task</span> given five capabilities — emit, complete,
+  dao, meter, checkpoint. The engine is deterministic: it dispatches, retries, and resumes, but it
+  <strong>never decides</strong>. Deciding lives in the certified plan and in the conductor's bounded,
+  hash-chained wave reviews. Every state change is appended to one <span class="hl">events</span> table
+  and fanned out over SSE; the UI is a fold of that log, the DB rows are the materialized present.</p>
+
+  <div class="meta">
+    <span class="chip file">backend/app/orchestrator/engine.py</span>
+    <span class="chip">asyncio · SQLite (one writer)</span>
+    <span class="chip">SSE event bus</span>
+    <span class="zone local">Local by default</span>
+    <span class="zone external">Frontier only on sanitized</span>
+  </div>
+
+  <div class="statgrid">
+    <div class="cell"><div class="k">0–7</div><div class="l">Pipeline stages, one status each in <code class="mono">_STAGE_MODULES</code></div></div>
+    <div class="cell"><div class="k">7</div><div class="l">Certifier checks before the plan is trusted</div></div>
+    <div class="cell"><div class="k">8</div><div class="l">Model seats: trust · planner · certifier · conductor · coder · consolidator · oracle · inspector</div></div>
+    <div class="cell"><div class="k">2×</div><div class="l">Whole-stage attempts before a job is <code class="mono">blocked</code></div></div>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- PIPELINE -->
+<section id="pipeline">
+  <span class="overline">The Centerpiece</span>
+  <h2>Stages 0 → 7, as implemented</h2>
+  <p class="lede">The engine's <code class="mono">_STAGE_MODULES</code> map binds a job status to a module's
+  <code class="mono">run(ctx)</code>. Below, each stage names its real module, the seat(s) it invokes, the
+  boundary zone it runs in, the actual inputs and output artifacts (real dict keys), where results
+  persist, and the events it emits. Stage 3 (Quote) is not its own driver status — it is a deterministic
+  sub-step issued at the tail of Stage 2, after which the job parks at <code class="mono">quoted</code>.</p>
+
+  <div class="flow">
+
+    <!-- STAGE 0 -->
+    <div class="stage local">
+      <div class="stage-num">0</div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="title"><small>Intake · Policy · Boundary</small>Data boundary &amp; mode classification</div>
+          <span class="seat">trust</span><span class="zone local">Local</span>
+        </div>
+        <p>The one moment raw customer text is touched. Baseline PII is masked into the
+        <code class="mono">boundary_vault</code> (never serialized outward); the trust seat distills a
+        confidentiality policy and composes the <strong>SanitizedSpec</strong> — the planner brief the
+        frontier will actually see.</p>
+        <div class="io">
+          <div class="col"><h5>Inputs</h5><ul>
+            <li><code>spec.request</code> <span class="dc raw">RAW</span></li>
+            <li><code>policy.sources</code></li>
+            <li><code>spec.context_pack</code> (code_map, db_schemas)</li>
+            <li><code>spec.company</code> (sandbox seed)</li>
+          </ul></div>
+          <div class="arrow">→</div>
+          <div class="col"><h5>Outputs</h5><ul>
+            <li><code>jobs.spec</code> = SanitizedSpec <span class="dc san">SANITIZED</span></li>
+            <li><code>jobs.policy</code> (distilled rules)</li>
+            <li><code>jobs.mode</code> = build | process</li>
+            <li><code>boundary_vault</code> placeholder→raw</li>
+          </ul></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Persists</span><span class="chip">jobs</span><span class="chip">boundary_vault</span><span class="chip">messages</span></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Emits</span>
+            <span class="chip ev">intake.policy_registered</span><span class="chip ev">intake.context_mapped</span>
+            <span class="chip ev">intake.spec_updated</span><span class="chip ev">intake.classified</span>
+            <span class="chip ev">boundary.sanitized</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 1 -->
+    <div class="stage external">
+      <div class="stage-num">1</div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="title"><small>Planning · topology + BoM</small>Frontier authors the work order</div>
+          <span class="seat">planner</span><span class="zone external">External / Local¹</span>
+        </div>
+        <p>The planner receives <strong>only the SanitizedSpec</strong>, streams reasoning as
+        <code class="mono">plan.delta</code>, and returns Plan v1: modules, interfaces, a DAG with
+        <code class="mono">task_flags</code>, a model BoM, and (process mode) a topology. The plan id is
+        <em>deterministic</em> so a resumed stage upserts the same row.</p>
+        <div class="io">
+          <div class="col"><h5>Inputs</h5><ul>
+            <li><code>job.spec</code> (brief) <span class="dc san">SANITIZED</span></li>
+          </ul></div>
+          <div class="arrow">→</div>
+          <div class="col"><h5>Outputs</h5><ul>
+            <li><code>plans</code> v1 · status <code>draft</code></li>
+            <li>body: <code>modules[]</code>, <code>interfaces[]</code>, <code>dag[]</code>, <code>model_bom</code>, <code>topology?</code>, <code>estimates</code></li>
+          </ul></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Persists</span><span class="chip">plans (v1)</span><span class="chip">plan_id = deterministic(plan,job,"v1")</span></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Emits</span>
+            <span class="chip ev">plan.started</span><span class="chip ev">plan.delta</span><span class="chip ev">plan.completed</span></div>
+        </div>
+        <p class="mut" style="font-size:.78rem;margin:10px 0 0">¹ Sovereign mode routes the planner to a local
+        node (<code class="mono">glm-46</code> on node B); the plan is otherwise the only stage that leaves the walls.</p>
+      </div>
+    </div>
+
+    <!-- STAGE 2 -->
+    <div class="stage local">
+      <div class="stage-num">2</div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="title"><small>Certification · RAW, in the Local zone</small>Rehydrate, check, amend, set the goal</div>
+          <span class="seat">certifier</span><span class="seat">trust</span><span class="seat">planner</span><span class="zone local">Local</span>
+        </div>
+        <p>The certifier reads <strong>RAW</strong> (rehydrating placeholders from the vault map), runs a
+        seven-point checklist, and triages each finding: <em>amend</em> (a hash-chained patch it applies
+        itself) or <em>consult</em> (a sanitized escalation back to the planner). It emits the
+        <strong>goal statement</strong>, integration tests, and oracle vectors, then writes the certified
+        plan v2 and issues the quote.</p>
+        <div class="chiprow" style="margin-bottom:12px">
+          <span class="chip">interface-compat</span><span class="chip">data-completeness</span><span class="chip">error-coverage</span>
+          <span class="chip">pattern-consistency</span><span class="chip">ac-coverage</span><span class="chip">bom-sanity</span><span class="chip">production-fit</span>
+        </div>
+        <div class="io">
+          <div class="col"><h5>Inputs</h5><ul>
+            <li>draft <code>plan</code> v1</li>
+            <li><code>spec.request</code> + <code>vault</code> map <span class="dc raw">RAW</span></li>
+            <li><code>job.policy</code></li>
+          </ul></div>
+          <div class="arrow">→</div>
+          <div class="col"><h5>Outputs</h5><ul>
+            <li><code>plans</code> v2 · status <code>certified</code></li>
+            <li><code>jobs.goal</code> (D10)</li>
+            <li>checkpoints: <code>tests</code>, <code>vectors</code>, <code>adversarial_scenarios</code>, <code>certified_plan_id</code></li>
+            <li><code>quotes</code> (deterministic)</li>
+          </ul></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Persists</span><span class="chip">plans (v2)</span><span class="chip">amendments (hash-chained)</span><span class="chip">consults</span><span class="chip">quotes</span></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Emits</span>
+            <span class="chip ev">certify.check_started ×7</span><span class="chip ev">certify.finding</span>
+            <span class="chip ev">certify.amendment</span><span class="chip ev">certify.consult_opened</span>
+            <span class="chip ev">certify.goal_set</span><span class="chip ev">certify.certified</span>
+            <span class="chip ev">quote.issued</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 3 substep -->
+    <div class="stage substep">
+      <div class="stage-num">3</div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="title"><small>Quote · deterministic, no LLM</small>Itemized estimate → park at <code class="mono">quoted</code></div>
+          <span class="zone local">Local</span>
+        </div>
+        <p>A pure function of the BoM, the planner's token/GPU estimates, and current rates
+        (<code class="mono">token_rate</code>, <code class="mono">gpu_hour_usd</code>). Five line items —
+        frontier planning, build waves, consolidation, adversarial QA, projected per-run cost — with ±50% /
+        ±30% ranges. The quote is a <em>range</em>; the delivered invoice is exact and reconciled against it.</p>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Called from</span><span class="chip file">certify/stage2.py → stage3.issue()</span></div>
+          <div class="grp"><span class="lab">Then</span><span class="chip">status=quoted · awaits POST /approve-quote</span></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Emits</span><span class="chip ev">quote.issued</span><span class="chip ev">quote.approved</span></div>
+          <div class="grp"><span class="lab">Sandbox</span><span class="chip">auto-approves the capped quote</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 4 -->
+    <div class="stage local">
+      <div class="stage-num">4</div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="title"><small>Build · parallel waves</small>Topological fan-out, conductor between waves</div>
+          <span class="seat">coder pool</span><span class="seat">conductor</span><span class="zone local">Local</span>
+        </div>
+        <p>The DAG is partitioned into <strong>topological waves</strong> (Kahn levels). Within a wave, tasks
+        dispatch concurrently to the coder pool with capability routing; each module's files are written,
+        then run through the code-exec sandbox. Between waves the conductor reviews outputs against plan +
+        goal and may amend <em>only not-yet-built</em> regions. Process-mode plans (topology present) take
+        the corpus fan-out path instead.</p>
+        <div class="io">
+          <div class="col"><h5>Inputs</h5><ul>
+            <li>certified <code>plan</code> (via checkpoint)</li>
+            <li><code>tests</code> checkpoint · <code>goal</code></li>
+          </ul></div>
+          <div class="arrow">→</div>
+          <div class="col"><h5>Outputs</h5><ul>
+            <li><code>build_tasks</code> (one per module, upsert by det. id)</li>
+            <li>workspace <code>src/*.py</code> + <code>process.py</code></li>
+            <li>conductor <code>amendments</code> on unbuilt regions</li>
+          </ul></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Persists</span><span class="chip">build_tasks</span><span class="chip">workspaces/&lt;job&gt;/</span><span class="chip">amendments</span></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Emits</span>
+            <span class="chip ev">fleet.profile_requested</span><span class="chip ev">conductor.wave_started</span>
+            <span class="chip ev">task.started</span><span class="chip ev">task.tests</span><span class="chip ev">task.completed</span>
+            <span class="chip ev">conductor.review</span><span class="chip ev">conductor.amendment</span><span class="chip ev">conductor.green_flag</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 5 -->
+    <div class="stage local">
+      <div class="stage-num">5</div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="title"><small>Consolidation · the validation wall</small>Merge modules → run the full suite</div>
+          <span class="seat">consolidator</span><span class="seat">coder</span><span class="zone local">Local</span>
+        </div>
+        <p>The consolidator merges module files into one coherent package with a <code class="mono">process.py</code>
+        entrypoint, then the full Stage-2 integration suite runs in the sandbox — objective pass/fail.
+        Failures open tickets and route to a bounded coder fix loop (≤3 rounds). This is Demo-3's
+        "partial → N/N green" wall rendered live.</p>
+        <div class="io">
+          <div class="col"><h5>Inputs</h5><ul>
+            <li><code>plan.modules</code>, <code>plan.interfaces</code></li>
+            <li><code>tests</code> checkpoint (integration suite)</li>
+          </ul></div>
+          <div class="arrow">→</div>
+          <div class="col"><h5>Outputs</h5><ul>
+            <li>assembled <code>process.py</code></li>
+            <li>green integration run (or ≤3 fix rounds)</li>
+          </ul></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Emits</span>
+            <span class="chip ev">consolidate.started</span><span class="chip ev">consolidate.test_run</span>
+            <span class="chip ev">consolidate.completed</span><span class="chip ev">ticket.opened</span><span class="chip ev">ticket.verified</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 6 -->
+    <div class="stage local">
+      <div class="stage-num">6</div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="title"><small>Adversarial QA + goal check</small>Deploy live, probe, recompute, judge</div>
+          <span class="seat">inspector</span><span class="seat">oracle</span><span class="seat">coder</span><span class="zone local">Local</span>
+        </div>
+        <p>The process is deployed to a <strong>real staging endpoint</strong> (a FastAPI shim on an
+        ephemeral localhost port). A 4-agent inspector swarm probes it over live HTTP; the Numeric Oracle
+        recomputes each vector <em>blind</em> from the rule text and compares against the process's real
+        output. Disagreements never auto-resolve — they flag for human review. The final gate is the
+        goal-fulfillment check against <code class="mono">jobs.goal</code>.</p>
+        <div class="io">
+          <div class="col"><h5>Inputs</h5><ul>
+            <li><code>vectors</code>, <code>adversarial_scenarios</code>, <code>tests</code> checkpoints</li>
+            <li><code>spec.acceptance_criteria</code> · <code>goal</code></li>
+          </ul></div>
+          <div class="arrow">→</div>
+          <div class="col"><h5>Outputs</h5><ul>
+            <li><code>oracle_checks</code> (verdict per vector)</li>
+            <li><code>tickets</code> (inspector / oracle / fix)</li>
+            <li><code>goal_check</code> checkpoint</li>
+          </ul></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Emits</span>
+            <span class="chip ev">qa.inspector_started</span><span class="chip ev">qa.probe</span><span class="chip ev">qa.finding</span>
+            <span class="chip ev">qa.oracle_check</span><span class="chip ev">qa.goal_check</span><span class="chip ev">qa.passed</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 7 -->
+    <div class="stage local">
+      <div class="stage-num">7</div>
+      <div class="card">
+        <div class="card-hd">
+          <div class="title"><small>Delivery → operations registry</small>Immutable package, final invoice, register</div>
+          <span class="seat">trust</span><span class="zone local">Local</span>
+        </div>
+        <p>The trust seat writes docs (degrading to deterministic content if generation fails), the final
+        metered invoice is reconciled against the quote, and an <strong>immutable package</strong> is
+        assembled — manifest, plan + amendments + consults, source, tests, vectors, docs, invoice. A
+        <code class="mono">process</code> and <code class="mono">process_version</code> v1 are registered;
+        the job closes. Everything after this is the operate phase.</p>
+        <div class="io">
+          <div class="col"><h5>Inputs</h5><ul>
+            <li>certified <code>plan</code>, <code>amendments</code>, <code>consults</code></li>
+            <li><code>goal_check</code>, <code>tests</code>, <code>vectors</code>, quote</li>
+          </ul></div>
+          <div class="arrow">→</div>
+          <div class="col"><h5>Outputs</h5><ul>
+            <li><code>processes</code> + <code>process_versions</code> v1</li>
+            <li>package dir (<code>manifest.json</code>, <code>plan/</code>, <code>src/</code>, <code>tests/</code>, <code>docs/</code>, <code>invoice.json</code>)</li>
+          </ul></div>
+        </div>
+        <div class="meta-line">
+          <div class="grp"><span class="lab">Emits</span><span class="chip ev">deliver.registered</span><span class="chip ev">job.done</span></div>
+          <div class="grp"><span class="lab">Status</span><span class="chip">done (terminal)</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /flow -->
+
+  <div class="callout info">
+    <div class="tag">◆ Two paths through Stage 4</div>
+    <p><strong>Build mode</strong> (no <code class="mono">plan.topology</code>) fans modules out to the coder
+    pool in waves and consolidates into a <code class="mono">process.py</code>. <strong>Process mode</strong>
+    (topology present) skips modules entirely: <code class="mono">run_process_fanout()</code> streams a unit
+    corpus through the plan's per-unit steps and jumps straight to delivery. Stage 5's consolidation only
+    runs on the build path.</p>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- ENGINE -->
+<section id="engine">
+  <span class="overline">Engine Mechanics</span>
+  <h2>One deterministic driver, one append-only log</h2>
+  <p class="lede">The engine holds a task per job and per run. <code class="mono">_drive_job</code> loops:
+  read the job, act on its status, run the stage, repeat — stopping only on a parked or terminal status.
+  It decides nothing about <em>content</em>; it only advances the machine.</p>
+
+  <h3>The state machine</h3>
+  <p>Status is written to <code class="mono">jobs.status</code> and emitted as
+  <code class="mono">job.stage_changed</code> in the same call, so persisted state and the event log can't
+  diverge. <code class="mono">test_state_machine.py</code> asserts every declared stage appears in order
+  and that exactly one process registers per job.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 940 250" role="img" aria-label="Job state machine: intake through done, with quoted park, blocked and aborted exits">
+      <defs>
+        <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="var(--accent)"/>
+        </marker>
+        <marker id="ahw" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="var(--warn)"/>
+        </marker>
+        <marker id="ahd" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="var(--danger)"/>
+        </marker>
+      </defs>
+      <!-- main row nodes -->
+      <g font-size="12" text-anchor="middle" class="svg-mono">
+        <!-- helper positions: 8 nodes across -->
+        <!-- intake -->
+        <g><rect x="10" y="40" width="96" height="40" rx="9" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="58" y="64" fill="var(--text)">intake</text></g>
+        <g><rect x="128" y="40" width="96" height="40" rx="9" fill="var(--surface-raised)" stroke="var(--zone-external)"/><text x="176" y="64" fill="var(--text)">planning</text></g>
+        <g><rect x="246" y="40" width="104" height="40" rx="9" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="298" y="64" fill="var(--text)">certifying</text></g>
+        <!-- quoted park -->
+        <g><rect x="372" y="40" width="96" height="40" rx="9" fill="var(--accent-pale)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="420" y="59" fill="var(--accent-strong)">quoted</text><text x="420" y="73" fill="var(--text-faint)" font-size="9">park</text></g>
+        <g><rect x="490" y="40" width="96" height="40" rx="9" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="538" y="64" fill="var(--text)">building</text></g>
+        <g><rect x="608" y="40" width="120" height="40" rx="9" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="668" y="64" fill="var(--text)">consolidating</text></g>
+        <g><rect x="750" y="40" width="70" height="40" rx="9" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="785" y="64" fill="var(--text)">qa</text></g>
+        <g><rect x="842" y="40" width="88" height="40" rx="9" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="886" y="64" fill="var(--text)">delivering</text></g>
+        <!-- done -->
+        <g><rect x="842" y="150" width="88" height="38" rx="9" fill="var(--ok-wash)" stroke="var(--ok)"/><text x="886" y="173" fill="var(--ok)">done</text></g>
+        <!-- blocked / aborted -->
+        <g><rect x="360" y="150" width="96" height="38" rx="9" fill="var(--warn-wash)" stroke="var(--warn)"/><text x="408" y="173" fill="var(--warn)">blocked</text></g>
+        <g><rect x="490" y="150" width="96" height="38" rx="9" fill="var(--danger-wash)" stroke="var(--danger)"/><text x="538" y="173" fill="var(--danger)">aborted</text></g>
+      </g>
+      <!-- edges main -->
+      <g fill="none" stroke="var(--accent)" stroke-width="1.6">
+        <path d="M106,60 L126,60" marker-end="url(#ah)"/>
+        <path d="M224,60 L244,60" marker-end="url(#ah)"/>
+        <path d="M350,60 L370,60" marker-end="url(#ah)"/>
+        <path d="M468,60 L488,60" marker-end="url(#ah)"/>
+        <path d="M586,60 L606,60" marker-end="url(#ah)"/>
+        <path d="M728,60 L748,60" marker-end="url(#ah)"/>
+        <path d="M820,60 L840,60" marker-end="url(#ah)"/>
+        <path d="M886,80 L886,148" marker-end="url(#ah)"/>
+      </g>
+      <!-- approve-quote label -->
+      <text x="420" y="30" text-anchor="middle" font-size="10" fill="var(--text-faint)">approve-quote ↓ building</text>
+      <!-- failure edges -->
+      <g fill="none" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="4 3">
+        <path d="M298,80 C298,120 360,120 400,148" marker-end="url(#ahw)"/>
+      </g>
+      <g fill="none" stroke="var(--danger)" stroke-width="1.4" stroke-dasharray="4 3">
+        <path d="M538,80 L538,148" marker-end="url(#ahd)"/>
+      </g>
+      <text x="250" y="130" font-size="10" fill="var(--warn)">2 attempts fail / structural consult → blocked</text>
+      <text x="546" y="128" font-size="10" fill="var(--danger)">BudgetExceeded → aborted</text>
+    </svg>
+    <div class="dcap">Statuses from <span class="mono">engine.py</span> — <span class="mono">_STAGE_MODULES</span> + <span class="mono">_STOP = {quoted, blocked, done, aborted}</span>. <span class="mono">quoted</span> parks until approve-quote (sandbox auto-approves).</div>
+  </div>
+
+  <figure class="code">
+<pre><code><span class="tok-k">async def</span> <span class="tok-f">_drive_job</span>(self, job_id):
+    <span class="tok-k">while</span> True:
+        job = <span class="tok-k">await</span> dao.get_job(job_id)
+        <span class="tok-k">if</span> job <span class="tok-k">is</span> None: <span class="tok-k">return</span>
+        status = job[<span class="tok-s">"status"</span>]
+        <span class="tok-c"># sandbox jobs auto-approve the capped quote and continue (09 §3)</span>
+        <span class="tok-k">if</span> status == <span class="tok-s">"quoted"</span> <span class="tok-k">and</span> job.get(<span class="tok-s">"origin"</span>) == <span class="tok-s">"sandbox"</span>:
+            <span class="tok-k">await</span> dao.approve_quote(job_id); <span class="tok-k">await</span> self.set_stage(job_id, <span class="tok-s">"building"</span>)
+            <span class="tok-k">continue</span>
+        <span class="tok-k">if</span> status <span class="tok-k">in</span> _STOP:            <span class="tok-c"># quoted | blocked | done | aborted</span>
+            <span class="tok-k">if</span> status == <span class="tok-s">"done"</span>: <span class="tok-k">await</span> emit(scope, E.JOB_DONE, {...})
+            <span class="tok-k">return</span>
+        ok = <span class="tok-k">await</span> self._run_stage(job, status)
+        <span class="tok-k">if</span> <span class="tok-k">not</span> ok: <span class="tok-k">return</span>      <span class="tok-c"># blocked/parked by failure policy</span></code></pre>
+    <figcaption>backend/app/orchestrator/engine.py · ~124–144 · _drive_job</figcaption>
+  </figure>
+
+  <div class="grid2">
+    <div class="panel">
+      <h4>Event sourcing &amp; replay</h4>
+      <p style="font-size:.9rem"><code class="mono">emit(scope, type, payload)</code> writes one append-only
+      <code class="mono">events</code> row (monotonic <code class="mono">seq</code>) and fans out to every live
+      SSE subscriber. UI state for a job is a fold of its events; the DB rows are the materialized present.</p>
+      <ul>
+        <li>Token deltas (<code>plan.delta</code>, <code>task.output_delta</code>) are <b>coalesced</b> to ≤10/s per scope</li>
+        <li><code>replay(scope, from_seq)</code> and <code>replay_prefix(type_prefix, …)</code> reconstruct any view</li>
+        <li>Named SSE events; slow subscribers are dropped and reconnect with <code>from_seq</code></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h4>Resumability &amp; idempotency</h4>
+      <p style="font-size:.9rem">On boot, <code class="mono">engine.start()</code> scans
+      <code class="mono">resume_candidates()</code> (non-terminal jobs) and <code class="mono">resume_runs()</code>,
+      resubmitting each. A crash mid-stage-4 resumes at the <em>top</em> of the stage.</p>
+      <ul>
+        <li>Deterministic IDs (<code>deterministic(kind, …seed)</code>) make writes upserts, not duplicates</li>
+        <li>Done <code>build_tasks</code> are skipped on the retry — no re-generation</li>
+        <li><code>test_resumability.py</code>: rewind to <code>building</code>, drop the process, re-run → exactly one process, N tasks, no dupes</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Error, retry &amp; budget policy</h3>
+  <p>Each stage runs under a whole-stage <strong>watchdog</strong> and a uniform failure policy in
+  <code class="mono">_run_stage</code>.</p>
+  <div class="dl">
+    <dt>watchdog</dt><dd>per-status timeouts — planning 600s, certifying 900s, building 1800s, consolidating 480s, qa 1200s, intake 300s, delivering 120s</dd>
+    <dt>retry</dt><dd><code class="mono">_MAX_STAGE_ATTEMPTS = 2</code>: first failure emits a warn notice and retries once; second failure → <code class="mono">blocked</code></dd>
+    <dt>budget</dt><dd><code class="mono">BudgetExceeded</code> is a deterministic guard, not a fault — no retry; the job → <code class="mono">aborted</code> gracefully (partial dashboard survives)</dd>
+    <dt>cancel</dt><dd><code class="mono">CancelledError</code> re-raises untouched so <code class="mono">engine.stop()</code> can tear tasks down cleanly</dd>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- WAVES -->
+<section id="waves">
+  <span class="overline">Wave Orchestration</span>
+  <h2>Topological waves, then a conductor between each</h2>
+  <p class="lede">Stage 4 turns the plan DAG into ordered waves, dispatches each wave concurrently to the
+  coder pool with capability routing, and lets the conductor amend the <em>road ahead</em> — never the road
+  already built.</p>
+
+  <h3>Waves from the DAG — Kahn levels</h3>
+  <p><code class="mono">waves_from_dag(dag, modules)</code> computes topological levels: every task whose deps
+  are already <code class="mono">done</code> forms the next wave. A dependency cycle is a guard, not a crash —
+  the remainder is emitted as one wave. With no DAG it falls back to a single wave of all modules.</p>
+
+  <figure class="code">
+<pre><code><span class="tok-k">def</span> <span class="tok-f">waves_from_dag</span>(dag, modules):
+    <span class="tok-k">if</span> <span class="tok-k">not</span> dag:
+        <span class="tok-k">return</span> [[{<span class="tok-s">"task"</span>: f<span class="tok-s">"t_{m['id']}"</span>, <span class="tok-s">"module"</span>: m[<span class="tok-s">"id"</span>]} <span class="tok-k">for</span> m <span class="tok-k">in</span> modules]] <span class="tok-k">if</span> modules <span class="tok-k">else</span> []
+    tasks = {t[<span class="tok-s">"task"</span>]: t <span class="tok-k">for</span> t <span class="tok-k">in</span> dag}
+    remaining, done, waves = dict(indeg), <span class="tok-n">set</span>(), []
+    <span class="tok-k">while</span> remaining:
+        ready = [t <span class="tok-k">for</span> t <span class="tok-k">in</span> remaining <span class="tok-k">if</span> <span class="tok-n">all</span>(dep <span class="tok-k">in</span> done <span class="tok-k">for</span> dep <span class="tok-k">in</span> tasks[t].get(<span class="tok-s">"deps"</span>, []))]
+        <span class="tok-k">if</span> <span class="tok-k">not</span> ready: ready = <span class="tok-n">list</span>(remaining)   <span class="tok-c"># cycle guard — flush the rest as one wave</span>
+        waves.append([tasks[t] <span class="tok-k">for</span> t <span class="tok-k">in</span> ready])
+        <span class="tok-k">for</span> t <span class="tok-k">in</span> ready: done.add(t); remaining.pop(t, None)
+    <span class="tok-k">return</span> waves</code></pre>
+    <figcaption>backend/app/fleet/stage4.py · ~22–39 · waves_from_dag</figcaption>
+  </figure>
+
+  <div class="diagram">
+    <svg viewBox="0 0 900 330" role="img" aria-label="Wave loop: dispatch a wave to the coder pool, conductor reviews between waves, then next wave">
+      <defs>
+        <marker id="wa" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--accent)"/></marker>
+        <marker id="wg" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--ok)"/></marker>
+      </defs>
+      <!-- wave box -->
+      <rect x="30" y="30" width="300" height="270" rx="14" fill="none" stroke="var(--hairline)" stroke-dasharray="5 4"/>
+      <text x="46" y="52" font-size="12" fill="var(--text-faint)" class="svg-mono">wave i — asyncio.gather</text>
+      <!-- coder pool tasks -->
+      <g class="svg-mono" font-size="11" text-anchor="middle">
+        <g><rect x="52" y="70" width="118" height="46" rx="9" fill="var(--surface-raised)" stroke="var(--accent-mid)"/><text x="111" y="90" fill="var(--text)">_build_task</text><text x="111" y="105" fill="var(--text-faint)" font-size="9">qwen3-coder-next</text></g>
+        <g><rect x="190" y="70" width="118" height="46" rx="9" fill="var(--surface-raised)" stroke="var(--accent-mid)"/><text x="249" y="90" fill="var(--text)">_build_task</text><text x="249" y="105" fill="var(--text-faint)" font-size="9">qwen36-27b</text></g>
+        <g><rect x="52" y="128" width="118" height="46" rx="9" fill="var(--surface-raised)" stroke="var(--accent-mid)"/><text x="111" y="148" fill="var(--text)">_build_task</text><text x="111" y="163" fill="var(--text-faint)" font-size="9">devstral-small-2</text></g>
+        <g><rect x="190" y="128" width="118" height="46" rx="9" fill="var(--surface-sunk)" stroke="var(--hairline)"/><text x="249" y="153" fill="var(--text-faint)">Semaphore(2·pool)</text></g>
+      </g>
+      <text x="180" y="205" font-size="10.5" fill="var(--text-muted)" text-anchor="middle">pick_member → write_files → codeexec.run_tests → upsert build_task</text>
+      <!-- arrow to conductor -->
+      <path d="M330,150 L400,150" fill="none" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#wa)"/>
+      <!-- conductor -->
+      <g class="svg-mono" font-size="12" text-anchor="middle">
+        <rect x="410" y="90" width="200" height="120" rx="14" fill="var(--accent-wash)" stroke="var(--accent)"/>
+        <text x="510" y="118" fill="var(--accent-strong)" font-size="13">conductor.review_wave</text>
+        <text x="510" y="142" fill="var(--text-muted)" font-size="10">scope-lock: unbuilt regions only</text>
+        <text x="510" y="160" fill="var(--text-muted)" font-size="10">apply_rfc6902 → live plan dict</text>
+        <text x="510" y="178" fill="var(--text-muted)" font-size="10">append_amendment (hash chain)</text>
+        <text x="510" y="196" fill="var(--warn)" font-size="10">fail/timeout → proceed unreviewed</text>
+      </g>
+      <!-- green flag -> next wave -->
+      <path d="M510,210 L510,255 L180,255 L180,304 L60,304" fill="none" stroke="var(--ok)" stroke-width="1.6" marker-end="url(#wg)" opacity=".85"/>
+      <text x="330" y="248" font-size="11" fill="var(--ok)" text-anchor="middle" class="svg-mono">conductor.green_flag → wave i+1</text>
+      <!-- exit to consolidate -->
+      <path d="M610,150 L700,150" fill="none" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#wa)"/>
+      <g class="svg-mono" font-size="11" text-anchor="middle"><rect x="705" y="128" width="170" height="46" rx="9" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="790" y="148" fill="var(--text)">advance("consolidating")</text><text x="790" y="163" fill="var(--text-faint)" font-size="9">after last wave</text></g>
+    </svg>
+    <div class="dcap">Per wave: parallel <span class="mono">_build_task</span> under a semaphore, then <span class="mono">review_wave</span> (only when <span class="mono">total_waves&gt;1</span> or BoM's <span class="mono">conductor.always</span>).</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h4>Capability routing — <span class="mono" style="font-weight:400">pool.pick_member</span></h4>
+      <p style="font-size:.9rem">Deterministic argmax over task_flags. Scores: <code>strong=+2</code>,
+      <code>ok=+1</code>, <code>weak=−2</code>. Ties break to least-loaded, then round-robin. No positive
+      score → round-robin so routing never blocks. The decision (chosen, score, considered, reason) rides
+      in the <code class="mono">task.started</code> payload — the BoM panel shows not just <em>which</em>
+      model built a module but <em>why</em>.</p>
+    </div>
+    <div class="panel">
+      <h4>Proceed-without-review (D8 / 07 §3.1)</h4>
+      <p style="font-size:.9rem">A conductor that raises or times out never dead-ends the build — it emits a
+      warn notice and a <code class="mono">green_flag {reviewed:false}</code>, and the wave proceeds. An
+      amendment aimed at an <em>already-built</em> region is rejected by scope-lock; a malformed patch is
+      skipped rather than corrupting the live plan.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- AMEND -->
+<section id="amend">
+  <span class="overline">Amendments &amp; Consults</span>
+  <h2>Constrained patches on a hash chain, sanitized escalations through the gate</h2>
+  <p class="lede">Both the certifier and the conductor change plans the same disciplined way: an
+  RFC-6902-style patch, scoped to named regions, appended to a tamper-evident chain. When a fix needs the
+  frontier's help, it goes back through the egress gate as a sanitized consult.</p>
+
+  <h3>The amendment hash chain</h3>
+  <p>Every amendment links to its predecessor. The genesis is 64 zeros; each hash is
+  <code class="mono">sha256(prev_hash + patch_json + rationale)</code>. Because the plan-ref, check, and
+  origin (<code class="mono">certifier</code> | <code class="mono">conductor</code>) are recorded, the full
+  amendment history in the delivered package is auditable and re-derivable.</p>
+
+  <figure class="code">
+<pre><code><span class="tok-c"># dao.append_amendment — "Hash-chained amendment (03 §4)"</span>
+prev = <span class="tok-k">await</span> db.fetchone(<span class="tok-s">"SELECT seq, hash FROM amendments WHERE plan_id=:p ORDER BY seq DESC LIMIT 1"</span>, ...)
+prev_hash = prev[<span class="tok-s">"hash"</span>] <span class="tok-k">if</span> prev <span class="tok-k">else</span> <span class="tok-s">""</span>          <span class="tok-c"># GENESIS_HASH = "0"*64 in _common</span>
+h = hashlib.sha256((prev_hash + patch_json + rationale).encode()).hexdigest()
+<span class="tok-c"># row carries: seq, origin, finding_id, check_name, plan_ref, spec_ref, prev_hash, hash, ts</span></code></pre>
+    <figcaption>backend/app/db/dao.py · ~121–141 · append_amendment</figcaption>
+  </figure>
+
+  <div class="diagram">
+    <svg viewBox="0 0 900 190" role="img" aria-label="Consult loop: certifier triages a finding, trust sanitizes, planner replans locked regions, result folds into certified plan">
+      <defs><marker id="ca" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--accent)"/></marker></defs>
+      <g class="svg-mono" font-size="11" text-anchor="middle">
+        <g><rect x="16" y="66" width="130" height="58" rx="10" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="81" y="90" fill="var(--text)" font-size="12">certifier</text><text x="81" y="107" fill="var(--text-faint)" font-size="9">triage = consult</text></g>
+        <g><rect x="196" y="66" width="150" height="58" rx="10" fill="var(--surface-raised)" stroke="var(--seal)"/><text x="271" y="88" fill="var(--seal)" font-size="12">trust.sanitize_consult</text><text x="271" y="105" fill="var(--text-faint)" font-size="9">egress gate + receipt</text></g>
+        <g><rect x="396" y="66" width="150" height="58" rx="10" fill="var(--surface-raised)" stroke="var(--zone-external)"/><text x="471" y="88" fill="var(--text)" font-size="12">planner.replan</text><text x="471" y="105" fill="var(--text-faint)" font-size="9">scope_lock only</text></g>
+        <g><rect x="596" y="66" width="150" height="58" rx="10" fill="var(--accent-wash)" stroke="var(--accent)"/><text x="671" y="88" fill="var(--accent-strong)" font-size="12">_merge_regions</text><text x="671" y="105" fill="var(--text-faint)" font-size="9">fold → certified v2</text></g>
+        <g><rect x="792" y="66" width="96" height="58" rx="10" fill="var(--surface-raised)" stroke="var(--zone-local)"/><text x="840" y="88" fill="var(--text)" font-size="12">rehydrate</text><text x="840" y="105" fill="var(--text-faint)" font-size="9">tokens→raw</text></g>
+      </g>
+      <g fill="none" stroke="var(--accent)" stroke-width="1.6">
+        <path d="M146,95 L194,95" marker-end="url(#ca)"/>
+        <path d="M346,95 L394,95" marker-end="url(#ca)"/>
+        <path d="M546,95 L594,95" marker-end="url(#ca)"/>
+        <path d="M746,95 L790,95" marker-end="url(#ca)"/>
+      </g>
+      <text x="450" y="30" font-size="11" fill="var(--text-muted)" text-anchor="middle">SANITIZED · auditable in the egress ledger · cap = 3 rounds</text>
+      <text x="450" y="160" font-size="10.5" fill="var(--warn)" text-anchor="middle" class="svg-mono">structural findings past the cap → certify.blocked → human review</text>
+    </svg>
+    <div class="dcap">One consult round from <span class="mono">certify/stage2.py:_run_consult</span>. Everything planner-bound — the question <em>and</em> each finding — passes <span class="mono">trust.sanitize_consult</span> first.</div>
+  </div>
+
+  <div class="grid3">
+    <div class="panel soft">
+      <h4>Region vocabulary</h4>
+      <p style="font-size:.86rem"><code class="mono">_merge_regions</code> replaces only the named regions —
+      modules, interfaces, dag-tasks, topology steps — resolved through
+      <code class="mono">region_ids</code> / <code class="mono">normalize_regions</code>. Non-named regions are
+      untouched.</p>
+    </div>
+    <div class="panel soft">
+      <h4>Consult cap</h4>
+      <p style="font-size:.86rem"><code class="mono">_CONSULT_CAP = 3</code>. Past it, remaining
+      <em>structural</em> findings pause the job for human review; non-structural ones are dropped. A failed
+      consult (scope-lock violation, timeout, refusal) degrades gracefully — it never blocks the build.</p>
+    </div>
+    <div class="panel soft">
+      <h4>Conductor parity</h4>
+      <p style="font-size:.86rem">The conductor uses the exact same mechanics between waves —
+      <code class="mono">apply_rfc6902</code> on the live plan dict, then <code class="mono">append_amendment</code>
+      with <code class="mono">origin="conductor"</code> and the <code class="mono">prev_hash</code> chained.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- QA -->
+<section id="qa">
+  <span class="overline">Stage 6 · Adversarial QA</span>
+  <h2>Probe a live endpoint, recompute blind, judge against the goal</h2>
+  <p class="lede">QA doesn't grade a mock. It deploys the assembled process to a real HTTP surface, sends an
+  inspector swarm at it, and runs a Numeric Oracle that recomputes each answer <em>independently</em> —
+  then compares the two. Disagreements are flagged, never silently trusted.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 900 420" role="img" aria-label="QA flow: deploy staging, inspector swarm and oracle probe live HTTP, tickets, fix loop, goal check">
+      <defs>
+        <marker id="qa" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--accent)"/></marker>
+        <marker id="qw" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--warn)"/></marker>
+      </defs>
+      <!-- staging -->
+      <g class="svg-mono" text-anchor="middle">
+        <rect x="360" y="24" width="180" height="66" rx="12" fill="var(--surface-raised)" stroke="var(--seal)"/>
+        <text x="450" y="48" font-size="12.5" fill="var(--seal)">staging.deploy</text>
+        <text x="450" y="66" font-size="9.5" fill="var(--text-muted)">FastAPI shim · 127.0.0.1:ephemeral</text>
+        <text x="450" y="80" font-size="9.5" fill="var(--text-faint)">/health · /manifest · /run_unit</text>
+      </g>
+      <!-- inspector -->
+      <g class="svg-mono" text-anchor="middle">
+        <rect x="70" y="150" width="230" height="96" rx="12" fill="var(--surface-raised)" stroke="var(--accent-mid)"/>
+        <text x="185" y="176" font-size="12.5" fill="var(--text)">inspector swarm</text>
+        <text x="185" y="196" font-size="10" fill="var(--text-muted)">4 agents · step_budget 8</text>
+        <text x="185" y="212" font-size="10" fill="var(--text-muted)">AC + 5 generic + plan scenarios</text>
+        <text x="185" y="228" font-size="9.5" fill="var(--text-faint)">tools scoped to staging host only</text>
+      </g>
+      <!-- oracle -->
+      <g class="svg-mono" text-anchor="middle">
+        <rect x="600" y="150" width="230" height="96" rx="12" fill="var(--surface-raised)" stroke="var(--accent-mid)"/>
+        <text x="715" y="176" font-size="12.5" fill="var(--text)">Numeric Oracle</text>
+        <text x="715" y="196" font-size="10" fill="var(--text-muted)">recompute blind from rule text</text>
+        <text x="715" y="212" font-size="10" fill="var(--text-muted)">vs POST /run_unit actual</text>
+        <text x="715" y="228" font-size="9.5" fill="var(--text-faint)">tolerance: exact | epsilon:θ</text>
+      </g>
+      <!-- probe arrows to staging -->
+      <g fill="none" stroke="var(--accent)" stroke-width="1.5">
+        <path d="M250,150 C300,110 340,95 358,80" marker-end="url(#qa)"/>
+        <path d="M650,150 C600,110 560,95 542,80" marker-end="url(#qa)"/>
+      </g>
+      <text x="450" y="126" font-size="10" fill="var(--text-faint)" text-anchor="middle" class="svg-mono">live HTTP — both probe the same real endpoint</text>
+      <!-- tickets -->
+      <g class="svg-mono" text-anchor="middle">
+        <rect x="330" y="286" width="240" height="52" rx="10" fill="var(--warn-wash)" stroke="var(--warn)"/>
+        <text x="450" y="308" font-size="11.5" fill="var(--warn)">tickets → _fix_loop (≤3)</text>
+        <text x="450" y="325" font-size="9.5" fill="var(--text-muted)">disagreement → human_review (never auto)</text>
+      </g>
+      <g fill="none" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="4 3">
+        <path d="M185,246 C250,280 300,300 328,308" marker-end="url(#qw)"/>
+        <path d="M715,246 C650,280 600,300 572,308" marker-end="url(#qw)"/>
+      </g>
+      <!-- goal check -->
+      <g class="svg-mono" text-anchor="middle">
+        <rect x="300" y="366" width="300" height="46" rx="10" fill="var(--accent-wash)" stroke="var(--accent)"/>
+        <text x="450" y="388" font-size="12" fill="var(--accent-strong)">inspector.goal_check (D10)</text>
+        <text x="450" y="404" font-size="9.5" fill="var(--text-muted)">fulfilled | partial | unfulfilled→park</text>
+      </g>
+      <path d="M450,338 L450,364" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#qa)"/>
+    </svg>
+    <div class="dcap">Probes and the oracle's "actual" both hit the same live shim; it's torn down after both finish. From <span class="mono">qa/stage6.py:run</span>.</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h4>The Numeric Oracle protocol (dual implementation)</h4>
+      <ul>
+        <li><b>Expected</b>: <code>oracle.compute</code> recomputes from the sanitized rule text alone, self-consistency k=3 — never from the plan's code</li>
+        <li><b>Actual</b>: <code>_staged_actual</code> POSTs the vector inputs to the deployed process and reads <code>risk_score</code>/<code>score</code>/… from the real response</li>
+        <li><b>Verdict</b>: <code>match</code> / <code>mismatch</code> / <code>no_actual</code> / <code>oracle_uncertain</code>, compared under the vector's tolerance</li>
+        <li>No obtainable actual records <code>no_actual</code> honestly — <b>a match is never invented</b></li>
+        <li><code>mismatch</code> or <code>oracle_uncertain</code> → a <code>disagreement</code> ticket for a human</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h4>Ticket lifecycle</h4>
+      <p style="font-size:.9rem">Findings become tickets and move through a bounded loop
+      (<code class="mono">_FIX_CAP = 3</code>):</p>
+      <ul>
+        <li><code>open</code> → <code>in_fix</code> → <code>verified</code> when the coder resolves it</li>
+        <li>A fix that can't be applied → <code>human_review</code></li>
+        <li>Oracle <code>disagreement</code> tickets skip the fixer and go straight to <code>human_review</code></li>
+        <li>Goal <code>unfulfilled</code> with a <code>blocker</code> gap → ticket + <code class="mono">RuntimeError</code> → job parks</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="tag">◆ The goal-fulfillment check gets evidence, not a bare goal</div>
+    <p>The final judge receives a manifest of what was actually delivered — topology steps mapped to goal
+    clauses (screen→sanctions, score→risk, decide→route), integration tests passed, oracle vectors
+    recomputed, scenarios probed, open defect count — so it judges fulfilment against real evidence rather
+    than defaulting to "unfulfilled". An infra timeout on this check degrades to <code class="mono">partial</code>
+    with a caveat; it never hard-blocks on a network hiccup.</p>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- SANDBOX -->
+<section id="sandbox">
+  <span class="overline">Code-Exec Sandbox</span>
+  <h2>Generated code runs untrusted, network off, write-isolated</h2>
+  <p class="lede">Coder output is untrusted, so it executes in a throwaway
+  <code class="mono">python:3.12-slim</code> container with no network and hard resource caps. The job
+  workspace is mounted read-only and copied into a container-private tmpfs — the sandbox can never write
+  back to the control plane.</p>
+
+  <figure class="code">
+<pre><code>cmd = [
+  <span class="tok-s">"docker"</span>, <span class="tok-s">"run"</span>, <span class="tok-s">"--rm"</span>, <span class="tok-s">"--network"</span>, <span class="tok-s">"none"</span>,          <span class="tok-c"># no egress</span>
+  <span class="tok-s">"--cpus"</span>, <span class="tok-s">"1"</span>, <span class="tok-s">"--memory"</span>, <span class="tok-s">"512m"</span>, <span class="tok-s">"--pids-limit"</span>, <span class="tok-s">"256"</span>,
+  <span class="tok-s">"--read-only"</span>, <span class="tok-s">"--tmpfs"</span>, <span class="tok-s">"/work:rw,exec,size=128m"</span>,  <span class="tok-c"># writable scratch only</span>
+  <span class="tok-s">"-v"</span>, f<span class="tok-s">"{workspace}:/src:ro"</span>, <span class="tok-s">"-w"</span>, <span class="tok-s">"/work"</span>, _IMAGE,   <span class="tok-c"># host mount is read-only</span>
+  <span class="tok-s">"sh"</span>, <span class="tok-s">"-c"</span>, f<span class="tok-s">"cp -a /src/. /work/ 2&gt;/dev/null || true\n{script}"</span>,
+]</code></pre>
+    <figcaption>backend/app/orchestrator/codeexec.py · ~35–41 · run_in_sandbox</figcaption>
+  </figure>
+
+  <div class="grid3">
+    <div class="panel soft"><h4>What runs</h4><p style="font-size:.86rem"><code class="mono">run_tests</code> runs
+    the workspace's own <code class="mono">pytest</code> suite when the coder generated one; otherwise a
+    per-file <code class="mono">py_compile</code> import/compile smoke of every <code class="mono">.py</code> —
+    proving the generated code loads and runs in isolation.</p></div>
+    <div class="panel soft"><h4>Limits &amp; exits</h4><p style="font-size:.86rem">120–180s timeouts; return
+    codes are meaningful — <code>124</code> timeout, <code>127</code> no docker, <code>126</code> daemon
+    error. A missing daemon or image never crashes a stage.</p></div>
+    <div class="panel soft"><h4>Graceful degrade</h4><p style="font-size:.86rem">No Docker (dev box, CI) → the
+    Wave-1 deterministic behaviour, flagged <code class="mono">sandboxed:false</code> so the UI badge shows
+    it wasn't truly sandboxed. Mock mode and tests never hard-depend on a daemon.</p></div>
+  </div>
+
+  <div class="callout">
+    <div class="tag">▲ compileall is unreliable — the code works around it</div>
+    <p>The smoke test gates on a per-file <code class="mono">py_compile</code> (which returns non-zero on
+    syntax errors) rather than <code class="mono">compileall</code> (which returns 0 even on syntax errors).
+    The exit code stays <code class="mono">2</code> when the workspace has no <code class="mono">.py</code> at
+    all, so an empty or unshared mount is reported as a failure, not a false pass.</p>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- BOUNDARY -->
+<section id="boundary">
+  <span class="overline">Routing &amp; the Data Boundary</span>
+  <h2>The one place a dispatch happens — and the wall is code, not policy</h2>
+  <p class="lede">Every seat call goes through <code class="mono">router.complete</code>. It resolves the seat,
+  applies the sovereign overlay, checks fleet health, enforces the zone × data-class matrix (fail-closed),
+  guards the budget, dispatches, and validates structured output with one repair round — logging a meter
+  row, an egress row, and a <code class="mono">model.call</code> event per dispatch.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 900 250" role="img" aria-label="Zone by data-class boundary matrix">
+      <g class="svg-mono" font-size="11">
+        <!-- header -->
+        <text x="150" y="36" fill="var(--text-muted)" text-anchor="middle">data-class ↓ / zone →</text>
+        <text x="360" y="36" fill="var(--zone-local)" text-anchor="middle">LOCAL</text>
+        <text x="510" y="36" fill="var(--zone-amd)" text-anchor="middle">AMD_HOSTED</text>
+        <text x="660" y="36" fill="var(--zone-custom)" text-anchor="middle">CUSTOM</text>
+        <text x="810" y="36" fill="var(--zone-external)" text-anchor="middle">EXTERNAL</text>
+        <!-- RAW row -->
+        <text x="150" y="80" fill="var(--raw-on)" text-anchor="middle">RAW</text>
+        <g text-anchor="middle" font-size="10.5">
+          <rect x="300" y="60" width="120" height="34" rx="7" fill="var(--ok-wash)" stroke="var(--ok)"/><text x="360" y="81" fill="var(--ok)">allow</text>
+          <rect x="450" y="60" width="120" height="34" rx="7" fill="var(--warn-wash)" stroke="var(--warn)"/><text x="510" y="77" fill="var(--warn)">demo-exception</text><text x="510" y="89" fill="var(--text-faint)" font-size="8">if flag; else block</text>
+          <rect x="600" y="60" width="120" height="34" rx="7" fill="var(--warn-wash)" stroke="var(--warn)"/><text x="660" y="77" fill="var(--warn)">attested only</text><text x="660" y="89" fill="var(--text-faint)" font-size="8">RAW ceiling</text>
+          <rect x="750" y="60" width="120" height="34" rx="7" fill="var(--danger-wash)" stroke="var(--danger)"/><text x="810" y="81" fill="var(--danger)">hard error</text>
+        </g>
+        <!-- SANITIZED row -->
+        <text x="150" y="128" fill="var(--sanitized)" text-anchor="middle">SANITIZED</text>
+        <g text-anchor="middle" font-size="10.5">
+          <rect x="300" y="108" width="120" height="34" rx="7" fill="var(--ok-wash)" stroke="var(--ok)"/><text x="360" y="129" fill="var(--ok)">allow</text>
+          <rect x="450" y="108" width="120" height="34" rx="7" fill="var(--ok-wash)" stroke="var(--ok)"/><text x="510" y="129" fill="var(--ok)">allow</text>
+          <rect x="600" y="108" width="120" height="34" rx="7" fill="var(--ok-wash)" stroke="var(--ok)"/><text x="660" y="129" fill="var(--ok)">allow</text>
+          <rect x="750" y="108" width="120" height="34" rx="7" fill="var(--ok-wash)" stroke="var(--ok)"/><text x="810" y="129" fill="var(--ok)">allow</text>
+        </g>
+        <!-- sovereign note -->
+        <rect x="150" y="170" width="720" height="52" rx="10" fill="var(--surface-raised)" stroke="var(--seal)"/>
+        <text x="170" y="192" fill="var(--seal)" font-size="11">Sovereign Mode</text>
+        <text x="170" y="210" fill="var(--text-muted)" font-size="10">zero non-local calls — only LOCAL, or CUSTOM attested as counts_as_local. EXTERNAL/AMD blocked regardless of data-class → SovereignViolation.</text>
+      </g>
+    </svg>
+    <div class="dcap"><span class="mono">router._check_boundary</span> (01 §3 matrix). Plus a per-seat ceiling: the planner is SANITIZED-max, so RAW to the planner is refused before the matrix even runs.</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h4>Seat zones (built-in table, 02 §1)</h4>
+      <div class="dl" style="grid-template-columns:auto 1fr">
+        <dt>trust</dt><dd>Local · RAW — node A gemma, Fireworks fallback</dd>
+        <dt>planner</dt><dd>External (Anthropic <code>claude-fable-5</code>) · SANITIZED · sovereign → local glm-46</dd>
+        <dt>certifier</dt><dd>Local · RAW — node B glm-46</dd>
+        <dt>conductor</dt><dd>Local · RAW · <b>no fallback</b> → engine skips review</dd>
+        <dt>coder</dt><dd>Local · RAW · pool of 3 (qwen3-coder / qwen36-27b / devstral)</dd>
+        <dt>oracle</dt><dd>Local · SANITIZED · self-consistency 3</dd>
+        <dt>inspector</dt><dd>Local · SANITIZED · temp 0.7</dd>
+      </div>
+    </div>
+    <div class="panel">
+      <h4>Health, fallback &amp; budget</h4>
+      <ul>
+        <li>A local binding is real only if its node is registered + ready (heartbeat); else it falls to the seat's fallback, badged <code>fallback-serving</code></li>
+        <li><code class="mono">auto</code> mode drops to <code>mock</code> when no live key/node exists; <code>live</code> forces real dispatch</li>
+        <li>Budget guard raises <code class="mono">BudgetExceeded</code> on the Fireworks daily cap or a per-scope cap (sandbox runs register one)</li>
+        <li>Manager polls <code class="mono">/telemetry</code>; 3 missed beats → node down → <code>fleet.node_down</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ---------------------------------------------------------- TRUTH -->
+<section id="truth">
+  <span class="overline">Honesty Strip</span>
+  <h2>Spec vs Code · what's real vs what's stubbed</h2>
+  <p class="lede">The pipeline runs end-to-end today, but some stages carry real machinery while others are
+  Wave-1 skeletons that keep the walking-skeleton coherent. Here's the honest divide, straight from the
+  code comments.</p>
+
+  <h3>Where the code diverges from the specs</h3>
+
+  <div class="callout">
+    <div class="tag">▲ Spec 03 · Stage 3 is not a driver stage</div>
+    <p>The specs describe Quote as its own pipeline stage. In code there is no <code class="mono">quoting</code>
+    status in <code class="mono">_STAGE_MODULES</code> — <code class="mono">stage3.issue()</code> is a
+    deterministic sub-step called at the tail of Stage 2, after which the job parks at the
+    <code class="mono">quoted</code> stop-state until <code class="mono">approve-quote</code>.</p>
+  </div>
+
+  <div class="callout">
+    <div class="tag">▲ Spec 07 · duplicated transition helper</div>
+    <p><code class="mono">Engine.set_stage</code> and <code class="mono">StageContext.advance</code> are byte-for-byte
+    the same operation (write <code class="mono">jobs.status</code> + emit <code class="mono">job.stage_changed</code>).
+    Stages call <code class="mono">ctx.advance</code>; the engine's own transitions call <code class="mono">set_stage</code>.
+    Harmless, but two names for one truth.</p>
+  </div>
+
+  <div class="callout">
+    <div class="tag">▲ Spec 07 §3.1 · review is conditional</div>
+    <p>The conductor only reviews when <code class="mono">total_waves &gt; 1</code> or the BoM sets
+    <code class="mono">conductor.always</code>. A single-wave build proceeds <em>unreviewed</em> by default —
+    and the conductor seat has no fallback binding, so if node B is down the review is skipped entirely
+    (covered by proceed-without-review).</p>
+  </div>
+
+  <div class="rs">
+    <div class="col real">
+      <h4>Real &amp; proven</h4>
+      <ul>
+        <li><b>Boundary enforcement</b> — <code>router._check_boundary</code> is fail-closed; RAW→EXTERNAL raises, logged to the egress ledger. A live 0→7 E2E ran at <b>$1.26</b> (commit log)</li>
+        <li><b>PII mask → vault → sanitized brief</b> — the mechanical boundary in Stage 0 is real; raw values never serialize outward</li>
+        <li><b>Live staging + dual-implementation oracle</b> — <code>staging.deploy</code> stands up real HTTP; the oracle compares blind recomputation against a real <code>POST /run_unit</code></li>
+        <li><b>Docker code-exec sandbox</b> — <code>--network none</code>, read-only mount, tmpfs; real pytest / py_compile when Docker is present</li>
+        <li><b>Event sourcing + replay</b> — append-only <code>events</code>, delta coalescing, <code>replay(from_seq)</code></li>
+        <li><b>Resumability</b> — deterministic IDs + <code>build_task_done</code> skip; asserted by <code>test_resumability.py</code></li>
+        <li><b>Topological waves, scope-locked amendments, hash chain</b> — Kahn levels, RFC-6902 patches, <code>sha256</code> chain, consult sanitization gate</li>
+        <li><b>Per-call metering</b> — real cost/egress/model.call rows per dispatch, quote↔invoice reconciliation</li>
+      </ul>
+    </div>
+    <div class="col stub">
+      <h4>Stubbed / Wave-1 skeleton</h4>
+      <ul>
+        <li><b>Intake dialogue</b> — single-shot auto-confirm; the multi-turn clarification + human confirm-spec gate is Wave 2</li>
+        <li><b>Placeholder seats</b> — when no real seat / model is live, <code>_placeholder.py</code> drives MockClient from fixtures; the conductor placeholder <em>always</em> amends an early-wave region, the oracle marks vectors ending in "2" uncertain (to exercise the beats)</li>
+        <li><b>Operate <code>drive_run</code></b> — units go through seats directly, not a process-runtime container (Wave 2); per-unit status is synthetic (<code>i%7</code>, <code>i%11</code>); sampling is a <code>TODO(wave2)</code> constant; one spot-check discrepancy is a rehearsed warranty beat</li>
+        <li><b>Consolidation fix loop</b> — a skeleton; <code>run_tests</code> returns green so it rarely loops</li>
+        <li><b>Process fan-out with no corpus</b> — falls back to nominal unit refs (marked <code>ponytail:</code>); real customer corpus intake is post-deadline</li>
+        <li><b>Refine</b> — records a compact diff (<code>tests_added: 0</code>) rather than a scoped rebuild</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="foot-note">Generated from <span class="mono">backend/app/</span> as committed on branch <span class="mono">main</span>.
+  All file/line captions reference the source at read time. Spec cross-references (<span class="mono">03 §…</span>,
+  <span class="mono">07 §…</span>, <span class="mono">08 §…</span>) are the code's own annotations; where the
+  implementation diverges it is called out above rather than smoothed over.</p>
+</section>
+
+</div></main>
+</div>
+
+<script>
+// active-section highlight in the TOC (IntersectionObserver, no deps)
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var map = {};
+  links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+  var sections = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); }).filter(Boolean);
+  var current = null;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        if(current) current.classList.remove('active');
+        current = map[e.target.id];
+        if(current) current.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-12% 0px -78% 0px', threshold: 0 });
+  sections.forEach(function(s){ io.observe(s); });
+})();
+</script>
+</body>
+</html>

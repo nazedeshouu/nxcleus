@@ -311,6 +311,7 @@ class OracleVector(BaseModel):
     model_config = ConfigDict(extra="allow")
     id: str
     rule: str = ""
+    rule_text: str = ""                    # full rule in words — the blind oracle's only rule view
     inputs: dict[str, Any] = Field(default_factory=dict)
     tolerance: str | None = None           # "exact" | "epsilon:0.01"
 

@@ -24,6 +24,13 @@ async def run(ctx) -> None:
 
     await ctx.emit(E.CONSOLIDATE_STARTED, {"modules": len(modules)})
 
+    # T9: the consolidator is the single cross-folder reader — merge agents/*/ into the
+    # job-level src/ tree before assembling (its own suite run mounts the WHOLE job dir)
+    merged = workspace.merge_agent_src(ctx.job_id)
+    if merged:
+        await ctx.emit(E.SYSTEM_NOTICE, {"text": f"merged {len(merged)} files from agent folders",
+                                         "level": "info", "scope": "consolidate"})
+
     consolidator = seat("consolidator")
     package = await consolidator.consolidate(ctx.complete, ctx.emit, modules=modules,
                                              interfaces=interfaces, plan=plan)
@@ -31,14 +38,24 @@ async def run(ctx) -> None:
 
     # full integration suite against the assembled package (the validation wall)
     attempt = 0
+    fix_tickets: list[str] = []
     while True:
         attempt += 1
         result = await codeexec.run_tests(workspace=str(workspace.job_dir(ctx.job_id)), tests=tests)
         await ctx.emit(E.CONSOLIDATE_TEST_RUN, {"passed": result["passed"], "total": result["total"],
                                                 "failed": result["failed"], "attempt": attempt})
-        if result["failed"] == 0 or attempt >= _FIX_CAP:
+        # S5: a ticket is `verified` only when the suite RE-RUN after its fix passes
+        if result["failed"] == 0:
+            for tid in fix_tickets:
+                await ctx.dao.update_ticket(tid, status="verified")
+                await ctx.emit(E.TICKET_VERIFIED, {"ticket_id": tid, "retested": True})
             break
-        # failures -> tickets -> coder fixes (skeleton: run_tests is green, so this rarely loops)
+        if attempt >= _FIX_CAP:
+            for tid in fix_tickets:
+                await ctx.dao.update_ticket(tid, status="human_review")
+                await ctx.emit(E.TICKET_HUMAN_REVIEW, {"ticket_id": tid,
+                               "reason": "suite still failing after fix cap"})
+            break
         tid = await ctx.dao.create_ticket(scope=ctx.scope, source="consolidation", severity="major",
                                           title="integration suite failure",
                                           body={"instrument": "consolidation", "suspected_modules": []})
@@ -46,8 +63,10 @@ async def run(ctx) -> None:
         coder = seat("coder")
         await coder.fix(ctx.complete, ctx.emit, ticket={"title": "integration suite failure"},
                         module_src="", tests=tests)
-        await ctx.dao.update_ticket(tid, status="verified")
-        await ctx.emit(E.TICKET_VERIFIED, {"ticket_id": tid})
+        await ctx.dao.update_ticket(tid, status="fix_applied")
+        await ctx.emit(E.TICKET_FIX_APPLIED, {"ticket_id": tid, "retested": False})
+        fix_tickets.append(tid)
 
+    await ctx.checkpoint("integration_result", result)   # stage 6's goal manifest reads this
     await ctx.emit(E.CONSOLIDATE_COMPLETED, {"passed": result["passed"], "total": result["total"]})
     await ctx.advance("qa")

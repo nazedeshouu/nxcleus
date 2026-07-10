@@ -14,7 +14,9 @@ import { Logo } from "../brand/Logo";
 import { BRAND } from "../brand/brand";
 import { BoundaryDiagram } from "../components/landing/BoundaryDiagram";
 import { Reveal } from "../components/ui/Reveal";
-import heroImg from "../assets/img/hero.webp";
+import heroImg from "../assets/img/hero-arc.webp";
+import wedgeImg from "../assets/img/wedge-dark.webp";
+import fieldImg from "../assets/img/field-light.webp";
 import styles from "./Landing.module.css";
 
 function MoneyChart() {
@@ -58,7 +60,8 @@ export function Landing() {
             <Link className={styles.navLink} to="/sandbox">Sandbox</Link>
           </nav>
           <Link to="/build" className={styles.navCta}>
-            Enter the platform <ArrowRight weight="bold" />
+            Enter the platform
+            <span className={styles.btnCoin}><ArrowRight weight="bold" /></span>
           </Link>
         </div>
       </header>
@@ -67,6 +70,7 @@ export function Landing() {
       <section className={styles.container}>
         <div className={styles.hero}>
           <div className={styles.heroCopy}>
+            <span className={styles.heroKicker}><i /> Sovereign process automation</span>
             <h1 className={styles.heroTitle}>
               Run frontier intelligence <em>inside your walls</em>.
             </h1>
@@ -76,18 +80,30 @@ export function Landing() {
             </p>
             <div className={styles.heroCtas}>
               <Link to="/build" className={styles.btnPrimary}>
-                Enter the platform <ArrowRight weight="bold" />
+                Enter the platform
+                <span className={styles.btnCoin}><ArrowRight weight="bold" /></span>
               </Link>
               <Link to="/sandbox" className={styles.btnSecondary}>
                 Judge sandbox
               </Link>
             </div>
+            <p className={styles.heroProof}>
+              <b>8× AMD MI300X</b> · ROCm + vLLM · raw data crossings: <b>0</b>
+            </p>
           </div>
           <div className={styles.heroArt}>
-            <img src={heroImg} alt="An abstract luminous interior separated from a darker exterior by a single precise threshold." width={1800} height={1350} fetchPriority="high" />
-            <span className={styles.heroArtChip}>
-              <ShieldCheck weight="fill" /> sovereign by design
-            </span>
+            <div className={styles.heroShell}>
+              <div className={styles.heroFrame}>
+                <img src={heroImg} alt="An abstract luminous interior sealed by a curved wall, one precise seam of cyan light tracing the only threshold." width={1600} height={1200} fetchPriority="high" />
+                <span className={styles.heroArtChip}>
+                  <ShieldCheck weight="fill" /> sovereign by design
+                </span>
+              </div>
+            </div>
+            <div className={styles.heroMeter} aria-hidden="true">
+              <span className={styles.heroMeterLbl}>egress monitor</span>
+              <span className={styles.heroMeterVal}><b>0</b> external calls</span>
+            </div>
           </div>
         </div>
       </section>
@@ -121,7 +137,9 @@ export function Landing() {
           </div>
         </Reveal>
         <Reveal className={styles.boundaryWrap}>
-          <BoundaryDiagram />
+          <div className={styles.boundaryShell}>
+            <BoundaryDiagram />
+          </div>
         </Reveal>
       </section>
 
@@ -217,17 +235,19 @@ export function Landing() {
                 pay frontier tokens and surrender data on every single run.
               </p>
             </div>
-            <div className={styles.chartCard}>
-              <div className={styles.chartLegend}>
-                <span className={styles.legendItem}>
-                  <span className={styles.legendSwatch} style={{ background: "var(--accent)" }} /> Nxcleus, per run
-                </span>
-                <span className={styles.legendItem}>
-                  <span className={styles.legendSwatch} style={{ background: "var(--zone-external)" }} /> Chat / cloud agent, per run
-                </span>
+            <div className={styles.chartShell}>
+              <div className={styles.chartCard}>
+                <div className={styles.chartLegend}>
+                  <span className={styles.legendItem}>
+                    <span className={styles.legendSwatch} style={{ background: "var(--accent)" }} /> Nxcleus, per run
+                  </span>
+                  <span className={styles.legendItem}>
+                    <span className={styles.legendSwatch} style={{ background: "var(--zone-external)" }} /> Chat / cloud agent, per run
+                  </span>
+                </div>
+                <MoneyChart />
+                <p className={styles.chartNote}>Illustrative. Build cost is paid once; local per-run cost stays flat.</p>
               </div>
-              <MoneyChart />
-              <p className={styles.chartNote}>Illustrative. Build cost is paid once; local per-run cost stays flat.</p>
             </div>
           </div>
         </Reveal>
@@ -236,6 +256,10 @@ export function Landing() {
       {/* ---------- wedge ---------- */}
       <section className={styles.container}>
         <Reveal className={styles.wedge} as="div">
+          <div className={styles.wedgeArt} aria-hidden="true">
+            <img src={wedgeImg} alt="" loading="lazy" width={1920} height={823} />
+          </div>
+          <p className={styles.wedgeKicker}>Inside the walls</p>
           <p className={styles.wedgeQuote}>
             We operate <em>where external AI is banned.</em>
           </p>
@@ -249,6 +273,9 @@ export function Landing() {
       {/* ---------- final CTA ---------- */}
       <section className={styles.container}>
         <div className={styles.cta}>
+          <div className={styles.ctaArt} aria-hidden="true">
+            <img src={fieldImg} alt="" loading="lazy" width={1920} height={823} />
+          </div>
           <h2 className={styles.ctaTitle}>See a real process built, live.</h2>
           <p className={styles.ctaSub}>
             Watch a KYC pipeline get planned, certified, and verified in mission control. Or run your own prompt in
@@ -256,7 +283,8 @@ export function Landing() {
           </p>
           <div className={styles.ctaRow}>
             <Link to="/build" className={styles.btnPrimary}>
-              Enter the platform <ArrowRight weight="bold" />
+              Enter the platform
+              <span className={styles.btnCoin}><ArrowRight weight="bold" /></span>
             </Link>
             <Link to="/sandbox" className={styles.btnSecondary}>
               Judge sandbox

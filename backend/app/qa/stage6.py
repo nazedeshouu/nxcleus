@@ -25,9 +25,6 @@ _STEP_BUDGET = 8
 _GENERIC = ["malformed unit (missing required fields)", "boundary values (0, negatives, maxima)",
             "duplicate submission / idempotency", "oversized payload", "wrong-tenant token misuse"]
 
-_RULE_TEXT = {"NR-1": "risk_score = 0.5*sanctions_flag + 0.3*pep_flag + 0.2*geo_risk; "
-                      "amber if 0.3<=score<0.6, red if >=0.6"}
-
 
 async def run(ctx) -> None:
     job = await ctx.refresh()
@@ -48,7 +45,9 @@ async def run(ctx) -> None:
 
     # egress-scoped probe tools (seam ruling #1): read_manifest + http_request, both hard-restricted
     # to the staging host — any other host is refused, so an inspector can't be steered off-target.
+    # T8: + create_tool — commissioned tools register into this same dict mid-loop.
     tools = _probe_tools(staging_url)
+    _add_create_tool(ctx, tools)
 
     # scenarios (08 §3): AC-derived + generic suite + plan-aware. The real inspector.probe consumes
     # scenario DICTS ({id, source, title, probe}); wrap every source into that shape.
@@ -88,31 +87,36 @@ async def run(ctx) -> None:
                                                  "severity": ticket.get("severity")})
             return ticket
 
-    try:
-        await asyncio.gather(*[_probe(s) for s in scenario_dicts])
-    finally:
-        # staging is only needed for the probes; tear the shim down as soon as they finish
-        if handle is not None:
-            await handle.stop()
-
-    # Numeric Oracle — blind recomputation vs the deployed process's actual output (08 §4). Each
-    # vector's k-vote recompute is independent, so they run concurrently (the sequential loop was the
-    # QA bottleneck on the Fireworks fallback — k=3 x N vectors serially); DB writes still serialize.
+    # Numeric Oracle — blind recomputation vs the deployed process's ACTUAL output (08 §4): the
+    # dual implementation is real — `actual` comes from POSTing the vector's inputs to the staged
+    # process over HTTP; the oracle recomputes blind from the rule text; the two are compared under
+    # the vector's tolerance. No obtainable actual (dead staging / no entrypoint) records
+    # `no_actual` honestly — a match is never invented. Vectors run concurrently (the sequential
+    # loop was the QA bottleneck on the Fireworks fallback); DB writes still serialize.
     oracle = seat("oracle")
     osem = asyncio.Semaphore(_ORACLE_CONCURRENCY)
 
     async def _oracle(vec: dict) -> None:
         async with osem:
-            rule_text = _RULE_TEXT.get(vec.get("rule", ""), vec.get("rule", ""))
+            # S4: the blind oracle reads the rule from the certifier-emitted vector (rule_text,
+            # threaded by stage 2), never from a constant in QA source
+            rule_text = vec.get("rule_text") or str(vec.get("rule", ""))
             try:
                 comp = await oracle.compute(ctx.complete, ctx.emit, vector=vec, rule_text=rule_text)
             except Exception as exc:  # noqa: BLE001 — an infra timeout is uncertainty, not a stage fail
                 await ctx.emit(E.SYSTEM_NOTICE, {"scope": "qa", "level": "warn",
                                "text": f"oracle {vec.get('id')} inconclusive: {type(exc).__name__}"})
                 comp = {"expected": None, "uncertain": True, "votes": []}
-        expected = comp.get("expected")
-        actual = expected            # deployed-process actual (staging stub returns matching value)
-        verdict = "oracle_uncertain" if comp.get("uncertain") else ("match" if actual == expected else "mismatch")
+            expected = comp.get("expected")
+            actual, obtained = (None, False)
+            if handle is not None:
+                actual, obtained = await _staged_actual(staging_url, vec)
+        if comp.get("uncertain"):
+            verdict = "oracle_uncertain"
+        elif not obtained:
+            verdict = "no_actual"
+        else:
+            verdict = "match" if _within(expected, actual, vec.get("tolerance")) else "mismatch"
         await ctx.dao.create_oracle_check(scope=ctx.scope, vector_id=vec.get("id", ""),
                                           rule_id=vec.get("rule", ""), inputs=vec.get("inputs", {}),
                                           expected=expected, actual=actual, verdict=verdict,
@@ -128,7 +132,13 @@ async def run(ctx) -> None:
             await ctx.emit(E.TICKET_OPENED, {"ticket_id": tid, "source": "oracle",
                                              "severity": "disagreement"})
 
-    await asyncio.gather(*[_oracle(v) for v in vectors])
+    try:
+        await asyncio.gather(*[_probe(s) for s in scenario_dicts])
+        await asyncio.gather(*[_oracle(v) for v in vectors])
+    finally:
+        # staging serves both the probes and the oracle's actual; tear down after both
+        if handle is not None:
+            await handle.stop()
 
     # bounded fix loop (<=3): resolve fixable tickets; disagreements -> human review (08 §6)
     await _fix_loop(ctx)
@@ -139,6 +149,7 @@ async def run(ctx) -> None:
     # verified against the tests + oracle vectors + probes that just ran. Without this the check has
     # nothing to judge fulfilment against and defaults to "unfulfilled".
     plan_row = await ctx.dao.current_plan(ctx.job_id)
+    integration = await ctx.get_checkpoint("integration_result")
     _plan = (plan_row or {}).get("body") or {}
     _steps = [{"id": s.get("id"), "kind": s.get("kind"), "does": (s.get("prompt_spec") or "")[:140]}
               for s in ((_plan.get("topology") or {}).get("steps") or [])]
@@ -148,7 +159,9 @@ async def run(ctx) -> None:
         "modules": [{"id": m.get("id"), "purpose": m.get("purpose", "")} for m in _plan.get("modules", [])],
         "delivered": {
             "deployed_to_staging": staging_url,
-            "integration_tests_passed": len(tests),
+            # actual stage-5 suite results via checkpoint — a count of specs is not a result
+            "integration_tests_passed": (integration or {}).get("passed", 0),
+            "integration_tests_total": (integration or {}).get("total", len(tests)),
             "oracle_vectors_recomputed": len(vectors),
             "adversarial_scenarios_probed": len(scenario_dicts),
             "open_defect_tickets": len(await ctx.dao.list_tickets(scope=ctx.scope, status="open")),
@@ -206,6 +219,44 @@ async def _deploy_staging(ctx, job: dict, goal: str):
         return None
 
 
+async def _staged_actual(staging_url: str, vec: dict) -> tuple[object, bool]:
+    """POST the vector's inputs to the deployed process — the real second implementation — and
+    extract a comparable output. Returns (actual, True), or (None, False) when no real actual is
+    obtainable (dead staging, no entrypoint, unrecognizable shape). Never invents a value."""
+    payload = {"id": vec.get("id", "vec"), **(vec.get("inputs") or {})}
+    try:
+        r = await egress.http_client.post(f"{staging_url}/run_unit", json=payload, timeout=8.0)
+        if r.status_code != 200:
+            return None, False
+        body = r.json()
+    except Exception:  # noqa: BLE001
+        return None, False
+    if not isinstance(body, dict):
+        return None, False
+    if body.get("status") == "accepted" and "unit" in body:   # shim's no-entrypoint ack, not output
+        return None, False
+    for key in (vec.get("output_field"), "risk_score", "score", "expected", "result", "value"):
+        if key and key in body:
+            return body[key], True
+    return None, False
+
+
+def _within(expected, actual, tolerance) -> bool:
+    """Tolerance-aware comparison: vectors carry 'exact' or 'epsilon:<float>' (certifier output)."""
+    try:
+        e, a = float(expected), float(actual)
+    except (TypeError, ValueError):
+        return expected == actual
+    tol = 0.0
+    t = str(tolerance or "exact")
+    if t.startswith("epsilon:"):
+        try:
+            tol = float(t.split(":", 1)[1])
+        except ValueError:
+            tol = 0.0
+    return abs(e - a) <= tol + 1e-9
+
+
 def _probe_tools(staging_url: str) -> dict:
     """Egress-scoped inspector tools (seam ruling #1): `read_manifest` + `http_request`, both over the
     shared app.boundary.egress client, with `http_request` HARD-restricted to the staging host — any
@@ -235,6 +286,30 @@ def _probe_tools(staging_url: str) -> dict:
     return {"read_manifest": read_manifest, "http_request": http_request}
 
 
+def _add_create_tool(ctx, tools: dict) -> None:
+    """T8 wire-up A: inspectors may commission tools; a passed tool becomes callable by name in
+    the SAME dict. # ponytail: one shared agents/inspector-0 folder for the whole swarm —
+    per-probe inspector-<n> folders when probes need write isolation from each other."""
+    from app.orchestrator import toolsmith
+    from app.runtime import workspace
+
+    async def create_tool(*, purpose: str, args_example: dict | None = None) -> dict:
+        res = await toolsmith.create_tool(
+            purpose=purpose, args_example=args_example or {}, scope=ctx.scope,
+            complete_fn=ctx.complete, agent_dir=workspace.agent_dir(ctx.job_id, "inspector-0"))
+        if "error" in res:
+            return res
+        name = res["tool_name"]
+
+        async def _bound(*, args: dict) -> dict:
+            return await toolsmith.invoke_tool(ctx.scope, name, args)
+
+        tools[name] = _bound
+        return res
+
+    tools["create_tool"] = create_tool
+
+
 async def _fix_loop(ctx) -> None:
     coder = seat("coder")
     for _ in range(_FIX_CAP):
@@ -252,8 +327,10 @@ async def _fix_loop(ctx) -> None:
             try:
                 await coder.fix(ctx.complete, ctx.emit, ticket=t, module_src="",
                                 tests=await ctx.get_checkpoint("tests") or [])
-                await ctx.dao.update_ticket(t["id"], status="verified")
-                await ctx.emit(E.TICKET_VERIFIED, {"ticket_id": t["id"]})
+                # S5: no retest happens here, so the ticket is honestly `fix_applied` — `verified`
+                # is reserved for a fix confirmed by a re-run (stage 5's suite re-run does that)
+                await ctx.dao.update_ticket(t["id"], status="fix_applied")
+                await ctx.emit(E.TICKET_FIX_APPLIED, {"ticket_id": t["id"], "retested": False})
             except Exception as exc:  # noqa: BLE001 — a fix that can't be applied parks for review
                 await ctx.dao.update_ticket(t["id"], status="human_review")
                 await ctx.emit(E.TICKET_HUMAN_REVIEW, {"ticket_id": t["id"],

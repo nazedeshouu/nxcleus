@@ -48,8 +48,11 @@ def load_rates() -> dict:
         try:
             data = yaml.safe_load(path.read_text()) or {}
             return _deep_merge(_DEFAULTS, data)
-        except Exception:
-            pass
+        except Exception as exc:
+            # stale built-in prices silently billing the money slide would be a demo lie — say it
+            import sys
+            print(f"[rates] WARNING: {path} unreadable ({type(exc).__name__}: {exc}); "
+                  f"using built-in rate card", file=sys.stderr)
     return dict(_DEFAULTS)
 
 

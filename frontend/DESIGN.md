@@ -6,10 +6,10 @@ Short and decisive. The build follows this doc; if the build and this doc disagr
 
 **The boundary is the brand.** Nxcleus sells sovereignty: your data never leaves your walls, and only a sanitized brief ever crosses to a frontier model. The entire design language makes *inside-the-walls vs. outside* legible at a glance. Cool, luminous, sealed interior; muted, cooler exterior; a single precise threshold between them. Everything that reads as "safe / local / yours" is cool-bright; the one thing that leaves is small, outlined, and visibly sanitized.
 
-Two surfaces, one system:
+Two temperatures, one wall (redesign, 2026-07-09):
 
-- **Landing** (`/`) — trust-first B2B marketing for a bank's compliance officer, that also astonishes hackathon judges. Premium-enterprise-minimalist. Airy. `VARIANCE 6 / MOTION 5 / DENSITY 3`.
-- **Build view** (`/build/:jobId`) — mission-control cockpit. Dense, live, mono numerals, telemetry. A different design problem (the anti-slop landing rules scope dashboards out). `DENSITY 7`.
+- **Landing** (`/`) — the daylight approach to a sealed system. Light editorial, layered generated imagery, film grain, island nav. Trust-first for a bank's compliance officer. `VARIANCE 6 / MOTION 5 / DENSITY 3`.
+- **The platform** (everything behind "Enter the platform") — *inside the walls*. The entire app chrome lives in sealed midnight (`[data-temp="inside"]`): luminous cyan telemetry, mono numerals, a faint architectural field behind the panels. Crossing into the app IS crossing the boundary; the wedge band on the landing is the one glimpse inside. Sovereign Mode deepens the same interior to absolute dark + teal seal. `DENSITY 7` in the cockpit.
 
 ## 1. Brand token
 
@@ -51,7 +51,9 @@ Cool near-white base, one deep-cyan accent, temperature-coded zones. Not AI-purp
 - warn amber `#cf8a3a` (budget, fallback-serving)
 - violation red `#e5484d` — *a red that means it.* Only `egress.violation` and hard blocks. Never decorative.
 
-**Sovereign Mode** — a serious, unmistakable state change, not a color swap. Chrome deepens to midnight `#08171d`; a "SOVEREIGN" seal appears; the network monitor goes dark with a sealed-teal accent `#3fd8c4` ("zero external calls"). It should feel like *shields up*, calm and absolute.
+**Sovereign Mode** — a serious, unmistakable state change, not a color swap. The already-dark interior deepens to `#03090c` and every accent re-tints to the sealed teal `#3fd8c4` ("zero external calls"). It should feel like *shields up*, calm and absolute.
+
+**Theme mechanics (locked).** All module CSS speaks semantic tokens only (`--paper/--surface/--hairline/--text-muted/washes`). `tokens.css` remaps the full set under `[data-temp="inside"]` (platform midnight) and `[data-temp="inside"][data-sovereign="true"]` (sovereign teal). Dark blocks that must stay dark in every theme use `--seal`/`--seal-on`, never `--ink` as a fill. `--glow-accent` is the luminous box-shadow, a no-op in light. A fixed film-grain overlay lives on `body::after` (alpha baked into the SVG).
 
 ## 4. Materiality & shape
 
@@ -68,7 +70,7 @@ Cool near-white base, one deep-cyan accent, temperature-coded zones. Not AI-purp
 
 ## 6. Imagery
 
-Raster art via Higgsfield (Recraft V4.1, exact palette anchors), 2-4 deliberate assets: hero boundary/threshold, one section field, OG. Abstract architectural sovereignty — no robots, brains, or circuit-board clichés. No text in images. Optimized to webp/avif, responsive, lazy below the fold. Functional icons/diagrams stay SVG/DOM (Phosphor icon family, `weight="regular"`, one family). The boundary diagram is DOM/SVG (it's data, and it animates).
+Raster art via Higgsfield (Seedream 4.5, exact palette anchors in the prompt), four shipped assets in `src/assets/img/`: `hero-arc.webp` (sealed white vault, cyan seam to a dark door — the hero), `wedge-dark.webp` (midnight interior with cyan hairline seams — the landing wedge), `inside-field.webp` (quieter midnight field — the platform's fixed backdrop), `field-light.webp` (whisper-quiet light field — the CTA). Abstract architectural sovereignty — no robots, brains, or circuit-board clichés. No text in images (one candidate was discarded for rendering its own hex code). Optimized webp, lazy below the fold. Functional icons/diagrams stay SVG/DOM (Phosphor, one family). The boundary diagram is DOM/SVG (it's data, and it animates).
 
 ## 7. Per-view layout intent
 

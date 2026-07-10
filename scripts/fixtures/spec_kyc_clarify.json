@@ -1,0 +1,142 @@
+{
+  "title": "KYC/AML customer onboarding",
+  "narrative": "Automate onboarding screening: OCR identity documents, screen applicants against sanctions and PEP lists, and compute a weighted risk score with an approve/review/reject decision. Sanitized restatement \u2014 no raw applicant values present.",
+  "mode": {
+    "recommended": "build",
+    "confirmed": "build",
+    "rationale": "Interdependent modules with declared interfaces (OCR feeds screening feeds scoring) \u2014 build mode."
+  },
+  "entities": [
+    {
+      "name": "Applicant",
+      "fields": [
+        {
+          "name": "full_name",
+          "type": "string",
+          "pii": true
+        },
+        {
+          "name": "dob",
+          "type": "date",
+          "pii": true
+        },
+        {
+          "name": "nationality",
+          "type": "string",
+          "pii": false
+        },
+        {
+          "name": "document_id",
+          "type": "string",
+          "pii": true
+        }
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "text": "Every applicant is screened against the sanctions list",
+      "verify": "inspector"
+    },
+    {
+      "id": "AC-2",
+      "text": "Risk score is a weighted sum of sanctions, PEP, and geography signals",
+      "verify": "oracle"
+    },
+    {
+      "id": "AC-3",
+      "text": "Applicants with a sanctions hit are never auto-approved",
+      "verify": "test"
+    }
+  ],
+  "numeric_rules": [
+    {
+      "id": "NR-1",
+      "text": "risk_score = 0.5*sanctions_flag + 0.3*pep_flag + 0.2*geo_risk; amber if 0.3<=score<0.6, red if >=0.6",
+      "inputs": [
+        "sanctions_flag",
+        "pep_flag",
+        "geo_risk"
+      ],
+      "output": "risk_score"
+    }
+  ],
+  "context_pack": {
+    "code_map": {
+      "files": 0,
+      "modules": [],
+      "framework": "python",
+      "tree_ref": ""
+    },
+    "db_schemas": [
+      {
+        "table": "\u00abTABLE_A\u00bb",
+        "fields": [
+          {
+            "name": "id",
+            "type": "int"
+          },
+          {
+            "name": "\u00abFIELD_1\u00bb",
+            "type": "string"
+          }
+        ]
+      }
+    ],
+    "attachments": [
+      {
+        "kind": "policy_doc",
+        "summary": "Customer data-handling policy: client names and document numbers must never leave the boundary."
+      }
+    ]
+  },
+  "connectors": [
+    {
+      "name": "ofac_sanctions",
+      "kind": "dataset",
+      "mock": true
+    },
+    {
+      "name": "pep_list",
+      "kind": "dataset",
+      "mock": true
+    }
+  ],
+  "volume": {
+    "units_estimate": 30,
+    "unit_noun": "applicant"
+  },
+  "sensitivity_report": {
+    "pii_fields_masked": 3,
+    "documents_ocred": 30,
+    "policy_rules_applied": [
+      "RP-1",
+      "RP-2"
+    ],
+    "identifiers_generalized": 4
+  },
+  "clarifications": [
+    {
+      "id": "q_delivery",
+      "question": "How should the flagged results be delivered \u2014 a CSV for the recovery team, a per-entity report (print-ready case files), or both?",
+      "kind": "delivery",
+      "options": [
+        "csv",
+        "report",
+        "csv + report"
+      ],
+      "required": true
+    },
+    {
+      "id": "q_threshold",
+      "question": "What risk-score threshold routes an applicant to manual review?",
+      "kind": "threshold",
+      "options": [
+        "0.3 (conservative)",
+        "0.6 (standard)"
+      ],
+      "required": false
+    }
+  ]
+}

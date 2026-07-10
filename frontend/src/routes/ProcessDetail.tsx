@@ -1,21 +1,35 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Lightning, Copy, ArrowsClockwise, Lock, CaretDown, CaretRight,
-  FileText, Receipt, CheckCircle, ShieldCheck, GitBranch,
+  FileText, Receipt, CheckCircle, ShieldCheck, GitBranch, X, Printer,
+  DownloadSimple, ArrowSquareOut, MagnifyingGlass, Compass,
 } from "@phosphor-icons/react";
-import { api, type EconProcess, type PackageInvoice, type PackageManifest, type ProcessVersion, type RunUnit, type VersionDiff } from "../api/client";
+import { api, type EconProcess, type NextStep, type PackageInvoice, type PackageManifest, type ProcessSummary, type ProcessVersion, type RunUnit, type VersionDiff } from "../api/client";
 import { useDemoToken } from "../api/useDemoToken";
 import { usd } from "../lib/format";
 import styles from "./ProcessDetail.module.css";
 
 type Flash = { kind: "ok" | "err"; msg: string } | null;
 
-function ActionBar({ processId, version }: { processId: string; version: number }) {
+/** The process may carry its corpus binding under a couple of names. */
+function boundCompany(process: ProcessSummary): string {
+  const raw = process as unknown as Record<string, unknown>;
+  // authoritative: flat corpus_company; older nested shapes tolerated
+  const corpus = raw.corpus as Record<string, unknown> | undefined;
+  return (raw.corpus_company as string) ?? (corpus?.company as string) ?? (raw.company as string) ?? "";
+}
+
+function ActionBar({ processId, version, process }: { processId: string; version: number; process: ProcessSummary }) {
   const unlocked = useDemoToken();
   const [flash, setFlash] = useState<Flash>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [company, setCompany] = useState(() => boundCompany(process));
+  const [refineOpen, setRefineOpen] = useState(false);
+  const [refineText, setRefineText] = useState("Tighten the sanctions fuzzy-match threshold.");
+  const companiesQ = useQuery({ queryKey: ["sb-companies"], queryFn: api.sandboxCompanies, retry: 0, staleTime: 60_000 });
+  const companies = companiesQ.data?.companies ?? [];
 
   const run = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(label);
@@ -34,11 +48,22 @@ function ActionBar({ processId, version }: { processId: string; version: number 
 
   return (
     <div>
+      {companies.length > 0 && (
+        <div className={styles.corpusRow}>
+          <label className={styles.corpusLbl}>Corpus</label>
+          <select className={styles.corpusSelect} value={company} onChange={(e) => setCompany(e.target.value)} disabled={!unlocked}>
+            <option value="">process binding</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className={styles.actions}>
         <button
           className={`${styles.action} ${styles.primary}`}
           disabled={!unlocked || busy != null}
-          onClick={() => run("Run batch", () => api.runBatch(processId, { input_ref: "100", version }))}
+          onClick={() => run("Run batch", () => api.runBatch(processId, { input_ref: "100", version, ...(company ? { corpus: { company } } : {}) }))}
         >
           {unlocked ? <Lightning weight="fill" /> : <Lock weight="regular" />} Run a batch
         </button>
@@ -52,11 +77,29 @@ function ActionBar({ processId, version }: { processId: string; version: number 
         <button
           className={styles.action}
           disabled={!unlocked || busy != null}
-          onClick={() => run("Refinement", () => api.refineProcess(processId, "Tighten the sanctions fuzzy-match threshold."))}
+          onClick={() => setRefineOpen((o) => !o)}
         >
           {unlocked ? <ArrowsClockwise weight="regular" /> : <Lock weight="regular" />} Request refinement
         </button>
       </div>
+      {refineOpen && (
+        <div className={styles.refineRow}>
+          <input
+            className={styles.noteInput}
+            value={refineText}
+            onChange={(e) => setRefineText(e.target.value)}
+            placeholder="What should change? e.g. Tighten the sanctions fuzzy-match threshold."
+            disabled={!unlocked}
+          />
+          <button
+            className={`${styles.action} ${styles.primary}`}
+            disabled={!unlocked || busy != null || !refineText.trim()}
+            onClick={() => run("Refinement", () => api.refineProcess(processId, refineText.trim()))}
+          >
+            Send
+          </button>
+        </div>
+      )}
       {!unlocked && <div className={styles.hint}>Unlock Presenter mode (top-right) to run, instantiate, or refine.</div>}
       {flash && <div className={`${styles.flash} ${flash.kind === "ok" ? styles.ok : styles.err}`}>{flash.msg}</div>}
     </div>
@@ -180,8 +223,128 @@ function scoreOf(u: RunUnit): string {
   return r?.score != null ? r.score.toFixed(2) : "—";
 }
 
-function RunRow({ run }: { run: EconProcess["runs"][number] }) {
+/** Render arbitrary result JSON as a readable definition list, not a dump. */
+function DefList({ data }: { data: unknown }): ReactNode {
+  if (data == null || data === "") return <span className={styles.dlEmpty}>—</span>;
+  if (Array.isArray(data)) {
+    if (data.length === 0) return <span className={styles.dlEmpty}>none</span>;
+    if (data.every((x) => typeof x !== "object" || x == null)) {
+      return <span className={styles.dlVal}>{data.map(String).join(", ")}</span>;
+    }
+    const rows = data as Array<Record<string, unknown>>;
+    const cols = [...new Set(rows.flatMap((r) => Object.keys(r ?? {})))].slice(0, 8);
+    return (
+      <div className={styles.dlTableWrap}>
+        <table className={styles.dlTable}>
+          <thead><tr>{cols.map((c) => <th key={c}>{c.replace(/_/g, " ")}</th>)}</tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>{cols.map((c) => <td key={c}><DefList data={r?.[c]} /></td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  if (typeof data === "object") {
+    return (
+      <dl className={styles.dl}>
+        {Object.entries(data as Record<string, unknown>).map(([k, val]) => (
+          <div className={styles.dlRow} key={k}>
+            <dt className={styles.dlKey}>{k.replace(/_/g, " ")}</dt>
+            <dd className={styles.dlVal}><DefList data={val} /></dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+  if (typeof data === "boolean") return <span className={styles.dlVal}>{data ? "yes" : "no"}</span>;
+  return <span className={styles.dlVal}>{String(data)}</span>;
+}
+
+function TraceSteps({ trace }: { trace: unknown }) {
+  const steps = Array.isArray(trace) ? trace : null;
+  if (!steps?.length) return null;
+  return (
+    <div className={styles.traceSteps}>
+      <div className={styles.drawerSub}>Trace</div>
+      <ol>
+        {steps.map((s, i) => (
+          <li key={i}>{typeof s === "string" ? s : typeof s === "object" && s ? Object.values(s as Record<string, unknown>).filter((x) => typeof x === "string").join(" · ") || JSON.stringify(s) : String(s)}</li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** Evidence drawer: the unit's full result + trace + review controls. */
+function EvidenceDrawer({ unit, onClose, onReview, busy }: {
+  unit: RunUnit;
+  onClose: () => void;
+  onReview: (verdict: "approve" | "reject", note: string) => void;
+  busy: boolean;
+}) {
+  const unlocked = useDemoToken();
+  const [note, setNote] = useState("");
+  return (
+    <>
+      <div className={styles.drawerScrim} onClick={onClose} />
+      <aside className={styles.drawer} role="dialog" aria-label={`Evidence for ${unit.unit_ref}`}>
+        <header className={styles.drawerHead}>
+          <div>
+            <div className={styles.drawerRef}>{unit.unit_ref}</div>
+            <span className={`${styles.uStatus} ${styles[unit.status] ?? ""}`}>{unit.status.replace("_", " ")}</span>
+          </div>
+          <button className={styles.drawerClose} onClick={onClose} aria-label="Close"><X weight="bold" /></button>
+        </header>
+
+        <div className={styles.drawerBody}>
+          <div className={styles.drawerSub}>Result</div>
+          <DefList data={unit.result} />
+          <TraceSteps trace={unit.trace} />
+        </div>
+
+        <footer className={styles.drawerFoot}>
+          {unit.review_verdict ? (
+            <div className={styles.verdictDone}>
+              {unit.review_verdict === "approve" ? "✓ approved" : "✗ rejected"}
+              {unit.review_note ? ` — ${unit.review_note}` : ""}
+            </div>
+          ) : (
+            <>
+              <input
+                className={styles.noteInput}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Review note (who/why — lands in the audit trail)"
+                disabled={!unlocked}
+              />
+              <div className={styles.review}>
+                <button className={`${styles.reviewBtn} ${styles.approve}`} disabled={!unlocked || busy} onClick={() => onReview("approve", note)}>approve</button>
+                <button className={`${styles.reviewBtn} ${styles.reject}`} disabled={!unlocked || busy} onClick={() => onReview("reject", note)}>reject</button>
+              </div>
+              {!unlocked && <span className={styles.hint}>Presenter mode required to review.</span>}
+            </>
+          )}
+        </footer>
+      </aside>
+    </>
+  );
+}
+
+const NEXT_ICON: Record<NextStep["action"]["kind"], typeof Compass> = {
+  refine: ArrowsClockwise,
+  export: DownloadSimple,
+  review: MagnifyingGlass,
+  rerun: Lightning,
+};
+
+function RunRow({ run, processId, version }: { run: EconProcess["runs"][number]; processId: string; version: number }) {
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<string | null>(null);
+  const [sel, setSel] = useState<RunUnit | null>(null);
+  const [artGlow, setArtGlow] = useState(false);
+  const [flash, setFlash] = useState<Flash>(null);
   const unlocked = useDemoToken();
   const qc = useQueryClient();
   const unitsQ = useQuery({
@@ -190,13 +353,16 @@ function RunRow({ run }: { run: EconProcess["runs"][number] }) {
     enabled: open,
     retry: 0,
   });
+  const runQ = useQuery({ queryKey: ["run", run.run_id], queryFn: () => api.getRun(run.run_id), enabled: open, retry: 0 });
+  const nextQ = useQuery({ queryKey: ["next-steps", run.run_id], queryFn: () => api.nextSteps(run.run_id), enabled: open, retry: 0 });
   const [reviewing, setReviewing] = useState<string | null>(null);
 
-  const review = async (unitId: string, verdict: "approve" | "reject") => {
+  const review = async (unitId: string, verdict: "approve" | "reject", note?: string) => {
     setReviewing(unitId);
     try {
-      await api.reviewUnit(unitId, verdict, verdict === "approve" ? "approved on review" : "returned for correction");
+      await api.reviewUnit(unitId, verdict, note?.trim() || (verdict === "approve" ? "approved on review" : "returned for correction"));
       await qc.invalidateQueries({ queryKey: ["run-units", run.run_id] });
+      setSel(null);
     } catch {
       /* surfaced by the row staying un-reviewed */
     } finally {
@@ -205,6 +371,53 @@ function RunRow({ run }: { run: EconProcess["runs"][number] }) {
   };
 
   const units = unitsQ.data?.units ?? [];
+  const statuses = [...new Set(units.map((u) => u.status))];
+  const shown = filter ? units.filter((u) => u.status === filter) : units;
+  const artifacts = runQ.data?.run.artifacts ?? [];
+  const reportUrl = artifacts.find((a) => a.kind === "report")?.url ?? `/api/runs/${run.run_id}/report`;
+  const csvUrl = artifacts.find((a) => a.kind === "csv")?.url ?? `/api/runs/${run.run_id}/export.csv`;
+
+  const printReport = () => {
+    const w = window.open(reportUrl, "_blank");
+    w?.addEventListener("load", () => w.print());
+  };
+
+  const flashRun = (kind: "ok" | "err", msg: string) => setFlash({ kind, msg });
+
+  const doAction = async (step: NextStep) => {
+    const params = step.action.params ?? {};
+    try {
+      switch (step.action.kind) {
+        case "refine": {
+          const request = (params.request as string) ?? step.title;
+          await api.refineProcess(processId, request);
+          flashRun("ok", "Refinement accepted — a new build job has started.");
+          break;
+        }
+        case "review":
+          setFilter("needs_review");
+          break;
+        case "export":
+          // params: {format: "report"|"csv"} — open the artifact and light the card
+          window.open(params.format === "csv" ? csvUrl : reportUrl, "_blank");
+          setArtGlow(true);
+          setTimeout(() => setArtGlow(false), 1600);
+          break;
+        case "rerun":
+          // params like {sample:{mode,n}} / {budget} pass through opaquely
+          await api.runBatch(processId, {
+            ...(params as Record<string, unknown>),
+            input_ref: (params.input_ref as string) ?? "100",
+            version,
+          });
+          flashRun("ok", "Re-run accepted — watch the run history.");
+          break;
+      }
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      flashRun("err", status === 401 ? "Presenter token required." : `Action failed: ${(e as Error).message}`);
+    }
+  };
 
   return (
     <div className={styles.runRow}>
@@ -220,10 +433,46 @@ function RunRow({ run }: { run: EconProcess["runs"][number] }) {
       </div>
       {open && (
         <div className={styles.runBody}>
+          {(artifacts.length > 0) && (
+            <div className={`${styles.artCard} ${artGlow ? styles.artGlow : ""}`}>
+              <div className={styles.artTitle}>Deliverables</div>
+              <div className={styles.artBtns}>
+                <a className={styles.artBtn} href={reportUrl} target="_blank" rel="noreferrer">
+                  <ArrowSquareOut weight="bold" /> Open report
+                </a>
+                <a className={styles.artBtn} href={csvUrl} download>
+                  <DownloadSimple weight="bold" /> Download CSV
+                </a>
+                <button className={styles.artBtn} onClick={printReport}>
+                  <Printer weight="bold" /> Print → PDF
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className={styles.findingsBar}>
+            <span className={styles.findingsTitle}>Findings</span>
+            {statuses.length > 1 && (
+              <div className={styles.filterChips}>
+                <button className={`${styles.filterChip} ${filter == null ? styles.on : ""}`} onClick={() => setFilter(null)}>
+                  all · {units.length}
+                </button>
+                {statuses.map((s) => (
+                  <button key={s} className={`${styles.filterChip} ${filter === s ? styles.on : ""}`} onClick={() => setFilter(s)}>
+                    {s.replace("_", " ")} · {units.filter((u) => u.status === s).length}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Link className={styles.inspectLink} to={`/traces?scope=${encodeURIComponent(`run:${run.run_id}`)}`}>
+              <MagnifyingGlass weight="bold" /> Inspect prompts
+            </Link>
+          </div>
+
           {unitsQ.isLoading ? (
             <p className={styles.diffNote}>Loading units…</p>
-          ) : units.length === 0 ? (
-            <p className={styles.diffNote}>No unit records for this run.</p>
+          ) : shown.length === 0 ? (
+            <p className={styles.diffNote}>{filter ? "No units with this status." : "No unit records for this run."}</p>
           ) : (
             <table className={styles.unitTable}>
               <thead>
@@ -235,12 +484,12 @@ function RunRow({ run }: { run: EconProcess["runs"][number] }) {
                 </tr>
               </thead>
               <tbody>
-                {units.map((u) => (
-                  <tr key={u.id}>
+                {shown.map((u) => (
+                  <tr key={u.id} className={styles.unitRow} onClick={() => setSel(u)}>
                     <td>{u.unit_ref}</td>
                     <td><span className={`${styles.uStatus} ${styles[u.status] ?? ""}`}>{u.status.replace("_", " ")}</span></td>
                     <td>{scoreOf(u)}</td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       {u.review_verdict ? (
                         <span className={styles.verdictDone}>{u.review_verdict === "approve" ? "✓ approved" : "✗ rejected"}</span>
                       ) : (
@@ -259,7 +508,34 @@ function RunRow({ run }: { run: EconProcess["runs"][number] }) {
               </tbody>
             </table>
           )}
+
+          {(nextQ.data?.length ?? 0) > 0 && (
+            <div className={styles.nextSteps}>
+              <div className={styles.artTitle}><Compass weight="bold" style={{ width: 13, verticalAlign: "-2px", marginRight: 5 }} />What next</div>
+              <div className={styles.nextGrid}>
+                {nextQ.data!.slice(0, 5).map((s, i) => {
+                  const Ico = NEXT_ICON[s.action.kind] ?? Compass;
+                  return (
+                    <button key={i} className={styles.nextCard} onClick={() => doAction(s)} disabled={!unlocked && (s.action.kind === "refine" || s.action.kind === "rerun")}>
+                      <div className={styles.nextTop}><Ico weight="bold" /><span>{s.title}</span></div>
+                      <p className={styles.nextWhy}>{s.why}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {flash && <div className={`${styles.flash} ${flash.kind === "ok" ? styles.ok : styles.err}`}>{flash.msg}</div>}
         </div>
+      )}
+
+      {sel && (
+        <EvidenceDrawer
+          unit={sel}
+          onClose={() => setSel(null)}
+          onReview={(verdict, note) => review(sel.id, verdict, note)}
+          busy={reviewing === sel.id}
+        />
       )}
     </div>
   );
@@ -293,7 +569,7 @@ export function ProcessDetail() {
           </div>
           <p className={styles.goal}>{process.goal}</p>
         </div>
-        <ActionBar processId={id} version={process.current_version} />
+        <ActionBar processId={id} version={process.current_version} process={process} />
       </div>
 
       <div className={styles.cols}>
@@ -306,7 +582,7 @@ export function ProcessDetail() {
         {runs.length === 0 ? (
           <p className={styles.diffNote}>No runs yet. Unlock Presenter mode and run a batch to see per-unit results and the semi-automated review queue.</p>
         ) : (
-          runs.map((r) => <RunRow key={r.run_id} run={r} />)
+          runs.map((r) => <RunRow key={r.run_id} run={r} processId={id} version={process.current_version} />)
         )}
       </div>
     </div>

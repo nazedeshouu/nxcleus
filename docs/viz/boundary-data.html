@@ -1,0 +1,978 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nxcleus — Data Boundary, Persistence & Operations</title>
+<style>
+  :root{
+    --paper:#060f14; --surface:#0a1a21; --sunk:#071319; --raised:#0d2029;
+    --hair:#163542; --hair-soft:#112834;
+    --text:#dcebf0; --muted:#85a0aa; --faint:#567179;
+    --accent:#38a6d2; --accent-strong:#85d3f0; --accent-wash:rgba(56,166,210,.09);
+    --local:#4cb4dc; --amd:#e2a35e; --custom:#8fa0cd; --external:#92a4ae;
+    --raw:#bfe3f2; --sanitized:#4cb4dc;
+    --ok:#4bcb90; --warn:#e2a35e; --danger:#ff5f65; --seal:#3fd8c4;
+    --sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --maxw:1100px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--paper); color:var(--text);
+    font-family:var(--sans); font-size:15.5px; line-height:1.62;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  a{color:var(--accent); text-decoration:none}
+  a:hover{color:var(--accent-strong)}
+
+  /* ---- layout ---- */
+  .wrap{display:grid; grid-template-columns:248px minmax(0,1fr); gap:0; max-width:1420px; margin:0 auto}
+  nav.toc{
+    position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+    padding:44px 26px 60px 34px; border-right:1px solid var(--hair-soft);
+    font-size:13px;
+  }
+  nav.toc .brand{font-weight:600; letter-spacing:.02em; color:var(--text); font-size:14.5px; margin-bottom:2px}
+  nav.toc .brandsub{color:var(--faint); font-size:11px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:26px}
+  nav.toc ol{list-style:none; margin:0; padding:0; counter-reset:s}
+  nav.toc li{counter-increment:s; margin:1px 0}
+  nav.toc a{display:block; color:var(--muted); padding:5px 10px 5px 30px; border-radius:6px; position:relative; line-height:1.35}
+  nav.toc a::before{content:counter(s,decimal-leading-zero); position:absolute; left:8px; color:var(--faint); font-family:var(--mono); font-size:10.5px; top:7px}
+  nav.toc a:hover{background:var(--accent-wash); color:var(--text)}
+  main{padding:0 clamp(20px,5vw,72px) 160px; min-width:0}
+  section{max-width:var(--maxw); margin:0 auto; padding-top:96px}
+  section:first-of-type{padding-top:64px}
+
+  /* ---- type ---- */
+  .overline{font-family:var(--mono); font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--accent); margin:0 0 14px}
+  h1{font-size:clamp(2.3rem,4.4vw,3.4rem); line-height:1.04; letter-spacing:-.02em; font-weight:650; margin:0 0 20px}
+  h2{font-size:clamp(1.5rem,2.5vw,2.05rem); line-height:1.1; letter-spacing:-.015em; font-weight:640; margin:0 0 8px}
+  h3{font-size:1.12rem; letter-spacing:-.01em; font-weight:620; margin:36px 0 10px; color:var(--text)}
+  h4{font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:600; margin:26px 0 10px}
+  p{margin:0 0 15px; color:#c6d8de}
+  .lead{font-size:1.16rem; line-height:1.55; color:#c9dbe1; max-width:40em}
+  .sectlede{color:var(--muted); max-width:44em; margin-top:4px; margin-bottom:8px}
+  strong{color:var(--text); font-weight:620}
+  em{color:var(--accent-strong); font-style:normal}
+  code{font-family:var(--mono); font-size:.85em; background:var(--sunk); border:1px solid var(--hair-soft); padding:.08em .4em; border-radius:5px; color:#bcd7e0}
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+  hr.rule{border:0; border-top:1px solid var(--hair-soft); margin:0}
+
+  /* ---- code blocks ---- */
+  figure.code{margin:20px 0; border:1px solid var(--hair); border-radius:11px; overflow:hidden; background:var(--sunk)}
+  figure.code figcaption{font-family:var(--mono); font-size:11.5px; color:var(--faint); padding:9px 16px; border-bottom:1px solid var(--hair-soft); background:var(--raised); display:flex; justify-content:space-between; gap:12px}
+  figure.code figcaption .fn{color:var(--accent)}
+  figure.code pre{margin:0; padding:16px 18px; overflow-x:auto; font-family:var(--mono); font-size:12.6px; line-height:1.62; color:#c3d6dd}
+  pre .k{color:#7fb2e8} pre .s{color:#8fd3ac} pre .c{color:#557079; font-style:italic} pre .n{color:#e2a35e} pre .f{color:#85d3f0}
+
+  /* ---- cards / grid ---- */
+  .grid{display:grid; gap:16px; margin:20px 0}
+  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+  .card{background:var(--surface); border:1px solid var(--hair); border-radius:12px; padding:18px 20px}
+  .card h5{margin:0 0 6px; font-size:.95rem; font-weight:620; letter-spacing:-.005em}
+  .card p{font-size:.9rem; margin:0; color:var(--muted)}
+  .stat{background:linear-gradient(180deg,var(--raised),var(--surface)); border:1px solid var(--hair); border-radius:12px; padding:18px 20px}
+  .stat .big{font-family:var(--mono); font-size:1.7rem; font-weight:600; color:var(--accent-strong); letter-spacing:-.02em; line-height:1}
+  .stat .lbl{font-size:.74rem; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin-top:8px}
+
+  /* ---- pills / badges ---- */
+  .pill{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; padding:2px 9px; border-radius:999px; border:1px solid; white-space:nowrap; vertical-align:middle}
+  .z-local{color:var(--local); border-color:color-mix(in srgb,var(--local) 40%,transparent); background:rgba(76,180,220,.08)}
+  .z-amd{color:var(--amd); border-color:color-mix(in srgb,var(--amd) 40%,transparent); background:rgba(226,163,94,.08)}
+  .z-ext{color:var(--external); border-color:color-mix(in srgb,var(--external) 40%,transparent); background:rgba(146,164,174,.08)}
+  .z-custom{color:var(--custom); border-color:color-mix(in srgb,var(--custom) 40%,transparent); background:rgba(143,160,205,.08)}
+  .b-raw{color:var(--raw); border-color:rgba(191,227,242,.35); background:rgba(191,227,242,.06)}
+  .b-san{color:var(--sanitized); border-color:color-mix(in srgb,var(--sanitized) 40%,transparent); background:rgba(76,180,220,.08)}
+  .b-ok{color:var(--ok); border-color:color-mix(in srgb,var(--ok) 40%,transparent); background:rgba(75,203,144,.08)}
+  .b-warn{color:var(--warn); border-color:color-mix(in srgb,var(--warn) 40%,transparent); background:rgba(226,163,94,.08)}
+  .b-danger{color:var(--danger); border-color:color-mix(in srgb,var(--danger) 40%,transparent); background:rgba(255,95,101,.08)}
+  .b-seal{color:var(--seal); border-color:color-mix(in srgb,var(--seal) 40%,transparent); background:rgba(63,216,196,.08)}
+
+  /* ---- tables ---- */
+  .tbl-wrap{overflow-x:auto; margin:20px 0; border:1px solid var(--hair); border-radius:11px}
+  table{border-collapse:collapse; width:100%; font-size:13px; min-width:560px}
+  th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--hair-soft); vertical-align:top}
+  thead th{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); font-weight:600; background:var(--raised)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--accent-wash)}
+  td code{font-size:.82em}
+  .mono{font-family:var(--mono); font-size:.86em; color:#bcd7e0}
+
+  /* ---- callouts ---- */
+  .callout{border-radius:11px; padding:15px 18px 15px 20px; margin:20px 0; border:1px solid; position:relative; font-size:.92rem}
+  .callout .tag{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:600; display:block; margin-bottom:5px}
+  .callout p{margin:0; color:#c6d8de; font-size:.92rem}
+  .callout p+p{margin-top:8px}
+  .co-spec{background:rgba(226,163,94,.055); border-color:color-mix(in srgb,var(--warn) 34%,transparent)}
+  .co-spec .tag{color:var(--warn)}
+  .co-note{background:var(--accent-wash); border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+  .co-note .tag{color:var(--accent)}
+  .co-danger{background:rgba(255,95,101,.06); border-color:color-mix(in srgb,var(--danger) 34%,transparent)}
+  .co-danger .tag{color:var(--danger)}
+
+  /* ---- diagram frame ---- */
+  .diagram{background:radial-gradient(120% 140% at 30% 0%,#0b1d25,#060f14 70%); border:1px solid var(--hair); border-radius:14px; padding:8px; margin:22px 0; overflow-x:auto}
+  .diagram svg{display:block; width:100%; height:auto; min-width:720px}
+  .legend{display:flex; flex-wrap:wrap; gap:14px 22px; margin:14px 2px 0; font-size:12px; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:7px}
+  .legend i{width:12px; height:12px; border-radius:3px; display:inline-block}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:22px 0}
+  .step{display:grid; grid-template-columns:34px 1fr; gap:16px}
+  .step .rail{display:flex; flex-direction:column; align-items:center}
+  .step .dot{width:26px; height:26px; border-radius:50%; border:1px solid var(--accent); color:var(--accent-strong); font-family:var(--mono); font-size:12px; display:flex; align-items:center; justify-content:center; background:var(--sunk); flex:none}
+  .step .line{width:1px; flex:1; background:var(--hair); margin:4px 0}
+  .step:last-child .line{display:none}
+  .step .body{padding-bottom:22px; min-width:0}
+  .step .body h5{margin:2px 0 5px; font-size:1rem; font-weight:620}
+  .step .body p{font-size:.9rem; margin:0; color:var(--muted)}
+  .step .body .src{font-family:var(--mono); font-size:11px; color:var(--faint); margin-top:6px}
+
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:6px 18px; font-size:13px; margin:14px 0}
+  .kv dt{font-family:var(--mono); color:var(--accent); font-size:12px}
+  .kv dd{margin:0; color:var(--muted)}
+
+  @media (max-width:920px){
+    .wrap{grid-template-columns:1fr}
+    nav.toc{display:none}
+    .g2,.g3,.g4{grid-template-columns:1fr}
+    .g4{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+
+<div class="wrap">
+<nav class="toc">
+  <div class="brand">Nxcleus</div>
+  <div class="brandsub">Boundary · Data · Ops</div>
+  <ol>
+    <li><a href="#hero">Sovereignty story</a></li>
+    <li><a href="#boundary">The boundary</a></li>
+    <li><a href="#matrix">Enforcement matrix</a></li>
+    <li><a href="#intake">Intake pipeline</a></li>
+    <li><a href="#egress">Egress &amp; proxy tokens</a></li>
+    <li><a href="#db">Database schema</a></li>
+    <li><a href="#operate">Operate &amp; registry</a></li>
+    <li><a href="#sandbox">Judge sandbox</a></li>
+    <li><a href="#metering">Metering &amp; economics</a></li>
+    <li><a href="#divergence">Spec vs code</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============================================================ HERO -->
+<section id="hero">
+  <p class="overline">Nxcleus control plane · reference</p>
+  <h1>Data Boundary,<br>Persistence &amp; Operations</h1>
+  <p class="lead">Nxcleus builds and runs data-processing software for regulated enterprises without their sensitive data ever reaching a frontier model. The premise is mechanical, not a promise: <em>only SANITIZED data crosses to EXTERNAL</em>; raw customer records, the vault that maps them back, and every code-touching model stay in the LOCAL zone. The boundary is enforced in one function, logged on every dispatch, and proven by tests.</p>
+
+  <div class="grid g4" style="margin-top:34px">
+    <div class="stat"><div class="big">2</div><div class="lbl">Data classes<br>RAW · SANITIZED</div></div>
+    <div class="stat"><div class="big">4</div><div class="lbl">Zones<br>LOCAL·AMD·EXT·CUSTOM</div></div>
+    <div class="stat"><div class="big">1</div><div class="lbl">Egress choke point<br>router.complete()</div></div>
+    <div class="stat"><div class="big">0</div><div class="lbl">Frontier calls in<br>the operate phase</div></div>
+  </div>
+
+  <p style="margin-top:30px">The story has two data classes and four zones. Data is born <span class="pill b-raw">RAW</span> — the customer's real names, accounts, documents. Stage 0 masks it into typed placeholders and stores the reverse map in a <strong>boundary vault</strong> that never serializes outward. What leaves stage 0 is a <span class="pill b-san">SANITIZED</span> brief. Only that brief is allowed to reach the one seat that lives <span class="pill z-ext">EXTERNAL</span> — the planner, on a frontier model. Everything that actually touches the customer's data — certification, code generation, review, QA, the running process — happens on <span class="pill z-local">LOCAL</span> GPUs where RAW is legal.</p>
+
+  <p>This page reads the code, not the pitch. Every gate below names the real file and function that implements it; every divergence from specs 01 / 04 / 05 / 09 / 10 is called out where it occurs.</p>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ BOUNDARY -->
+<section id="boundary">
+  <p class="overline">§1 · The boundary</p>
+  <h2>What crosses the line, and through which gate</h2>
+  <p class="sectlede">Four zones, mapped from a model backend's <em>kind</em> in <code>registry.ZONE</code>. The LOCAL wall holds all raw data and every RAW-class seat. Exactly one artifact — the sanitized brief — is designed to cross into EXTERNAL, through exactly one gate.</p>
+
+  <div class="diagram">
+  <svg viewBox="0 0 1040 560" role="img" aria-label="Nxcleus data boundary diagram">
+    <defs>
+      <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+        <path d="M0,0 L8,4.5 L0,9 Z" fill="#4cb4dc"/>
+      </marker>
+      <marker id="arrback" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+        <path d="M0,0 L8,4.5 L0,9 Z" fill="#85a0aa"/>
+      </marker>
+      <marker id="arrblock" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+        <path d="M0,0 L8,4.5 L0,9 Z" fill="#ff5f65"/>
+      </marker>
+    </defs>
+
+    <!-- LOCAL zone -->
+    <rect x="20" y="46" width="470" height="494" rx="14" fill="rgba(76,180,220,.05)" stroke="#2b5c6e" stroke-width="1.2"/>
+    <text x="42" y="76" fill="#4cb4dc" font-family="ui-monospace,Menlo" font-size="13" letter-spacing="2">LOCAL ZONE — inside the walls</text>
+    <text x="42" y="94" fill="#567179" font-family="ui-monospace,Menlo" font-size="10.5">backend: local · mock  →  RAW is legal here</text>
+
+    <!-- raw data store -->
+    <rect x="42" y="112" width="196" height="86" rx="9" fill="#0d2029" stroke="#163542"/>
+    <text x="54" y="134" fill="#bfe3f2" font-family="ui-monospace,Menlo" font-size="11">RAW customer data</text>
+    <text x="54" y="152" fill="#85a0aa" font-size="10.5">names · accounts · IDs</text>
+    <text x="54" y="168" fill="#85a0aa" font-size="10.5">docs (OCR) · voice policy</text>
+    <text x="54" y="187" fill="#567179" font-family="ui-monospace,Menlo" font-size="9.5">spec.request, uploads</text>
+
+    <!-- vault -->
+    <rect x="256" y="112" width="212" height="86" rx="9" fill="#0d2029" stroke="#2b5c6e"/>
+    <text x="268" y="134" fill="#3fd8c4" font-family="ui-monospace,Menlo" font-size="11">boundary_vault</text>
+    <text x="268" y="152" fill="#85a0aa" font-size="10.5">«PERSON_1» → "Ivan Petrov"</text>
+    <text x="268" y="168" fill="#85a0aa" font-size="10.5">PK (job_id, placeholder)</text>
+    <text x="268" y="187" fill="#ff8f93" font-family="ui-monospace,Menlo" font-size="9.5">NEVER serialized outward</text>
+
+    <!-- local seats -->
+    <rect x="42" y="300" width="426" height="128" rx="9" fill="rgba(76,180,220,.04)" stroke="#163542"/>
+    <text x="54" y="322" fill="#85a0aa" font-family="ui-monospace,Menlo" font-size="10" letter-spacing="1.5">RAW-CLASS SEATS — never leave LOCAL</text>
+    <g font-family="ui-monospace,Menlo" font-size="10.5" fill="#bcd7e0">
+      <rect x="54" y="334" width="92" height="26" rx="6" fill="#0a1a21" stroke="#22434f"/><text x="62" y="351">trust</text>
+      <rect x="156" y="334" width="92" height="26" rx="6" fill="#0a1a21" stroke="#22434f"/><text x="164" y="351">certifier</text>
+      <rect x="258" y="334" width="92" height="26" rx="6" fill="#0a1a21" stroke="#22434f"/><text x="266" y="351">conductor</text>
+      <rect x="360" y="334" width="92" height="26" rx="6" fill="#0a1a21" stroke="#22434f"/><text x="368" y="351">coder</text>
+      <rect x="54" y="368" width="118" height="26" rx="6" fill="#0a1a21" stroke="#22434f"/><text x="62" y="385">consolidator</text>
+      <rect x="182" y="368" width="86" height="26" rx="6" fill="#0a1a21" stroke="#22434f"/><text x="190" y="385">oracle*</text>
+      <rect x="278" y="368" width="98" height="26" rx="6" fill="#0a1a21" stroke="#22434f"/><text x="286" y="385">inspector*</text>
+    </g>
+    <text x="54" y="414" fill="#567179" font-size="9.8">* oracle &amp; inspector carry a SANITIZED ceiling but bind to LOCAL nodes — synthetic/derived data only.</text>
+
+    <!-- intake gate -->
+    <rect x="42" y="222" width="426" height="52" rx="8" fill="rgba(56,166,210,.08)" stroke="#38a6d2" stroke-dasharray="4 3"/>
+    <text x="54" y="242" fill="#85d3f0" font-family="ui-monospace,Menlo" font-size="11">⟠ GATE 1 · intake sanitization</text>
+    <text x="54" y="260" fill="#85a0aa" font-size="10.5">sanitize.baseline_mask() → vault.store() → SANITIZED brief</text>
+
+    <!-- boundary wall -->
+    <line x1="505" y1="30" x2="505" y2="552" stroke="#ff5f65" stroke-width="1.4" stroke-dasharray="2 5" opacity=".6"/>
+    <text x="512" y="44" fill="#ff8f93" font-family="ui-monospace,Menlo" font-size="9.5" letter-spacing="1">THE BOUNDARY</text>
+
+    <!-- EXTERNAL zone -->
+    <rect x="556" y="46" width="462" height="150" rx="14" fill="rgba(146,164,174,.05)" stroke="#3d4c54" stroke-width="1.2"/>
+    <text x="578" y="76" fill="#92a4ae" font-family="ui-monospace,Menlo" font-size="13" letter-spacing="2">EXTERNAL ZONE</text>
+    <text x="578" y="94" fill="#567179" font-family="ui-monospace,Menlo" font-size="10.5">backend: anthropic · claude-fable-5</text>
+    <rect x="578" y="108" width="418" height="70" rx="9" fill="#0d2029" stroke="#3d4c54"/>
+    <text x="590" y="130" fill="#c6d8de" font-family="ui-monospace,Menlo" font-size="11">planner  ·  SANITIZED ceiling (enforced)</text>
+    <text x="590" y="148" fill="#85a0aa" font-size="10.5">sees the brief only — data_class_max = SANITIZED</text>
+    <text x="590" y="166" fill="#85a0aa" font-size="10.5">RAW routed here → BoundaryViolation, before dispatch</text>
+
+    <!-- AMD_HOSTED zone -->
+    <rect x="556" y="212" width="228" height="150" rx="14" fill="rgba(226,163,94,.05)" stroke="#6a5230" stroke-width="1.2"/>
+    <text x="576" y="240" fill="#e2a35e" font-family="ui-monospace,Menlo" font-size="12" letter-spacing="1.5">AMD_HOSTED</text>
+    <text x="576" y="258" fill="#567179" font-family="ui-monospace,Menlo" font-size="10">backend: fireworks</text>
+    <text x="576" y="284" fill="#85a0aa" font-size="10.5">Availability fallback,</text>
+    <text x="576" y="300" fill="#85a0aa" font-size="10.5">badged. RAW only via</text>
+    <text x="576" y="316" fill="#85a0aa" font-size="10.5">demo-exception flag,</text>
+    <text x="576" y="332" fill="#85a0aa" font-size="10.5">else blocked closed.</text>
+
+    <!-- CUSTOM zone -->
+    <rect x="790" y="212" width="228" height="150" rx="14" fill="rgba(143,160,205,.05)" stroke="#3f4763" stroke-width="1.2"/>
+    <text x="810" y="240" fill="#8fa0cd" font-family="ui-monospace,Menlo" font-size="12" letter-spacing="1.5">CUSTOM (BYOK)</text>
+    <text x="810" y="258" fill="#567179" font-family="ui-monospace,Menlo" font-size="10">backend: custom</text>
+    <text x="810" y="284" fill="#85a0aa" font-size="10.5">Ceiling SANITIZED by</text>
+    <text x="810" y="300" fill="#85a0aa" font-size="10.5">default. RAW only when</text>
+    <text x="810" y="316" fill="#85a0aa" font-size="10.5">data_class_ceiling=RAW</text>
+    <text x="810" y="332" fill="#85a0aa" font-size="10.5">(customer-attested).</text>
+
+    <!-- egress gate box -->
+    <rect x="556" y="386" width="462" height="70" rx="10" fill="rgba(56,166,210,.06)" stroke="#38a6d2" stroke-dasharray="4 3"/>
+    <text x="578" y="410" fill="#85d3f0" font-family="ui-monospace,Menlo" font-size="11">⟠ GATE 3 · router._check_boundary() — every dispatch</text>
+    <text x="578" y="428" fill="#85a0aa" font-size="10.5">fail-closed matrix + seat ceiling → egress.record() row</text>
+    <text x="578" y="445" fill="#85a0aa" font-size="10.5">raises BoundaryViolation / SovereignViolation / BudgetExceeded</text>
+
+    <!-- consult gate -->
+    <rect x="556" y="474" width="462" height="66" rx="10" fill="rgba(63,216,196,.055)" stroke="#3fd8c4" stroke-dasharray="4 3"/>
+    <text x="578" y="498" fill="#3fd8c4" font-family="ui-monospace,Menlo" font-size="11">⟠ GATE 2 · consult sanitization (return path)</text>
+    <text x="578" y="516" fill="#85a0aa" font-size="10.5">certifier→planner question re-masked: reverse_substitute()</text>
+    <text x="578" y="533" fill="#85a0aa" font-size="10.5">+ residual baseline sweep → SANITIZED receipt</text>
+
+    <!-- crossing arrows -->
+    <!-- sanitized brief LOCAL->EXTERNAL -->
+    <path d="M468,240 C520,240 520,140 576,140" fill="none" stroke="#4cb4dc" stroke-width="2" marker-end="url(#arr)"/>
+    <text x="500" y="120" fill="#4cb4dc" font-family="ui-monospace,Menlo" font-size="10" text-anchor="middle">SANITIZED brief ✓</text>
+
+    <!-- consult return EXTERNAL->LOCAL through gate2 -->
+    <path d="M700,178 C700,470 540,507 468,410" fill="none" stroke="#85a0aa" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arrback)"/>
+
+    <!-- RAW blocked -->
+    <path d="M240,150 C400,150 430,140 574,138" fill="none" stroke="#ff5f65" stroke-width="1.6" stroke-dasharray="3 4" marker-end="url(#arrblock)" opacity=".85"/>
+    <circle cx="505" cy="141" r="9" fill="#1a0d0f" stroke="#ff5f65"/>
+    <path d="M501,137 l8,8 M509,137 l-8,8" stroke="#ff5f65" stroke-width="1.5"/>
+    <text x="360" y="128" fill="#ff8f93" font-family="ui-monospace,Menlo" font-size="9.5">RAW → EXTERNAL blocked</text>
+  </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:#4cb4dc"></i>LOCAL — raw legal</span>
+    <span><i style="background:#e2a35e"></i>AMD_HOSTED — fallback</span>
+    <span><i style="background:#92a4ae"></i>EXTERNAL — sanitized only</span>
+    <span><i style="background:#8fa0cd"></i>CUSTOM — attested</span>
+    <span><i style="background:#3fd8c4"></i>vault / consult gate</span>
+    <span><i style="background:#ff5f65"></i>blocked crossing</span>
+  </div>
+
+  <h3>The lifecycle of one identifier</h3>
+  <p>Follow <code>"Ivan Petrov"</code> through a job. It is masked at intake, travels as a placeholder while the plan is drafted externally, and is only ever un-masked once every consumer downstream is local.</p>
+  <div class="flow">
+    <div class="step"><div class="rail"><div class="dot">0</div><div class="line"></div></div><div class="body">
+      <h5>Masked at intake <span class="pill b-raw">RAW</span> → <span class="pill b-san">SANITIZED</span></h5>
+      <p><code>sanitize.baseline_mask()</code> replaces it with <code>«PERSON_1»</code> and hands <code>(placeholder, raw, kind)</code> to <code>vault.store()</code>. The brief that leaves stage 0 carries only the placeholder.</p>
+      <p class="src">backend/app/boundary/intake.py:38 · sanitize.py:26 · vault.py:12</p>
+    </div></div>
+    <div class="step"><div class="rail"><div class="dot">1</div><div class="line"></div></div><div class="body">
+      <h5>Planned externally as a placeholder <span class="pill z-ext">EXTERNAL</span></h5>
+      <p>The planner (claude-fable-5) drafts modules and a DAG referencing <code>«PERSON_1»</code>. It never sees the real value; its seat has a hard <code>data_class_max = "SANITIZED"</code> ceiling.</p>
+      <p class="src">backend/app/models/registry.py:81 · router.py:161</p>
+    </div></div>
+    <div class="step"><div class="rail"><div class="dot">2</div><div class="line"></div></div><div class="body">
+      <h5>Rehydrated once downstream is local <span class="pill z-local">LOCAL</span></h5>
+      <p>The certifier (LOCAL, RAW ceiling) pulls the full <code>vault.get_map()</code> and calls <code>rehydrate_tokens(plan, vault_map)</code> — placeholder→raw — because every consumer from here (coder, QA, the process) runs on local GPUs.</p>
+      <p class="src">backend/app/certify/stage2.py:30 · seats/_common.py:136</p>
+    </div></div>
+    <div class="step"><div class="rail"><div class="dot">3</div></div><div class="body">
+      <h5>Re-masked if a question must cross back <span class="pill b-seal">consult gate</span></h5>
+      <p>If the certifier needs to consult the planner, <code>consult_sanitize()</code> runs <code>reverse_substitute()</code> (raw→placeholder, longest-first) then a residual baseline sweep, and returns a receipt tagged <code>data_class: "SANITIZED"</code>.</p>
+      <p class="src">backend/app/boundary/sanitize.py:47 · seats/trust.py:444</p>
+    </div></div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ MATRIX -->
+<section id="matrix">
+  <p class="overline">§2 · Enforcement matrix</p>
+  <h2>The boundary is a function, and it fails closed</h2>
+  <p class="sectlede">Every model dispatch in the system funnels through <code>Router.complete()</code>. Before any bytes leave, two checks run: the seat's data-class ceiling, then <code>_check_boundary()</code>. A blocked call is logged to the egress ledger <em>and then raised</em> — the network monitor is a query over real refusals, not a mock.</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Data class</th><th>LOCAL</th><th>AMD_HOSTED</th><th>EXTERNAL</th><th>CUSTOM</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="pill b-raw">RAW</span></td>
+        <td><span class="pill b-ok">allow</span></td>
+        <td><span class="pill b-warn">demo-exception</span><br><span class="faint" style="font-size:11px">else blocked</span></td>
+        <td><span class="pill b-danger">BoundaryViolation</span></td>
+        <td><span class="pill b-warn">attested only</span><br><span class="faint" style="font-size:11px">ceiling=RAW</span></td>
+      </tr>
+      <tr>
+        <td><span class="pill b-san">SANITIZED</span></td>
+        <td><span class="pill b-ok">allow</span></td>
+        <td><span class="pill b-ok">allow</span></td>
+        <td><span class="pill b-ok">allow</span></td>
+        <td><span class="pill b-ok">allow</span></td>
+      </tr>
+      <tr>
+        <td><span class="pill b-seal">Sovereign mode</span><br><span class="faint" style="font-size:11px">any class</span></td>
+        <td><span class="pill b-ok">allow</span></td>
+        <td colspan="2"><span class="pill b-danger">SovereignViolation</span> <span class="muted">— zero non-local calls (D7)</span></td>
+        <td><span class="pill b-warn">attested-local only</span><br><span class="faint" style="font-size:11px">counts_as_local=1</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <figure class="code">
+    <figcaption><span>The boundary matrix, verbatim</span><span class="fn">backend/app/models/router.py:103–128</span></figcaption>
+    <pre><span class="c"># _check_boundary — returns (badge, None) if allowed, or (None, violation_type) if blocked</span>
+<span class="k">if</span> sovereign <span class="k">and not</span> (zone == <span class="s">"LOCAL"</span> <span class="k">or</span> (zone == <span class="s">"CUSTOM"</span> <span class="k">and</span> counts_as_local)):
+    <span class="k">return</span> None, <span class="s">"sovereign"</span>
+<span class="k">if</span> data_class == <span class="s">"RAW"</span>:
+    <span class="k">if</span> zone == <span class="s">"LOCAL"</span>:      <span class="k">return</span> r.badge, None
+    <span class="k">if</span> zone == <span class="s">"AMD_HOSTED"</span>:
+        <span class="k">if</span> settings.allow_raw_on_amd_hosted: <span class="k">return</span> <span class="s">"demo-exception"</span>, None
+        <span class="k">return</span> None, <span class="s">"boundary"</span>
+    <span class="k">if</span> zone == <span class="s">"CUSTOM"</span>:
+        <span class="k">if</span> ceiling == <span class="s">"RAW"</span>: <span class="k">return</span> <span class="s">"customer-attested"</span>, None
+        <span class="k">return</span> None, <span class="s">"boundary"</span>
+    <span class="k">return</span> None, <span class="s">"boundary"</span>   <span class="c"># EXTERNAL + RAW is a hard error</span>
+<span class="c"># SANITIZED travels everywhere; sovereign+EXTERNAL already handled above</span>
+<span class="k">return</span> r.badge, None</pre>
+  </figure>
+
+  <h3>The seat table — who lives where</h3>
+  <p>Zone is derived from a seat's bound backend (<code>registry.ZONE</code>). The RAW ceiling seats can read real data; only the planner is designed to live EXTERNAL, and its SANITIZED ceiling is what makes RAW-to-planner a code error rather than a policy hope.</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Seat</th><th>Ceiling</th><th>Default binding</th><th>Zone</th><th>Fallback</th><th>Sovereign</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">trust</td><td><span class="pill b-raw">RAW</span></td><td class="mono">local · gemma-4-26b</td><td><span class="pill z-local">LOCAL</span></td><td class="mono">fireworks</td><td class="mono">—</td></tr>
+      <tr><td class="mono">planner</td><td><span class="pill b-san">SANITIZED</span></td><td class="mono">anthropic · claude-fable-5</td><td><span class="pill z-ext">EXTERNAL</span></td><td class="mono">fireworks · glm-5p2</td><td class="mono">local · glm-46</td></tr>
+      <tr><td class="mono">certifier</td><td><span class="pill b-raw">RAW</span></td><td class="mono">local · glm-46</td><td><span class="pill z-local">LOCAL</span></td><td class="mono">fireworks</td><td class="mono">local</td></tr>
+      <tr><td class="mono">conductor</td><td><span class="pill b-raw">RAW</span></td><td class="mono">local · glm-46</td><td><span class="pill z-local">LOCAL</span></td><td class="mono faint">none → review skipped</td><td class="mono">local</td></tr>
+      <tr><td class="mono">coder</td><td><span class="pill b-raw">RAW</span></td><td class="mono">local pool · C/D nodes</td><td><span class="pill z-local">LOCAL</span></td><td class="mono">fireworks · qwen</td><td class="mono">local</td></tr>
+      <tr><td class="mono">consolidator</td><td><span class="pill b-raw">RAW</span></td><td class="mono">local · glm-46</td><td><span class="pill z-local">LOCAL</span></td><td class="mono">fireworks</td><td class="mono">local</td></tr>
+      <tr><td class="mono">oracle</td><td><span class="pill b-san">SANITIZED</span></td><td class="mono">local · gemma-4-31b</td><td><span class="pill z-local">LOCAL</span></td><td class="mono">fireworks</td><td class="mono">local</td></tr>
+      <tr><td class="mono">inspector</td><td><span class="pill b-san">SANITIZED</span></td><td class="mono">local · qwen36-35b-a3b</td><td><span class="pill z-local">LOCAL</span></td><td class="mono">fireworks</td><td class="mono">local</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="faint" style="font-size:12.5px">Source: <code>registry._builtin_seats()</code> — the built-in table mirrors spec 02 §1 and is used until <code>infra/seats.yaml</code> is present. <code>oracle.self_consistency = 3</code> (three-vote blind computation).</p>
+
+  <h4>What the tests actually prove</h4>
+  <div class="grid g3">
+    <div class="card"><h5>RAW → EXTERNAL is refused</h5><p><code>test_planner_raw_raises_boundary_violation</code>: a RAW call to the planner raises <code>BoundaryViolation</code> and still writes an <code>egress_log</code> row for the monitor.</p></div>
+    <div class="card"><h5>Sovereign fails closed</h5><p><code>test_sovereign_custom_dispatch_raises</code>: a sovereign job to a non-attested CUSTOM endpoint raises <code>SovereignViolation</code>; the ledger row carries <code>sovereign_violation = 1</code>.</p></div>
+    <div class="card"><h5>The full matrix</h5><p><code>test_boundary.py</code> asserts every cell: RAW+LOCAL ok, RAW+EXTERNAL blocked, RAW+AMD toggles on the flag, CUSTOM+RAW needs <code>ceiling=RAW</code>.</p></div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ INTAKE -->
+<section id="intake">
+  <p class="overline">§3 · Intake pipeline · stage 0</p>
+  <h2>How raw becomes a brief</h2>
+  <p class="sectlede">Stage 0 (<code>boundary/intake.py</code>) is the one place RAW data is admitted. It classifies policy, masks identifiers into the vault, folds in context (code map, DB schema), composes the sanitized brief, classifies the job's mode, and emits the "what the frontier will never see" boundary event — then advances to planning.</p>
+
+  <div class="flow">
+    <div class="step"><div class="rail"><div class="dot">1</div><div class="line"></div></div><div class="body">
+      <h5>Confidentiality policy — baseline + distilled</h5>
+      <p>A PII baseline is <em>always on</em>. On top of it, the trust seat distills the customer's uploaded/dictated policy documents into typed rules (<code>never_leak</code> / <code>mask</code> / <code>generalize</code>). The event reports baseline vs policy rule counts.</p>
+      <p class="src">intake.py:24–35 · RedactionPolicy / RedactionRule (db/models.py:40)</p>
+    </div></div>
+    <div class="step"><div class="rail"><div class="dot">2</div><div class="line"></div></div><div class="body">
+      <h5>Mechanical PII mask → boundary vault</h5>
+      <p>The raw request runs through six ordered regex patterns; each hit becomes a typed placeholder and a vault row. This is the deterministic backstop the consult gate always re-runs — the policy-aware model extraction plugs in above it.</p>
+      <p class="src">intake.py:37–40 · sanitize.baseline_mask · vault.store</p>
+    </div></div>
+    <div class="step"><div class="rail"><div class="dot">3</div><div class="line"></div></div><div class="body">
+      <h5>Context intake — code map &amp; DB schema</h5>
+      <p>File/symbol counts and DB schemas fold in. For a sandbox job, the selected company's real table schema is injected so the planner scopes topologies to actual tables — synthetic demo data, SANITIZED by construction.</p>
+      <p class="src">intake.py:42–56 · sandbox/seeds.company_schema</p>
+    </div></div>
+    <div class="step"><div class="rail"><div class="dot">4</div><div class="line"></div></div><div class="body">
+      <h5>Compose the sanitized brief</h5>
+      <p>The trust seat builds the <code>SanitizedSpec</code> from the masked request + context + policy. <code>company</code> is re-pinned onto the spec because it must survive the overwrite (the fan-out needs it).</p>
+      <p class="src">intake.py:58–68 · SanitizedSpec (db/models.py:129)</p>
+    </div></div>
+    <div class="step"><div class="rail"><div class="dot">5</div><div class="line"></div></div><div class="body">
+      <h5>Mode classification</h5>
+      <p><code>build</code> / <code>process</code> / <code>semi</code>. Sandbox &amp; reinstantiate jobs arrive with a pre-set mode (single-shot intake); otherwise the recommended/confirmed mode is read from the spec.</p>
+      <p class="src">intake.py:70–82</p>
+    </div></div>
+    <div class="step"><div class="rail"><div class="dot">6</div></div><div class="body">
+      <h5>Boundary gate event — the money moment</h5>
+      <p>Emits <code>BOUNDARY_SANITIZED</code> with <code>findings[]</code> (rule id, label, count, action), <code>never_leaves[]</code>, and <code>brief_tokens</code> — the UI's "what the frontier will never see" panel. Then auto-confirm → planning.</p>
+      <p class="src">intake.py:84–111 (payload shape per 06 §3 ruling)</p>
+    </div></div>
+  </div>
+
+  <h3>The mask, exactly</h3>
+  <p>Six patterns, ordered most-specific first so a card number isn't shadowed by the phone pattern. Placeholders use guillemets (<code>«KIND_N»</code>) so they can't collide with source text, and are numbered per-kind.</p>
+  <figure class="code">
+    <figcaption><span>The always-on PII baseline</span><span class="fn">backend/app/boundary/sanitize.py:16–44</span></figcaption>
+    <pre>_PATTERNS = [
+  (<span class="s">r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"</span>, <span class="s">"EMAIL"</span>),
+  (<span class="s">r"\b(?:sk|pk|api|key|token)[-_][A-Za-z0-9]{12,}\b"</span>, <span class="s">"SECRET"</span>),   <span class="c"># re.I</span>
+  (<span class="s">r"\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b"</span>, <span class="s">"IBAN"</span>),
+  (<span class="s">r"\b(?:\d[ -]?){13,19}\b"</span>, <span class="s">"CARD"</span>),
+  (<span class="s">r"\b\d{3}-\d{2}-\d{4}\b"</span>, <span class="s">"GOV_ID"</span>),                       <span class="c"># US SSN shape</span>
+  (<span class="s">r"\b\+?\d[\d\s().-]{7,}\d\b"</span>, <span class="s">"PHONE"</span>),
+]
+<span class="c"># each hit → «{KIND}_{n}», appended to entries as (placeholder, raw, kind)</span>
+placeholder = <span class="s">f"«{kind}_{counters[kind]}»"</span>
+entries.append((placeholder, raw, kind.lower()))</pre>
+  </figure>
+
+  <div class="grid g2">
+    <div>
+      <h4>The vault — placeholder ↔ raw</h4>
+      <p>Table <code>boundary_vault(job_id, placeholder, raw_value, kind)</code>, PK <code>(job_id, placeholder)</code>, upserted so a re-run is idempotent. Three directions of substitution, each for a different phase:</p>
+      <dl class="kv">
+        <dt>get_map</dt><dd>placeholder → raw (read the whole map)</dd>
+        <dt>rehydrate_text</dt><dd>placeholder → raw · LOCAL only (D9)</dd>
+        <dt>reverse_substitute</dt><dd>raw → placeholder · longest-first, before a consult crosses</dd>
+        <dt>count</dt><dd>vault size → the sensitivity report</dd>
+      </dl>
+      <p class="faint" style="font-size:12.5px">The vault never appears in any <code>*_json</code> package column, event payload, or log. It is the one table whose whole purpose is to <em>not</em> leave the box.</p>
+    </div>
+    <div>
+      <h4>Multimodal intake seams</h4>
+      <p>Two local extractors feed the mask, both structured so a future upgrade is a config change not a rewrite:</p>
+      <div class="card" style="margin-bottom:12px"><h5>OCR — <code>boundary/ocr.py</code></h5><p>Tries pytesseract (prod VM only), then a co-located <code>.txt</code> sidecar (the PIL-generated KYC docs ship one, so OCR works with zero system deps), then a PDF text layer. Returns <code>(text, method)</code>; never raises.</p></div>
+      <div class="card"><h5>Voice — <code>boundary/whisper.py</code></h5><p>Local whisper.cpp on the VM CPU for policy dictation. Recording and transcript never leave the box. Disabled (raises <code>WhisperUnavailable</code>) when <code>WHISPER_MODEL_PATH</code> is unset.</p></div>
+    </div>
+  </div>
+
+  <div class="callout co-note">
+    <span class="tag">Encrypted secrets — boundary/secrets.py</span>
+    <p>BYOK keys are <strong>write-only</strong>: stored as Fernet ciphertext in the <code>secrets</code> table, surfaced masked (<code>abc••••wxyz</code>), never serialized into events, logs, or packages. <code>api_key_ref</code> columns point here; the key material itself is only decrypted at the dispatch boundary. In dev an ephemeral Fernet key is generated (keys don't survive a restart — acceptable for the hackathon).</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ EGRESS -->
+<section id="egress">
+  <p class="overline">§4 · Egress &amp; proxy tokens</p>
+  <h2>One outbound client, one ledger, signed access</h2>
+  <p class="sectlede">All outbound HTTP leaves through a single <code>httpx.AsyncClient</code>; every dispatch — real or mock — writes an <code>egress_log</code> row via <code>egress.record()</code>. Generated code never holds a model key: it calls the control-plane proxy with an HMAC token scoped to one process and a seat allowlist.</p>
+
+  <div class="grid g2">
+    <div>
+      <h3>The egress ledger</h3>
+      <p><code>egress.record()</code> is called by the router at exactly two points: when a call is <em>blocked</em> (bytes 0, logged before the raise) and when a call is <em>dispatched</em> (bytes ≈ tokens×4). Each row carries scope, host, zone, seat, byte counts, and a <code>sovereign_violation</code> flag. The "network monitor" panel is a <code>SELECT</code> over this table — refusals included.</p>
+      <figure class="code">
+        <figcaption><span>Every byte leaves through one place</span><span class="fn">boundary/egress.py:19–56</span></figcaption>
+        <pre>http_client = httpx.AsyncClient(
+    timeout=httpx.Timeout(<span class="n">300.0</span>, connect=<span class="n">10.0</span>))
+
+<span class="k">async def</span> <span class="f">record</span>(*, scope, host, zone, seat,
+        bytes_out, bytes_in, sovereign_violation=<span class="k">False</span>):
+    <span class="c"># INSERT INTO egress_log (...)</span>
+    <span class="k">if</span> sovereign_violation:
+        <span class="k">await</span> emit(scope, E.EGRESS_VIOLATION, ...)
+    <span class="k">else</span>:
+        <span class="k">await</span> emit(scope, E.EGRESS_REQUEST, ...)</pre>
+      </figure>
+    </div>
+    <div>
+      <h3>Per-process proxy tokens</h3>
+      <p>A running process container's only network egress is <code>POST /proxy/complete</code>. The request carries an <code>X-Process-Token</code>: a self-contained HMAC-SHA256 token (<code>b64(claims).b64(mac)</code>) with claims <code>{process, seats[], exp}</code>. The signing key is derived from <code>ADMIN_TOKEN</code>; there is no server-side token store.</p>
+      <figure class="code">
+        <figcaption><span>Sign &amp; verify — no server-side store</span><span class="fn">boundary/proxy_token.py:35–59</span></figcaption>
+        <pre><span class="k">def</span> <span class="f">sign_token</span>(process_id, allowed_seats, *, ttl_s=<span class="n">3600</span>):
+    claims = {<span class="s">"process"</span>: process_id,
+              <span class="s">"seats"</span>: allowed_seats,
+              <span class="s">"exp"</span>: int(time()) + ttl_s}
+    body = b64(json(claims))
+    mac  = b64(hmac_sha256(_key(), body))
+    <span class="k">return</span> <span class="s">f"{body}.{mac}"</span>
+
+<span class="k">def</span> <span class="f">seat_allowed</span>(claims, process_id, seat):
+    <span class="k">return</span> (claims
+        <span class="k">and</span> claims[<span class="s">"process"</span>] == process_id
+        <span class="k">and</span> seat <span class="k">in</span> claims[<span class="s">"seats"</span>])</pre>
+      </figure>
+    </div>
+  </div>
+
+  <h4>Defense in depth at the proxy — <code>api/proxy.py</code></h4>
+  <p>The proxy checks the token, then re-checks the seat against the manifest's BoM allowlist read from disk, then dispatches through the <em>same</em> router (same boundary + budget enforcement as an internal call). Meter scope is the process id.</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Probe (what the inspector sends)</th><th>Result</th><th>Proven by</th></tr></thead>
+    <tbody>
+      <tr><td>Bare process id as the token (the old form)</td><td><span class="pill b-danger">401</span></td><td class="mono">test_bare_process_id_is_rejected</td></tr>
+      <tr><td>Valid token, but minted for another process</td><td><span class="pill b-danger">401</span></td><td class="mono">test_wrong_process_token_is_rejected</td></tr>
+      <tr><td>Authentic token, seat outside its allowlist</td><td><span class="pill b-danger">403</span></td><td class="mono">test_seat_outside_token_allowlist</td></tr>
+      <tr><td>Authentic token, allowed seat, real messages</td><td><span class="pill b-ok">200 · text + usage</span></td><td class="mono">test_valid_token_completes</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="faint" style="font-size:12.5px">This is the inspector's "wrong-tenant" probe (08 §3): a token minted for process A cannot drive seats for process B.</p>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ DATABASE -->
+<section id="db">
+  <p class="overline">§5 · Persistence</p>
+  <h2>The database — one event spine, projected aggregates</h2>
+  <p class="sectlede">SQLite in WAL mode over aiosqlite (SQLAlchemy Core), single writer. The <code>events</code> table is the ordered spine; every other table is a queryable projection the stages write through the DAO. All <code>*_json</code> columns are (de)serialized in one place (<code>db/dao.py</code>) so callers work in dicts.</p>
+
+  <div class="diagram">
+  <svg viewBox="0 0 1040 720" role="img" aria-label="Nxcleus database schema">
+    <defs>
+      <marker id="fk" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 Z" fill="#567179"/></marker>
+    </defs>
+    <style>
+      .tbl-r{fill:#0c1e26; stroke:#1d4150; rx:8}
+      .tbl-t{fill:#85d3f0; font-family:ui-monospace,Menlo; font-size:11.5px; font-weight:600}
+      .tbl-c{fill:#9fb6be; font-family:ui-monospace,Menlo; font-size:9.6px}
+      .tbl-pk{fill:#3fd8c4}
+      .grp{fill:#567179; font-family:ui-monospace,Menlo; font-size:10px; letter-spacing:2px}
+      .fkln{stroke:#3a5866; stroke-width:1.1; fill:none}
+    </style>
+
+    <!-- EVENT SPINE -->
+    <text x="30" y="34" class="grp">EVENT SPINE</text>
+    <rect x="30" y="44" width="210" height="92" class="tbl-r"/>
+    <text x="44" y="66" class="tbl-t">events</text>
+    <text x="44" y="84" class="tbl-c"><tspan class="tbl-pk">seq PK</tspan> · ts · scope</text>
+    <text x="44" y="99" class="tbl-c">type · payload (JSON)</text>
+    <text x="44" y="120" class="tbl-c" fill="#567179">global order · 06 §3 catalog</text>
+
+    <!-- BUILD PHASE -->
+    <text x="30" y="176" class="grp">BUILD PHASE</text>
+    <rect x="30" y="186" width="188" height="104" class="tbl-r"/>
+    <text x="44" y="208" class="tbl-t">jobs</text>
+    <text x="44" y="226" class="tbl-c"><tspan class="tbl-pk">id PK</tspan> · origin · mode</text>
+    <text x="44" y="240" class="tbl-c">sovereign · status · goal</text>
+    <text x="44" y="254" class="tbl-c">spec_json · policy_json</text>
+    <text x="44" y="268" class="tbl-c">sandbox_session_id</text>
+    <text x="44" y="282" class="tbl-c">parent_process_id</text>
+
+    <rect x="238" y="186" width="176" height="66" class="tbl-r"/>
+    <text x="252" y="208" class="tbl-t">boundary_vault</text>
+    <text x="252" y="226" class="tbl-c"><tspan class="tbl-pk">job_id+placeholder</tspan></text>
+    <text x="252" y="240" class="tbl-c">raw_value · kind</text>
+
+    <rect x="238" y="262" width="176" height="52" class="tbl-r"/>
+    <text x="252" y="284" class="tbl-t">job_messages</text>
+    <text x="252" y="302" class="tbl-c"><tspan class="tbl-pk">id</tspan> · role · content</text>
+
+    <rect x="30" y="310" width="188" height="70" class="tbl-r"/>
+    <text x="44" y="332" class="tbl-t">plans</text>
+    <text x="44" y="350" class="tbl-c"><tspan class="tbl-pk">id</tspan> · job_id → · version</text>
+    <text x="44" y="364" class="tbl-c">status · body_json</text>
+
+    <rect x="30" y="398" width="188" height="82" class="tbl-r"/>
+    <text x="44" y="420" class="tbl-t">amendments</text>
+    <text x="44" y="438" class="tbl-c"><tspan class="tbl-pk">id</tspan> · plan_id → · seq</text>
+    <text x="44" y="452" class="tbl-c">patch_json · rationale</text>
+    <text x="44" y="466" class="tbl-c" fill="#3fd8c4">prev_hash · hash (chained)</text>
+
+    <rect x="238" y="330" width="176" height="52" class="tbl-r"/>
+    <text x="252" y="352" class="tbl-t">consults</text>
+    <text x="252" y="370" class="tbl-c"><tspan class="tbl-pk">id</tspan> · plan_id · round · status</text>
+
+    <rect x="238" y="392" width="176" height="52" class="tbl-r"/>
+    <text x="252" y="414" class="tbl-t">quotes</text>
+    <text x="252" y="432" class="tbl-c"><tspan class="tbl-pk">id</tspan> · job_id · body_json</text>
+
+    <rect x="238" y="454" width="176" height="52" class="tbl-r"/>
+    <text x="252" y="476" class="tbl-t">build_tasks</text>
+    <text x="252" y="494" class="tbl-c"><tspan class="tbl-pk">id</tspan> · module · wave · status</text>
+
+    <!-- OPERATE -->
+    <text x="450" y="176" class="grp">OPERATE / REFINE</text>
+    <rect x="450" y="186" width="180" height="70" class="tbl-r"/>
+    <text x="464" y="208" class="tbl-t">processes</text>
+    <text x="464" y="226" class="tbl-c"><tspan class="tbl-pk">id</tspan> · slug ᵁ · mode · goal</text>
+    <text x="464" y="240" class="tbl-c">current_version · lineage</text>
+
+    <rect x="450" y="272" width="180" height="70" class="tbl-r"/>
+    <text x="464" y="294" class="tbl-t">process_versions</text>
+    <text x="464" y="312" class="tbl-c"><tspan class="tbl-pk">id</tspan> · process_id → · version</text>
+    <text x="464" y="326" class="tbl-c">package_path · image_tag · diff</text>
+
+    <rect x="450" y="358" width="180" height="66" class="tbl-r"/>
+    <text x="464" y="380" class="tbl-t">runs</text>
+    <text x="464" y="398" class="tbl-c"><tspan class="tbl-pk">id</tspan> · process_id · version</text>
+    <text x="464" y="412" class="tbl-c">kind · stats_json · cost_json</text>
+
+    <rect x="450" y="440" width="180" height="66" class="tbl-r"/>
+    <text x="464" y="462" class="tbl-t">run_units</text>
+    <text x="464" y="480" class="tbl-c"><tspan class="tbl-pk">id</tspan> · run_id → · unit_ref</text>
+    <text x="464" y="494" class="tbl-c">result_json · review_verdict</text>
+
+    <!-- QA -->
+    <text x="662" y="176" class="grp">QA &amp; ASSURANCE</text>
+    <rect x="662" y="186" width="172" height="70" class="tbl-r"/>
+    <text x="676" y="208" class="tbl-t">tickets</text>
+    <text x="676" y="226" class="tbl-c"><tspan class="tbl-pk">id</tspan> · scope · source</text>
+    <text x="676" y="240" class="tbl-c">severity · body_json</text>
+
+    <rect x="662" y="272" width="172" height="70" class="tbl-r"/>
+    <text x="676" y="294" class="tbl-t">oracle_checks</text>
+    <text x="676" y="312" class="tbl-c"><tspan class="tbl-pk">id</tspan> · vector_id · rule_id</text>
+    <text x="676" y="326" class="tbl-c">expected · actual · verdict</text>
+
+    <!-- PLATFORM -->
+    <text x="662" y="384" class="grp">PLATFORM / LEDGERS</text>
+    <rect x="662" y="394" width="172" height="66" class="tbl-r"/>
+    <text x="676" y="416" class="tbl-t">meter_events</text>
+    <text x="676" y="434" class="tbl-c"><tspan class="tbl-pk">id</tspan> · scope · seat · backend</text>
+    <text x="676" y="448" class="tbl-c">tokens · gpu_seconds · cost_usd</text>
+
+    <rect x="662" y="476" width="172" height="66" class="tbl-r"/>
+    <text x="676" y="498" class="tbl-t">egress_log</text>
+    <text x="676" y="516" class="tbl-c"><tspan class="tbl-pk">id</tspan> · scope · host · zone</text>
+    <text x="676" y="530" class="tbl-c">bytes · sovereign_violation</text>
+
+    <rect x="854" y="186" width="166" height="52" class="tbl-r"/>
+    <text x="868" y="208" class="tbl-t">nodes</text>
+    <text x="868" y="226" class="tbl-c"><tspan class="tbl-pk">id</tspan> · name · gpus · seats</text>
+
+    <rect x="854" y="252" width="166" height="52" class="tbl-r"/>
+    <text x="868" y="274" class="tbl-t">sandbox_sessions</text>
+    <text x="868" y="292" class="tbl-c"><tspan class="tbl-pk">id</tspan> · company · runs_used</text>
+
+    <rect x="854" y="318" width="166" height="66" class="tbl-r"/>
+    <text x="868" y="340" class="tbl-t">api_connections</text>
+    <text x="868" y="358" class="tbl-c"><tspan class="tbl-pk">id</tspan> · zone · api_key_ref</text>
+    <text x="868" y="372" class="tbl-c">data_class_ceiling · local?</text>
+
+    <rect x="854" y="398" width="166" height="52" class="tbl-r"/>
+    <text x="868" y="420" class="tbl-t">custom_models</text>
+    <text x="868" y="438" class="tbl-c"><tspan class="tbl-pk">id</tspan> · connection_id → · flags</text>
+
+    <rect x="854" y="464" width="166" height="52" class="tbl-r"/>
+    <text x="868" y="486" class="tbl-t">seat_overrides</text>
+    <text x="868" y="504" class="tbl-c"><tspan class="tbl-pk">seat+scope ᵁ</tspan> · model_key</text>
+
+    <rect x="854" y="530" width="166" height="46" class="tbl-r"/>
+    <text x="868" y="552" class="tbl-t">secrets</text>
+    <text x="868" y="568" class="tbl-c"><tspan class="tbl-pk">ref</tspan> · ciphertext (Fernet)</text>
+
+    <rect x="662" y="558" width="172" height="46" class="tbl-r"/>
+    <text x="676" y="580" class="tbl-t">checkpoints</text>
+    <text x="676" y="596" class="tbl-c"><tspan class="tbl-pk">scope+key</tspan> · value_json</text>
+
+    <!-- FK lines -->
+    <path class="fkln" d="M124,290 L124,310" marker-end="url(#fk)"/>
+    <path class="fkln" d="M124,380 L124,398" marker-end="url(#fk)"/>
+    <path class="fkln" d="M218,344 L238,356" marker-end="url(#fk)"/>
+    <path class="fkln" d="M218,230 L238,220" marker-end="url(#fk)"/>
+    <path class="fkln" d="M630,242 L630,272" marker-end="url(#fk)"/>
+    <path class="fkln" d="M540,342 L540,358" marker-end="url(#fk)"/>
+    <path class="fkln" d="M540,424 L540,440" marker-end="url(#fk)"/>
+    <path class="fkln" d="M1020,424 C1000,430 900,432 854,432" marker-end="url(#fk)"/>
+    <path class="fkln" d="M214,240 C330,150 560,150 620,186" marker-end="url(#fk)"/>
+    <text x="360" y="140" fill="#3a5866" font-family="ui-monospace,Menlo" font-size="9">jobs → processes (delivery)</text>
+  </svg>
+  </div>
+
+  <div class="grid g2">
+    <div>
+      <h4>Event sourcing, honestly</h4>
+      <p>The <code>events</code> table is append-only with a global <code>seq</code>. It's the SSE source and the replay tape. But the system is <em>not</em> pure event-sourcing: aggregates (<code>jobs</code>, <code>plans</code>, <code>runs</code>…) are also mutated in place as projections. The event log is the narrative; the tables are the current state.</p>
+      <h4>Single writer, WAL</h4>
+      <p>The API process is the only writer. An <code>asyncio.Lock</code> serializes writes so concurrent stages can't interleave a transaction; reads run lock-free against the last committed WAL snapshot.</p>
+    </div>
+    <div>
+      <h4>Hash-chained amendments</h4>
+      <p>Every plan amendment is chained: <code>hash = sha256(prev_hash + patch_json + rationale)</code>, with a per-plan <code>seq</code>. Certifier and conductor amendments share one chain, so the plan's edit history is tamper-evident.</p>
+      <figure class="code" style="margin-top:12px">
+        <figcaption><span>append_amendment</span><span class="fn">db/dao.py:121–139</span></figcaption>
+        <pre>seq = (prev[<span class="s">"seq"</span>]+<span class="n">1</span>) <span class="k">if</span> prev <span class="k">else</span> <span class="n">1</span>
+prev_hash = prev[<span class="s">"hash"</span>] <span class="k">if</span> prev <span class="k">else</span> <span class="s">""</span>
+h = sha256((prev_hash + patch_json
+            + rationale).encode()).hexdigest()</pre>
+      </figure>
+    </div>
+  </div>
+
+  <div class="callout co-spec">
+    <span class="tag">Spec 05 vs code</span>
+    <p><strong>Pydantic models ≠ SQL schema.</strong> <code>db/models.py</code> defines the <em>artifact shapes</em> that fill the <code>*_json</code> columns (validated against <code>Model.model_json_schema()</code>), roots set <code>extra="allow"</code> for additive evolution. The <em>table</em> schema is <code>db/schema.sql</code>, applied idempotently at startup. The <code>checkpoints</code> table is an explicit additive extension to spec 05 (backs <code>StageContext.checkpoint()</code> for resumability, 07 §1/§4).</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ OPERATE -->
+<section id="operate">
+  <p class="overline">§6 · Operate &amp; registry runtime</p>
+  <h2>From a certified job to a running process</h2>
+  <p class="sectlede">Delivery assembles an immutable package on disk, registers a <code>process</code> + <code>process_version</code> v1, and links its first run. Thereafter the operate phase drives batches over that version — every unit judged by a LOCAL seat, zero frontier calls. Stage-6 inspectors probe a <em>real</em> HTTP endpoint, not a mock.</p>
+
+  <h3>The immutable package layout</h3>
+  <p>Per-job work happens in <code>data/workspaces/{job_id}/src</code>; the delivered package lands at <code>data/packages/{slug}/{version}/</code>. <code>assemble_package()</code> writes a fixed tree:</p>
+  <figure class="code">
+    <figcaption><span>Package on disk</span><span class="fn">backend/app/runtime/workspace.py:45–72 · stage7 assembles it</span></figcaption>
+    <pre>packages/{slug}/{version}/
+├── manifest.json          <span class="c"># name, mode, model_bom, seats[] (proxy allowlist),</span>
+│                          <span class="c">#   entrypoint, image_tag (build only), goal_verdict</span>
+├── plan/
+│   ├── plan.json          <span class="c"># certified, rehydrated plan body</span>
+│   ├── amendments.jsonl   <span class="c"># the hash chain</span>
+│   ├── consults.jsonl
+│   └── goal.json          <span class="c"># goal text + stage-6 verdict + gaps</span>
+├── src/…                  <span class="c"># generated modules (+ process.py in build mode)</span>
+├── topology.json          <span class="c"># process-mode fan-out topology</span>
+├── tests/{integration.json, vectors.json}
+├── docs/{README, runbook, qa_report}.md
+└── invoice.json           <span class="c"># exact metered actuals</span></pre>
+  </figure>
+
+  <div class="grid g3">
+    <div class="card"><h5>Register — <code>delivery/stage7.py</code></h5><p>Slugifies the title (uniqued), builds the manifest, computes the reconciled invoice, then <code>create_process</code> + <code>create_version(v1)</code>. The build-time corpus run is re-linked to the new process id so the registry dashboard fills.</p></div>
+    <div class="card"><h5>Version &amp; diff</h5><p><code>process_versions</code> holds <code>package_path</code>, an <code>image_tag</code> (build mode only — process mode is null), and a <code>diff_json</code> vs the previous version. Superseded versions stay runnable.</p></div>
+    <div class="card"><h5>Run — <code>runtime/operate.py</code></h5><p><code>drive_run()</code> executes a version over a batch: per-unit judgment through a LOCAL seat (<code>data_class="SANITIZED"</code>), progress + meter ticks, and a run-level <code>cost</code> with <code>frontier_calls: 0</code>.</p></div>
+  </div>
+
+  <h3>Staged live deployment — the inspector's real target</h3>
+  <p>At stage 6 the consolidated process is served over real HTTP by a FastAPI shim on an ephemeral <code>127.0.0.1</code> port, so the inspector swarm attacks a live surface. It tries to import the assembled <code>process.py</code>'s <code>run_unit</code> entrypoint; a broken build is <em>said out loud</em> rather than silently stubbed. <code>/run_unit</code> enforces the per-process proxy token when armed.</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Endpoint</th><th>Behavior</th><th>Boundary relevance</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">GET /health</td><td>liveness</td><td class="muted">probe reachability</td></tr>
+      <tr><td class="mono">GET /manifest</td><td>returns the manifest</td><td class="muted">BoM / seat allowlist surface</td></tr>
+      <tr><td class="mono">POST /run_unit</td><td>token check → JSON validate → entrypoint or manifest fallback</td><td class="muted">wrong-process token → <span class="pill b-danger">401</span>; missing required fields → 422</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout co-spec">
+    <span class="tag">Spec 04 §3 vs code</span>
+    <p>The spec's delivery-time <strong>process-runtime container image</strong> is served in-process here (a uvicorn <code>Server</code> task on an ephemeral port) instead of a per-job docker build — same HTTP contract, no per-job image build on the live demo path. <code>manifest_sampling</code> in <code>drive_run</code> is hardcoded <code>0.05</code> with a <code>TODO(wave2)</code> to read it from the version manifest; and the per-unit judgment status is deterministic (<code>i % 7</code>, <code>i % 11</code>) — the real path drives the process-runtime container over the model-proxy (Wave 2).</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ SANDBOX -->
+<section id="sandbox">
+  <p class="overline">§7 · Judge sandbox</p>
+  <h2>Three synthetic companies, one FIFO queue</h2>
+  <p class="sectlede">The judge sandbox lets a visitor run the full pipeline on believable-but-synthetic corpora. A sandbox job is a <em>normal</em> job (<code>origin=sandbox</code>, <code>mode=process</code>, auto-confirmed spec, capped auto-approved quote) — the guards, not the pipeline, are what's special. Synthetic data is SANITIZED by construction, so it can safely appear in the planner brief.</p>
+
+  <div class="grid g3">
+    <div class="card"><h5>Meridian Bank <span class="pill z-local" style="margin-left:4px">bank</span></h5><p>800 customers · 1,200 accounts (~8% dormant) · 8,000 transactions. <span class="muted">Planted: sanctions-adjacent names, ~15 dormant reactivations, 12 structuring runs (deposits just under $10k).</span></p></div>
+    <div class="card"><h5>Aurora Clinic <span class="pill z-local" style="margin-left:4px">clinic</span></h5><p>Encounters, vitals, billing. <span class="muted">Prompts: duplicate-billing shapes, impossible vitals as data-quality flags, overdue-screening cohorts.</span></p></div>
+    <div class="card"><h5>Hale &amp; Ostrom <span class="pill z-local" style="margin-left:4px">lawfirm</span></h5><p>A <code>contracts/*.txt</code> corpus (a ~200-unit sweep animates well). <span class="muted">Prompts: renewal dates &amp; auto-renew clauses with sub-60-day notice windows, missing signature blocks, fee-cap breaches.</span></p></div>
+  </div>
+
+  <h3>Seed kits — real lists, planted inputs, live outputs</h3>
+  <p>Datasets are generated from a fixed RNG seed (<code>SEED = 20260709</code>) so a regenerate is byte-for-byte reproducible (rehearsal gate 09 §7 — "seed regenerated from scratch proves no hand-tuned state"). The KYC hero kit ships the <strong>real public OFAC SDN + EU consolidated sanctions lists</strong>, downloaded at seed time, with a graceful synthetic fallback that still carries the planted hit-names when the network is unavailable.</p>
+  <div class="grid g2">
+    <div>
+      <h4>KYC hero kit — <code>infra/seeds/kyc.py</code></h4>
+      <dl class="kv">
+        <dt>30 applicants</dt><dd>~5 sanctions hits · ~4 PEPs · 2 expired docs · clean majority</dd>
+        <dt>ID documents</dt><dd>PIL-rendered OCR-able images + <code>.txt</code> sidecar text layers</dd>
+        <dt>OFAC / EU</dt><dd>downloaded CSVs; fallback synthetic list with planted names</dd>
+        <dt>fixtures</dt><dd>synthetic PEP + adverse-media JSON</dd>
+      </dl>
+      <p class="faint" style="font-size:12.5px">The design rule: never canned outputs, only planted inputs. A correct pipeline finds real hits; the verdict is always computed live.</p>
+    </div>
+    <div>
+      <h4>Queue &amp; guards — <code>sandbox/queue.py</code></h4>
+      <div class="flow" style="margin-top:6px">
+        <div class="step"><div class="rail"><div class="dot">→</div><div class="line"></div></div><div class="body"><h5>enqueue</h5><p>Creates the job (<code>origin=sandbox</code>, <code>mode=process</code>), registers a per-scope budget cap (<code>sandbox_run_budget_usd = $0.50</code>) on the router, emits <code>SANDBOX_QUEUED</code>.</p></div></div>
+        <div class="step"><div class="rail"><div class="dot">⏳</div><div class="line"></div></div><div class="body"><h5>rate limit</h5><p>Per session: <strong>3 runs/hour</strong>, rolling window on the session row. 4th → <code>429</code>.</p><p class="src">api/sandbox.py:95–108</p></div></div>
+        <div class="step"><div class="rail"><div class="dot">▶</div></div><div class="body"><h5>drain</h5><p>Single worker (<code>SANDBOX_MAX_CONCURRENT = 1</code>) submits to the engine, waits for a terminal state, clears the cap.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>How a sandbox run becomes a real process job</h3>
+  <p>There is no separate sandbox execution path. The enqueued job runs the standard pipeline; in process mode, <code>run_process_fanout()</code> loads units straight from the company's read-only SQLite corpus, streams each through the plan's per-unit topology steps on the seats it names, and writes them under a <em>real</em> <code>runs</code> row (an FK parent). At delivery that run is linked to the registered process.</p>
+  <figure class="code">
+    <figcaption><span>Fan-out over the real corpus — RAW never routes EXTERNAL</span><span class="fn">backend/app/runtime/operate.py:149–159</span></figcaption>
+    <pre>seat_name = step.get(<span class="s">"seat"</span>) <span class="k">or</span> <span class="s">"coder"</span>
+<span class="k">if</span> seat_name <span class="k">not in</span> registry.seats <span class="k">or</span> seat_name == <span class="s">"planner"</span>:
+    seat_name = <span class="s">"coder"</span>   <span class="c"># live planners invent seat names; RAW never routes EXTERNAL</span>
+comp = <span class="k">await</span> ctx.complete(seat_name, [...], data_class=<span class="s">"RAW"</span>,
+                          schema=step.get(<span class="s">"output_schema"</span>) or _DEFAULT_STEP[...])</pre>
+  </figure>
+  <div class="callout co-danger">
+    <span class="tag">Safety guard worth noting</span>
+    <p>A live planner can invent arbitrary seat names in the topology. Because fan-out runs with <code>data_class="RAW"</code>, any step naming <code>planner</code> (or an unknown seat) is <strong>silently rewritten to <code>coder</code></strong> — a LOCAL, RAW-ceiling seat — so a hallucinated topology can never route real corpus rows to an EXTERNAL model. The boundary holds even against the plan's own output.</p>
+  </div>
+  <p>The <code>test_sandbox_path.py</code> regression proves the whole path: the enqueued job reaches <code>done</code> with a real fan-out run, FK-valid units, and a process link — and that FK enforcement holds on <em>every</em> pooled connection (the Wave-2 bug was <code>PRAGMA foreign_keys</code> set on only one).</p>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ METERING -->
+<section id="metering">
+  <p class="overline">§8 · Metering &amp; economics</p>
+  <h2>Metering is the product claim</h2>
+  <p class="sectlede">Every dispatch writes a <code>meter_events</code> row with real token counts (from the provider's <code>usage</code>) and a cost from the rate card. Local tokens are priced as GPU-seconds, not per-token. The quote is a range; the invoice is exact — reconciled side by side at delivery. This is the "frontier is capex, the rest is your GPUs" money slide, straight from the ledger.</p>
+
+  <div class="grid g2">
+    <div>
+      <h3>The cost formula</h3>
+      <figure class="code">
+        <figcaption><span>cost_for</span><span class="fn">backend/app/metering/meter.py:20–33</span></figcaption>
+        <pre>token_cost = (tokens_in/<span class="n">1e6</span>)*in_rate
+           + (tokens_out/<span class="n">1e6</span>)*out_rate
+gpu_cost   = gpu_seconds * gpu_hour_usd()/<span class="n">3600</span>
+<span class="k">return</span> round((token_cost+gpu_cost)*(<span class="n">1</span>+margin), <span class="n">6</span>)
+
+<span class="c"># local/mock lack a wall-clock snapshot →</span>
+<span class="c"># honest estimate: max(0.1, tokens_out/40) sec</span></pre>
+      </figure>
+      <p>Two budget guards short-circuit dispatch and raise <code>BudgetExceeded</code>: a Fireworks daily spend cap, and a per-scope cap (the sandbox registers one at $0.50/run).</p>
+    </div>
+    <div>
+      <h3>The rate card — real numbers</h3>
+      <div class="tbl-wrap" style="margin-top:0">
+      <table>
+        <thead><tr><th>Backend · model</th><th>Zone</th><th>$/Mtok in</th><th>out</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">anthropic · fable-5</td><td><span class="pill z-ext">EXT</span></td><td class="mono">10.00</td><td class="mono">50.00</td></tr>
+          <tr><td class="mono">anthropic · opus-4-8</td><td><span class="pill z-ext">EXT</span></td><td class="mono">5.00</td><td class="mono">25.00</td></tr>
+          <tr><td class="mono">fireworks · glm-5p2</td><td><span class="pill z-amd">AMD</span></td><td class="mono">1.40</td><td class="mono">4.40</td></tr>
+          <tr><td class="mono">fireworks · deepseek-v4</td><td><span class="pill z-amd">AMD</span></td><td class="mono">1.74</td><td class="mono">3.48</td></tr>
+          <tr><td class="mono">local · MI300X</td><td><span class="pill z-local">LOCAL</span></td><td class="mono" colspan="2">$2.00/GPU-hr (8×MI300X droplet)</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="faint" style="font-size:12.5px">Prices confirmed 2026-07-09 from live price sheets. <code>margin: 0</code> — hackathon cost passthrough. Model keys are keys into <code>models.yaml</code>, not bare provider ids.</p>
+    </div>
+  </div>
+
+  <h3>Quote → invoice, reconciled</h3>
+  <p><code>build_invoice()</code> aggregates <code>meter_events</code> by <code>backend</code>, derives the zone via the <code>ZONE</code> map, and produces the same line structure as the quote with actuals. <code>frontier_calls</code> counts only EXTERNAL-zone calls — the number that stays tiny while the GPU line does the work.</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Invoice line (by zone)</th><th>What it captures</th><th>Money-slide role</th></tr></thead>
+    <tbody>
+      <tr><td>Frontier planning (sanitized brief only)</td><td class="muted">EXTERNAL · a few planner calls</td><td><span class="pill b-warn">the only capex</span></td></tr>
+      <tr><td>Local GPU (certify / build / conductor / consolidate / QA)</td><td class="muted">LOCAL · the bulk of the work</td><td><span class="pill b-ok">your own hardware</span></td></tr>
+      <tr><td>Fallback serving (Fireworks, AMD-hosted)</td><td class="muted">AMD_HOSTED · availability only, badged</td><td><span class="pill z-amd">metered, honest</span></td></tr>
+      <tr><td>Customer-connected endpoint</td><td class="muted">CUSTOM · BYOK</td><td><span class="pill z-custom">passthrough</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="faint" style="font-size:12.5px">Invoice footnote, verbatim: "GPU-seconds are an estimate (10 §2); token counts are exact." An operate-phase run reports <code>frontier_calls: 0</code> — the running process never calls a frontier model.</p>
+  <div class="callout co-spec">
+    <span class="tag">Spec 10 vs code</span>
+    <p>The built-in defaults in <code>rates.py</code> (<code>claude-fable-5 $3/$15</code>) are stale placeholders; <code>infra/rates.yaml</code> overrides them with the confirmed <code>$10/$50</code> when present, and <code>load_rates()</code> deep-merges YAML over defaults. If the YAML is unreadable it prints a warning and bills the built-in card rather than silently — "stale prices silently billing the money slide would be a demo lie."</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ============================================================ DIVERGENCE -->
+<section id="divergence">
+  <p class="overline">§9 · Honesty strip</p>
+  <h2>What's real, what's stubbed, where code diverges from spec</h2>
+  <p class="sectlede">The boundary mechanics, enforcement, ledgers, persistence, and metering are real and tested. The higher-level orchestration has deliberate Wave-1 depth limits, each marked in the code. Nothing here is hidden behind a mock that pretends to be live.</p>
+
+  <div class="grid g2">
+    <div>
+      <h4 style="color:var(--ok)">Real &amp; enforced</h4>
+      <div class="card" style="border-color:color-mix(in srgb,var(--ok) 22%,transparent)">
+        <p style="color:#c6d8de; font-size:.9rem; line-height:1.75">
+        · Mask → vault → rehydrate → consult gate (mechanical baseline)<br>
+        · <code>router._check_boundary()</code> fail-closed matrix + egress log<br>
+        · Seat data-class ceilings (planner can't see RAW)<br>
+        · HMAC per-process proxy tokens + seat allowlist<br>
+        · Single-writer WAL SQLite, per-connection FK pragmas<br>
+        · Hash-chained amendments<br>
+        · Metering with real token counts + confirmed rate card<br>
+        · Invoice aggregation by zone, quote reconciliation<br>
+        · Staging shim: real HTTP + token authz<br>
+        · Seed corpora: real OFAC/EU lists, byte-reproducible<br>
+        · Sandbox FIFO + rate limit + per-run budget cap
+        </p>
+      </div>
+    </div>
+    <div>
+      <h4 style="color:var(--warn)">Wave-1 depth / stubbed</h4>
+      <div class="card" style="border-color:color-mix(in srgb,var(--warn) 22%,transparent)">
+        <p style="color:#c6d8de; font-size:.9rem; line-height:1.75">
+        · Intake is single-shot auto-confirm — no multi-turn clarification or human confirm-spec gate (Wave 2)<br>
+        · Trust-model-driven policy extraction plugs in above the mechanical baseline (Wave 2)<br>
+        · <code>drive_run</code> per-unit judgment status is deterministic; real path drives a process-runtime container over the proxy<br>
+        · <code>manifest_sampling</code> hardcoded 0.05 (<code>TODO wave2</code>)<br>
+        · Staging shim runs in-process, not a per-job docker image<br>
+        · Fan-out with no corpus → 6 nominal synthetic refs<br>
+        · Dev Fernet key is ephemeral (secrets don't survive restart)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <h4>Spec-vs-code callouts, collected</h4>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Spec</th><th>Divergence</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">01/05</td><td><code>checkpoints</code> table is an additive extension for resumability</td><td class="mono">db/schema.sql:167</td></tr>
+      <tr><td class="mono">04 §3</td><td>Process-runtime container served in-process (uvicorn task), not a per-job docker build</td><td class="mono">runtime/staging.py</td></tr>
+      <tr><td class="mono">04 §4</td><td><code>drive_run</code> sampling hardcoded; per-unit verdicts deterministic (Wave-1)</td><td class="mono">runtime/operate.py:29,48</td></tr>
+      <tr><td class="mono">05</td><td>Pydantic <em>artifact</em> shapes (models.py) are distinct from the <em>table</em> schema (schema.sql)</td><td class="mono">db/models.py vs schema.sql</td></tr>
+      <tr><td class="mono">09 §3</td><td>Non-sandbox process job with no corpus falls back to nominal unit refs</td><td class="mono">runtime/operate.py:119</td></tr>
+      <tr><td class="mono">10 §3</td><td><code>rates.py</code> built-in defaults stale; <code>rates.yaml</code> confirmed prices win via deep-merge</td><td class="mono">metering/rates.py:15</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p style="margin-top:34px; color:var(--muted); font-size:.9rem; border-top:1px solid var(--hair-soft); padding-top:22px">
+    Reference generated from the Nxcleus codebase at <code>/backend/app</code> and <code>/infra</code>. Every gate, table, and number on this page is traced to a file and line — the boundary is code, not convention.
+  </p>
+</section>
+
+</main>
+</div>

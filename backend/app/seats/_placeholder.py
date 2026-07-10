@@ -34,11 +34,13 @@ async def _ask(complete: CompleteFn, seat: str, data_class: str, schema: dict | 
 class _Trust:
     async def build_spec(self, complete: CompleteFn, emit: EmitFn, *, request: str, files: list,
                          code_map: dict, db_schema: dict, policy: dict, messages: list) -> dict:
+        # mock clarifying-intake trigger: a request asking to "clarify" parks with questions
+        fixture = "spec_kyc_clarify" if "clarify" in request.lower() else "spec_kyc"
         parsed = await _ask(
             complete, "trust", "RAW", models.SanitizedSpec.model_json_schema(),
             "You are the trust seat. Compose a SANITIZED planner brief for a stronger frontier planner: "
             "strip values, keep structure; describe the codebase/schemas well enough to plan against.",
-            f"Customer request: {request}", fixture="spec_kyc",
+            f"Customer request: {request}", fixture=fixture,
         )
         return parsed or models.SanitizedSpec(title=request[:60]).model_dump()
 
@@ -55,7 +57,7 @@ class _Trust:
         await _ask(complete, "trust", "RAW", None,
                    "You are the trust seat. Write a README and runbook from the certified plan.",
                    f"Goal: {goal}")
-        name = plan.get("modules", [{}])[0].get("name", "process")
+        name = (plan.get("modules") or [{}])[0].get("name", "process")  # process mode: modules == []
         return {
             "readme": f"# {plan.get('mode','build').title()} process\n\nGoal: {goal}\n\n"
                       f"Modules: {', '.join(m.get('id','') for m in plan.get('modules', []))}\n",
@@ -64,6 +66,32 @@ class _Trust:
             "qa_report": "## QA report\nSee tickets and oracle checks in the package.\n",
             "entry_module": name,
         }
+
+    async def suggest_next_steps(self, complete: CompleteFn, emit: EmitFn, *, context: dict) -> dict:
+        # mock: deterministic, situation-aware fixture following the same rules as the prompt
+        stats = context.get("stats") or {}
+        flagged = int(stats.get("needs_review", 0) or 0)
+        steps: list[dict] = []
+        if flagged:
+            steps.append({"title": f"Review the {flagged} flagged units",
+                          "why": "Human sign-off turns findings into recoveries.",
+                          "action": {"kind": "review", "params": {}}})
+            steps.append({"title": "Tighten the flagging threshold",
+                          "why": "A refine can cut false positives before the next batch.",
+                          "action": {"kind": "refine", "params": {"request": "tighten threshold"}}})
+        else:
+            steps.append({"title": "Widen the population",
+                          "why": "Zero flags on this sample — sweep a larger or older slice.",
+                          "action": {"kind": "rerun", "params": {"sample": {"mode": "random",
+                                                                            "n": 1000}}}})
+        if stats.get("partial"):
+            steps.append({"title": "Re-run with a higher budget",
+                          "why": "The run stopped at the budget cap before finishing.",
+                          "action": {"kind": "rerun", "params": {"budget": "increase"}}})
+        steps.append({"title": "Export the case file",
+                      "why": "The committee gets the print-ready report; recovery gets the CSV.",
+                      "action": {"kind": "export", "params": {"format": "report"}}})
+        return {"next_steps": steps[:5]}
 
     async def sanitize_consult(self, complete: CompleteFn, emit: EmitFn, *, payload: str,
                                vault_map: dict) -> tuple[str, dict]:
@@ -114,6 +142,11 @@ class _Certifier:
             f"Plan modules: {[m.get('id') for m in plan.get('modules', [])]}", fixture="certify_kyc",
         )
         return parsed or models.CertifyResult().model_dump()
+
+    async def repair_sql(self, complete: CompleteFn, emit: EmitFn, *, step: dict, error: str,
+                         schema_tables: list) -> str:
+        # mock: no model to repair with — return the sql unchanged; stage 2 drops it if still broken
+        return step.get("sql", "")
 
     async def triage_refine(self, complete: CompleteFn, emit: EmitFn, *, plan: dict, request: str) -> dict:
         parsed = await _ask(
@@ -176,6 +209,9 @@ class _Coder:
                 f["path"] = f"src/{mid}.py"
                 if not f.get("content"):
                     f["content"] = _module_stub(mid, module)
+        # ship the runtime-contract entrypoint (04 §3) so staging serves a REAL second
+        # implementation — the oracle's dual-implementation check compares against its output
+        files.append({"path": "process.py", "content": _PROCESS_PY})
         return {"files": files, "notes": f"implemented {mid}"}
 
     async def fix(self, complete: CompleteFn, emit: EmitFn, *, ticket: dict, module_src: str,
@@ -247,6 +283,24 @@ class _Oracle:
 def _nr1(inputs: dict) -> float:
     return round(0.5 * inputs.get("sanctions_flag", 0) + 0.3 * inputs.get("pep_flag", 0)
                  + 0.2 * inputs.get("geo_risk", 0), 6)
+
+
+# the generated process's entrypoint — an INDEPENDENT implementation of the certified rule that
+# the staging shim serves over real HTTP; the oracle recomputes blind and the two are compared
+_PROCESS_PY = '''\
+"""Generated process entrypoint (runtime contract 04 §3)."""
+
+
+def run_unit(unit: dict) -> dict:
+    if "sanctions_flag" in unit:
+        score = round(0.5 * float(unit.get("sanctions_flag", 0))
+                      + 0.3 * float(unit.get("pep_flag", 0))
+                      + 0.2 * float(unit.get("geo_risk", 0)), 6)
+        band = "red" if score >= 0.6 else ("amber" if score >= 0.3 else "green")
+        return {"risk_score": score,
+                "decision": {"red": "reject", "amber": "review", "green": "approve"}[band]}
+    return {"result": "processed", "unit": unit.get("id")}
+'''
 
 
 # --------------------------------------------------------------------------- inspector

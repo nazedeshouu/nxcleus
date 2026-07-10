@@ -50,7 +50,7 @@ Seat `oracle` (Gemma 4 31B — AIME-tier quantitative reasoning per the benchmar
 1. Prompt = the *sanitized numeric rule text from the spec* + vector inputs. **Never the plan's pseudocode, never generated code** — independence is the point (dual implementation, where the second implementation is a reasoning model).
 2. Self-consistency k=3 (temperature 0.3), numeric answers extracted via structured output; majority verdict. No majority → `oracle_uncertain` (counts as a flag, not a failure).
 3. Compare to the deployed process's actual output for the same inputs (tolerance per rule: exact for money after rounding-rule application, epsilon for scores — encoded per vector).
-4. `match` → green tick event. `mismatch` → ticket `severity: disagreement`. **Never auto-trusted in either direction** — a human resolves whether code or oracle is wrong (design rule). This yields the "N adjudicated correctly, M flagged for human review" delivery stat.
+4. `match` → green tick event. `mismatch` → ticket `severity: disagreement`. **Never auto-trusted in either direction** — a human resolves whether code or oracle is wrong (design rule). This yields the "N adjudicated correctly, M flagged for human review" delivery stat. When no deployed actual is obtainable (dead staging, no entrypoint — e.g. process-mode jobs whose evidence is the fan-out itself), the check records `no_actual` honestly instead of inventing a match; no ticket.
 
 ## 5. Oracle & inspectors in the operate phase (continuous assurance)
 
@@ -89,3 +89,7 @@ Flagged per the change protocol; implemented in `backend/app/qa/stage6.py`.
 - **Inspector probe call-site conforms to the ratified signature** `inspector.probe(complete, emit, *, scenario, tools, step_budget)` (seam ruling #1). Stage 6 builds the two egress-scoped tools — `read_manifest` and `http_request` (the latter hard-restricted to the staging host via `app.boundary.egress`) — and injects them; scenarios are passed as dicts `{id, source, title, probe}`; `probe` returns a Ticket-shaped dict or None. The placeholder inspector was conformed to the same signature so mock mode is unaffected.
 - **Staging is real HTTP (04 §3 deviation):** the swarm probes an in-process FastAPI shim on `127.0.0.1:<ephemeral>` (see 04), deployed at stage-6 start and torn down after the probes.
 - **Oracle checks run concurrently** (semaphore = 4) instead of the sequential `for vec in vectors` loop — the k=3 recompute per vector was the QA bottleneck on the Fireworks fallback. Independent per vector; DB writes still serialize on the single SQLite writer.
+
+### 2026-07-10 hardening wave
+
+The oracle's rule text now comes exclusively from certifier-emitted vectors (`OracleVector.rule_text`, threaded at stage 2) — the hardcoded `_RULE_TEXT` KYC constant in qa/stage6.py is deleted; a vector without `rule_text` falls back to its raw `rule` string. Ticket honesty: `coder.fix` without a retest marks tickets `fix_applied` (new status + `ticket.fix_applied` event), never `verified`; stage 5 promotes its fix tickets to `verified` only after the suite re-run passes (cap-exhausted tickets go to `human_review`). The goal manifest reports the actual stage-5 suite results (`integration_tests_passed/total` via checkpoint), not a spec count. Warranty spot-checks in operate re-run real units and compare (see 04).

@@ -196,3 +196,7 @@ Both are `CREATE TABLE IF NOT EXISTS` in `schema.sql`, applied idempotently at s
 - Everything fits SQLite for the window (events for a full build ≈ low thousands of rows). No deletes during the hackathon; `VACUUM` not needed.
 - Nightly `sqlite3 .backup` to `/data/backups/` (cron on the VM) — cheap insurance before demo days.
 - Postgres upgrade path (post-hackathon): schema is vanilla SQL; swap engine URL, replace AUTOINCREMENT seq with BIGSERIAL. Not in scope now.
+
+### 2026-07-10 hardening wave (additive)
+
+New columns: `jobs.request` (RAW original request — survives the intake spec overwrite), `processes.corpus_company` (default run corpus binding), `runs.params_json` (`{corpus, sample, deliverable}`), `runs.next_steps_json` (cached advisory). New table `model_traces` (per-dispatch prompt/response trace). `jobs.status` gains `awaiting_input`; `tickets.status` gains `fix_applied`. Applied via idempotent ALTERs in `db/engine.apply_schema` for pre-existing DBs.

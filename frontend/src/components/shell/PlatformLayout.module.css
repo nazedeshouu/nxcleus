@@ -6,6 +6,19 @@
   flex-direction: column;
   transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
 }
+/* the sealed interior: a faint architectural field behind the instrument panels */
+.app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(180deg, rgba(6, 15, 20, 0.82), rgba(6, 15, 20, 0.66) 40%, rgba(6, 15, 20, 0.88)),
+    url("../../assets/img/inside-field.webp");
+  background-size: cover;
+  background-position: center;
+}
 
 .bar {
   position: sticky;
@@ -16,10 +29,11 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 clamp(16px, 3vw, 32px);
-  background: color-mix(in srgb, var(--paper) 82%, transparent);
-  backdrop-filter: saturate(180%) blur(14px);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
-  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border-bottom: 1px solid var(--hairline-soft);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.03);
 }
 .left {
   display: flex;
@@ -127,6 +141,14 @@
 .main {
   flex: 1;
   min-height: 0;
+  position: relative;
+  z-index: 1;
+  /* crossing the wall: one gentle settle as you enter the interior */
+  animation: enterInside 0.7s var(--ease) both;
+}
+@keyframes enterInside {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* ---- Sovereign status strip (shields up) ---- */
@@ -155,26 +177,8 @@
   color: color-mix(in srgb, var(--sov-text) 82%, transparent);
 }
 
-/* ---- Sovereign chrome ---- */
-.app[data-sovereign="true"] {
-  background: var(--sov-bg);
-  color: var(--sov-text);
-}
-.app[data-sovereign="true"] .bar {
-  background: color-mix(in srgb, var(--sov-bg) 84%, transparent);
-  border-bottom-color: var(--sov-hairline);
-}
-.app[data-sovereign="true"] .link {
-  color: color-mix(in srgb, var(--sov-text) 68%, transparent);
-}
-.app[data-sovereign="true"] .link:hover {
-  color: var(--sov-text);
-  background: var(--sov-surface);
-}
-.app[data-sovereign="true"] .active {
-  color: var(--sov-seal);
-  background: var(--sov-surface);
-}
+/* Sovereign chrome is token-driven: [data-temp="inside"][data-sovereign="true"]
+   in tokens.css re-tints every semantic var toward the sealed teal. */
 
 @media (max-width: 720px) {
   .fallback span,
@@ -191,6 +195,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .connLive .pulse {
+    animation: none;
+  }
+  .main {
     animation: none;
   }
 }

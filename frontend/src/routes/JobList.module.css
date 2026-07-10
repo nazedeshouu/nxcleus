@@ -64,6 +64,13 @@
 .s_blocked {
   color: var(--danger);
 }
+.s_quoted {
+  color: var(--accent-strong);
+}
+/* parked, waiting on the customer — distinct from progress and from failure */
+.s_awaiting_input {
+  color: var(--warn);
+}
 .mode {
   font-family: var(--font-mono);
   font-size: var(--fs-micro);
@@ -97,4 +104,112 @@
 }
 .card:hover .enter svg {
   transform: translateX(3px);
+}
+
+/* new-process entry (F0): the missing front door */
+.create {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  margin-bottom: 26px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.create:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: var(--glow-accent);
+}
+.createText {
+  width: 100%;
+  resize: vertical;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  font-family: var(--font-sans);
+}
+.createText:focus {
+  outline: none;
+}
+.createMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--hairline-soft);
+  padding-top: 12px;
+}
+.createTitle {
+  flex: 1;
+  min-width: 160px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-xs);
+}
+.createTitle:focus {
+  outline: none;
+}
+.createOpt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.createOpt:hover {
+  border-color: var(--accent-mid);
+  color: var(--ink);
+}
+.createOpt.on {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.createOpt svg {
+  width: 12px;
+  height: 12px;
+}
+.createGo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 9px 16px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--paper);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.createGo:hover:not(:disabled) {
+  background: var(--accent-strong);
+  transform: translateY(-1px);
+}
+.createGo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.createGo svg {
+  width: 14px;
+  height: 14px;
+}
+.createErr {
+  font-size: var(--fs-xs);
+  color: var(--danger-strong);
+  background: var(--danger-wash);
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
 }

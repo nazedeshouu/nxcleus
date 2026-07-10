@@ -78,7 +78,10 @@ CHECKS: dict[str, str] = {
         "Verify every judgment step names a seat; the fleet width in the BoM is at least the "
         "DAG's maximum parallelism; and every module/step carries SANE task_flags — a module "
         "that edits existing code must carry refactor-edit, a schema/query module must carry "
-        "sql-data, a prose task must carry docs-writing. Flag missing or nonsensical flags."
+        "sql-data, a prose task must carry docs-writing. Flag missing or nonsensical flags. "
+        "Every kind:\"analysis\" step must carry a CONCRETE, testable `purpose` — naming its "
+        "inputs, its logic, and what a finding row contains; amend vague purposes into "
+        "concrete ones."
     ),
     "production-fit": (
         "This is the pass only you can do (D9). Check every planner assumption against the RAW "
@@ -143,7 +146,9 @@ amendments (a bad local patch must die at the same QA gate as bad code).
 (path/op/value). Cover the main path, each acceptance criterion, and each amendment you made.
   - OracleVector[]: for every numeric rule, the INPUTS only — never the expected output (the \
 oracle computes that blind at stage 6). Give each a tolerance: "exact" for money after \
-rounding, "epsilon:<n>" for scores.
+rounding, "epsilon:<n>" for scores. Each vector MUST carry `rule_text`: the full rule stated \
+in words (formula, thresholds, rounding), self-contained — the blind oracle recomputes from \
+that text alone and never sees the plan.
 
 Use the plan's real (rehydrated) interface ids and rule ids. {ENGLISH_ONLY}
 
@@ -233,7 +238,9 @@ _TEST_SPEC = {"type": "object", "additionalProperties": True, "properties": {
         "path": {"type": "string"}, "op": {"type": "string"}, "value": {}}, "required": ["path"]}}},
     "required": ["id"]}
 _ORACLE_VECTOR = {"type": "object", "additionalProperties": True, "properties": {
-    "id": {"type": "string"}, "rule": {"type": "string"}, "inputs": {"type": "object"},
+    "id": {"type": "string"}, "rule": {"type": "string"},
+    "rule_text": {"type": "string"},   # full rule in words — the oracle's ONLY view of the rule (S4)
+    "inputs": {"type": "object"},
     "tolerance": {"type": ["string", "null"]}}, "required": ["id"]}
 TESTS_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": False,
@@ -261,6 +268,45 @@ REPAIR_REGIONS_SCHEMA: dict[str, Any] = {
     "properties": {"only_regions": {"type": "array", "items": {"type": "string"}}},
     "required": ["only_regions"],
 }
+
+
+REPAIR_SQL_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "properties": {"sql": {"type": "string"}}, "required": ["sql"],
+}
+
+
+def _repair_sql_system(schema_tables: list[dict]) -> str:
+    return f"""\
+A topology step's sql query FAILED when executed read-only against the customer's real corpus. \
+Fix it. Constraints: a single read-only SELECT (a WITH/CTE is fine); no INSERT/UPDATE/DELETE/\
+PRAGMA/ATTACH; reference only the tables and columns below; keep the step's detection intent \
+(the same pairs/clusters/aggregates/windows), and keep every column a downstream judge needs \
+in the result rows.
+
+The corpus schema (the only tables/columns that exist):
+{as_json(schema_tables)}
+
+Return the corrected query only. {ENGLISH_ONLY}
+
+{STRUCTURED_ONLY}"""
+
+
+async def repair_sql(
+    complete: CompleteFn, emit: EmitFn, *, step: dict[str, Any], error: str,
+    schema_tables: list[dict], temperature: float | None = None,
+) -> str:
+    """One repair round for a sql topology step that failed against the real corpus (stage 2
+    production-fit). Returns the corrected sql, or "" when the repair itself fails."""
+    body = {"step_id": step.get("id"), "label": step.get("label", ""),
+            "failed_sql": step.get("sql", ""), "error": error}
+    try:
+        c = await complete("certifier", convo(_repair_sql_system(schema_tables), as_json(body)),
+                           data_class=DATA_CLASS, schema=REPAIR_SQL_SCHEMA, temperature=temperature)
+        out = parsed_or_raise(c, "certifier.repair_sql")
+    except Exception:  # noqa: BLE001 — a failed repair drops the step, it must not crash the stage
+        return ""
+    return out.get("sql", "")
 
 
 def _repair_regions_system(valid_ids: list[str]) -> str:

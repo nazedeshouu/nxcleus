@@ -20,7 +20,7 @@ class SandboxQueue:
 
     async def enqueue(self, *, company: str, prompt: str, session_id: str | None) -> tuple[str, int]:
         job_id = await dao.create_job(title=f"Sandbox: {company}", request=prompt, origin="sandbox",
-                                      mode="process", sandbox_session_id=session_id)
+                                      mode="process", sandbox_session_id=session_id, company=company)
         scope = f"job:{job_id}"
         set_scope_cap(scope, settings.sandbox_run_budget_usd)
         await emit(scope, E.JOB_CREATED, {"origin": "sandbox", "company": company})

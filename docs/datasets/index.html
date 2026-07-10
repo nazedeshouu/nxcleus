@@ -1,0 +1,202 @@
+<title>Synthetic Company Datasets — 8 Dossiers</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+    --hairline:#163542; --hairline-soft:#112834;
+    --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+    --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92; --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+    --ok:#4bcb90; --ok-wash:rgba(75,203,144,.1);
+    --font-sans:"Lenia Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:"CS Arcel Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+    --shadow-md:0 6px 20px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.3);
+    --maxw:1180px;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  html{background:var(--paper);}
+  body{
+    margin:0; background:var(--paper); color:var(--text); font-family:var(--font-sans);
+    line-height:1.6; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent-strong);}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 clamp(20px,4vw,48px);}
+
+  header#masthead{padding:72px 0 56px; border-bottom:1px solid var(--hairline-soft);}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; border:1px solid var(--accent-mid); color:var(--accent-strong);
+    background:var(--accent-wash); font-family:var(--font-mono); font-size:.72rem; letter-spacing:.08em;
+    text-transform:uppercase; padding:5px 12px; border-radius:var(--r-pill);
+  }
+  header#masthead h1{font-size:clamp(2.2rem,5vw,3.4rem); margin:20px 0 14px; letter-spacing:-.02em; line-height:1.05; font-weight:600;}
+  header#masthead .premise{color:var(--text-muted); max-width:70ch; font-size:1.1rem; margin:0;}
+
+  section{padding:56px 0 64px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:24px;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+    padding:28px 28px 24px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column;
+    text-decoration:none; color:var(--text); transition:border-color .15s ease, transform .15s ease;
+  }
+  .card:hover{border-color:var(--accent-mid); transform:translateY(-2px);}
+  .card .kicker{font-family:var(--font-mono); font-size:.7rem; color:var(--text-faint); text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px;}
+  .card h2{font-size:1.35rem; margin:0 0 10px; font-weight:600; letter-spacing:-.01em; color:var(--text);}
+  .card .reg{
+    display:inline-block; font-family:var(--font-mono); font-size:.68rem; letter-spacing:.04em;
+    color:var(--accent-strong); background:var(--accent-wash); border:1px solid var(--accent-mid);
+    border-radius:var(--r-xs); padding:3px 8px; margin-bottom:14px;
+  }
+  .card .premise{color:var(--text-muted); font-size:.92rem; margin:0 0 20px; flex-grow:1;}
+  .card .stats{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--hairline);
+    border:1px solid var(--hairline); border-radius:var(--r-sm); overflow:hidden; margin-bottom:16px;
+  }
+  .card .stat{background:var(--surface-sunk); padding:10px 8px; text-align:center;}
+  .card .stat .n{display:block; font-family:var(--font-mono); font-size:.92rem; color:var(--text); font-weight:600;}
+  .card .stat .l{display:block; color:var(--text-faint); font-size:.62rem; margin-top:3px; letter-spacing:.02em; text-transform:uppercase;}
+  .card .open{font-family:var(--font-mono); font-size:.8rem; color:var(--accent-strong);}
+  .card .open::after{content:" →"; }
+
+  footer{padding:44px 0 64px; color:var(--text-faint); font-size:.86rem; border-top:1px solid var(--hairline-soft);}
+  footer p{margin:0 0 8px; font-family:var(--font-mono); font-size:.82rem;}
+  footer .synthetic{color:var(--text-muted); font-family:var(--font-sans); font-style:italic; margin-top:16px;}
+</style>
+
+<header id="masthead">
+  <div class="wrap">
+    <span class="chip">Judge Sandbox · Extended Demo Data</span>
+    <h1>Synthetic Company Datasets — 8 dossiers</h1>
+    <p class="premise">Eight self-contained synthetic companies, each a real SQLite database on disk with deterministic planted patterns — a bank, a clinic, a law firm, an exchange, an insurer, a corporate ledger, a freight forwarder, and a marketplace. Every dossier's tables, charts, and hit counts are live query results, not hand-typed numbers.</p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="grid">
+
+      <a class="card" href="bank.html">
+        <div class="kicker">Retail &amp; Business Banking</div>
+        <h2>Meridian Bank</h2>
+        <span class="reg">GLBA · BSA / AML</span>
+        <p class="premise">AML/BSA pattern-finding sandbox — dormant-account reactivation, structuring-shaped deposit runs, and sanctions-adjacent name screening.</p>
+        <div class="stats">
+          <div class="stat"><span class="n">9,742</span><span class="l">Rows</span></div>
+          <div class="stat"><span class="n">3</span><span class="l">Tables</span></div>
+          <div class="stat"><span class="n">3</span><span class="l">Scenarios</span></div>
+          <div class="stat"><span class="n">584 KB</span><span class="l">DB Size</span></div>
+        </div>
+        <span class="open">Open dossier</span>
+      </a>
+
+      <a class="card" href="clinic.html">
+        <div class="kicker">Outpatient Healthcare</div>
+        <h2>Aurora Clinic</h2>
+        <span class="reg">HIPAA · Protected Health Information</span>
+        <p class="premise">A single outpatient clinic built to surface duplicate billing, physiologically impossible vitals, and an overdue-screening cohort.</p>
+        <div class="stats">
+          <div class="stat"><span class="n">8,540</span><span class="l">Rows</span></div>
+          <div class="stat"><span class="n">4</span><span class="l">Tables</span></div>
+          <div class="stat"><span class="n">3</span><span class="l">Scenarios</span></div>
+          <div class="stat"><span class="n">416 KB</span><span class="l">DB Size</span></div>
+        </div>
+        <span class="open">Open dossier</span>
+      </a>
+
+      <a class="card" href="lawfirm.html">
+        <div class="kicker">Mid-Market Law Firm</div>
+        <h2>Hale &amp; Ostrom LLP</h2>
+        <span class="reg">Attorney-Client Privilege · Work-Product</span>
+        <p class="premise">Contracts and billing carrying short-notice auto-renewal traps, missing signature pages, and fee-cap breaches.</p>
+        <div class="stats">
+          <div class="stat"><span class="n">3,306</span><span class="l">Rows</span></div>
+          <div class="stat"><span class="n">3</span><span class="l">Tables</span></div>
+          <div class="stat"><span class="n">3</span><span class="l">Scenarios</span></div>
+          <div class="stat"><span class="n">388 KB</span><span class="l">DB Size</span></div>
+        </div>
+        <span class="open">Open dossier</span>
+      </a>
+
+      <a class="card" href="exchange.html">
+        <div class="kicker">Multi-Asset Trading Venue</div>
+        <h2>Ashford Mercantile Exchange</h2>
+        <span class="reg">MAR-equivalent · CFTC / Dodd-Frank</span>
+        <p class="premise">Order-and-execution blotter carrying spoofing, wash trades, marking-the-close, and position-limit breaches.</p>
+        <div class="stats">
+          <div class="stat"><span class="n">733,324</span><span class="l">Rows</span></div>
+          <div class="stat"><span class="n">5</span><span class="l">Tables</span></div>
+          <div class="stat"><span class="n">4</span><span class="l">Scenarios</span></div>
+          <div class="stat"><span class="n">66.7 MB</span><span class="l">DB Size</span></div>
+        </div>
+        <span class="open">Open dossier</span>
+      </a>
+
+      <a class="card" href="insurer.html">
+        <div class="kicker">Property &amp; Casualty Insurer</div>
+        <h2>Cascadia Mutual</h2>
+        <span class="reg">RCW Title 48 · NAIC Model Law · GLBA</span>
+        <p class="premise">A WA/OR P&amp;C carrier whose claims ledger carries duplicate claims, staged-accident rings, over-coverage payouts, and a rubber-stamping adjuster anomaly.</p>
+        <div class="stats">
+          <div class="stat"><span class="n">358,254</span><span class="l">Rows</span></div>
+          <div class="stat"><span class="n">5</span><span class="l">Tables</span></div>
+          <div class="stat"><span class="n">4</span><span class="l">Scenarios</span></div>
+          <div class="stat"><span class="n">24.4 MB</span><span class="l">DB Size</span></div>
+        </div>
+        <span class="open">Open dossier</span>
+      </a>
+
+      <a class="card" href="ledger.html">
+        <div class="kicker">Corporate Group Ledger</div>
+        <h2>Aldgate Holdings plc</h2>
+        <span class="reg">SOX §302 / §404 · MNPI Controls</span>
+        <p class="premise">A 20-subsidiary general ledger built so a pre-close consolidation review finds real intercompany breaks, misposted revenue, LEI gaps, and out-of-balance batches.</p>
+        <div class="stats">
+          <div class="stat"><span class="n">651,999</span><span class="l">Rows</span></div>
+          <div class="stat"><span class="n">5</span><span class="l">Tables</span></div>
+          <div class="stat"><span class="n">4</span><span class="l">Scenarios</span></div>
+          <div class="stat"><span class="n">48.6 MB</span><span class="l">DB Size</span></div>
+        </div>
+        <span class="open">Open dossier</span>
+      </a>
+
+      <a class="card" href="freight.html">
+        <div class="kicker">Freight Forwarder / Customs Broker</div>
+        <h2>Northgate Freight</h2>
+        <span class="reg">EU Union Customs Code · GDPR</span>
+        <p class="premise">A 250-carrier procure-to-pay ledger carrying three-way-match breaks, ghost shipments, chronically-late lanes, and customs-declaration exceptions.</p>
+        <div class="stats">
+          <div class="stat"><span class="n">429,850</span><span class="l">Rows</span></div>
+          <div class="stat"><span class="n">5</span><span class="l">Tables</span></div>
+          <div class="stat"><span class="n">4</span><span class="l">Scenarios</span></div>
+          <div class="stat"><span class="n">38.0 MB</span><span class="l">DB Size</span></div>
+        </div>
+        <span class="open">Open dossier</span>
+      </a>
+
+      <a class="card" href="market.html">
+        <div class="kicker">Consumer E-Commerce Marketplace</div>
+        <h2>Solano Marketplace</h2>
+        <span class="reg">CCPA/CPRA · GDPR · PCI DSS</span>
+        <p class="premise">Sellers, listings, buyers, orders, reviews, and refunds shaped around review rings, refund abuse, counterfeit triage, and brushing.</p>
+        <div class="stats">
+          <div class="stat"><span class="n">748,536</span><span class="l">Rows</span></div>
+          <div class="stat"><span class="n">6</span><span class="l">Tables</span></div>
+          <div class="stat"><span class="n">4</span><span class="l">Scenarios</span></div>
+          <div class="stat"><span class="n">67.4 MB</span><span class="l">DB Size</span></div>
+        </div>
+        <span class="open">Open dossier</span>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<footer id="footer">
+  <div class="wrap">
+    <p>Regenerate all eight from scratch: <code>uv run --project backend python scripts/seed.py</code> (or <code>... scripts/seed.py &lt;id&gt;</code> for one dataset).</p>
+    <p class="synthetic">Fully synthetic demo data. No real customers, patients, clients, traders, policyholders, counterparties, shippers, or shoppers appear anywhere in this dataset family.</p>
+  </div>
+</footer>

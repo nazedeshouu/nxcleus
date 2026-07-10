@@ -1,102 +1,489 @@
-"""Operate phase — run execution (04 §4) + process-mode corpus fan-out (03 §8).
+"""Operate phase — real run execution (04 §4) + process-mode corpus fan-out (03 §8).
 
-`drive_run` executes a registered process version over a batch: per-unit results, oracle spot-checks,
-per-run cost, and the "EXTERNAL: 0 requests" ledger claim. Wave-1 depth: units are driven through
-the seats directly (the real build-mode path drives a process-runtime container over the model-proxy,
-Wave 2). Every seat call meters into the run scope, so per-run cost is real and frontier-free.
+One topology executor serves BOTH the stage-4 build fan-out and registered-process runs
+(`drive_run`): real corpus units, real per-unit metering, sql candidate steps (cross-row
+detections), honest warranty spot-checks, and run artifacts (findings.csv + report.html).
+No synthetic units or scripted verdicts anywhere (hardening 2026-07-10, S1).
 """
 from __future__ import annotations
 
 import asyncio
+import json
+import random
+from pathlib import Path
 
+from app.config import settings
 from app.db import dao
-from app.events import E, emit
+from app.events import E, emit, now_iso
 from app.metering import meter
+from app.models.registry import registry
 from app.models.router import router
 from app.seats.base import Message
 
-_UNIT_CONCURRENCY = 4
+_DEFAULT_STEP = {"id": "extract", "seat": "coder",
+                 "prompt_spec": "Process this unit against the request and report findings.",
+                 "output_schema": {"type": "object", "properties": {
+                     "findings": {"type": "string"}, "flagged": {"type": "boolean"}},
+                     "required": ["findings", "flagged"]}}
+
+_FLAG_KEYS = ("flag", "flagged", "needs_review", "suspicious")
+
+
+def _unit_flagged(result: dict) -> bool:
+    for step_out in result.values():
+        if isinstance(step_out, dict) and any(step_out.get(k) for k in _FLAG_KEYS):
+            return True
+    return False
+
+
+def _row_ref(step_id: str, i: int, row: dict) -> str:
+    """Readable unit_ref for a sql candidate row: join its *id columns, else index."""
+    ids = [str(v) for k, v in row.items() if "id" in k.lower() and v is not None]
+    return f"{step_id}:{'-'.join(ids)[:80]}" if ids else f"{step_id}:{i}"
+
+
+def _scope_workspace_id(scope: str) -> str:
+    """job:<id> -> that job's workspace; run:<id> -> a run-keyed workspace folder."""
+    return scope.split(":", 1)[1] if ":" in scope else scope
+
+
+async def _run_analysis_step(step: dict, units: list[tuple[str, dict]], *, scope: str,
+                             complete_fn, emit_fn, run_id: str) -> list[tuple[str, dict]] | None:
+    """One analysis candidate step: createTool (cached by scope+step id), invoke over the current
+    rows, findings replace the unit set. Returns None on failure (units unchanged, run degrades)."""
+    from app.ids import deterministic
+    from app.orchestrator import toolsmith
+    from app.runtime import workspace
+
+    step_id = step.get("id", "analysis")
+    purpose = step.get("purpose") or step.get("prompt_spec") or ""
+    tool_id = deterministic("tool", scope, step_id)
+    cached = await toolsmith.get_tool(tool_id)
+    rows_in = [content for _, content in units][:settings.sql_step_row_cap]
+    if cached:
+        name = cached["name"]
+    else:
+        res = await toolsmith.create_tool(
+            purpose=purpose, args_example={"rows": rows_in[:2]}, scope=scope,
+            complete_fn=complete_fn,
+            agent_dir=workspace.agent_dir(_scope_workspace_id(scope), "toolsmith"),
+            tool_id=tool_id)
+        if "error" in res:
+            await emit_fn(E.SYSTEM_NOTICE, {"text": f"analysis step {step_id} tool not created: "
+                                            f"{res['error'][:200]}", "level": "warn"})
+            return None
+        name = res["tool_name"]
+    out = await toolsmith.invoke_tool(scope, name, {"rows": rows_in})
+    findings = out.get("findings")
+    if not isinstance(findings, list):
+        await emit_fn(E.SYSTEM_NOTICE, {"text": f"analysis step {step_id} returned no findings "
+                                        f"list: {str(out)[:200]}", "level": "warn"})
+        return None
+    await emit_fn(E.RUN_SQL_STEP, {"run_id": run_id, "step": step_id, "kind": "analysis",
+                                   "label": step.get("label", purpose[:80]), "rows": len(findings)})
+    return [(_row_ref(step_id, i, r if isinstance(r, dict) else {"value": r}),
+             r if isinstance(r, dict) else {"value": r}) for i, r in enumerate(findings)]
+
+
+async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topology: dict,
+                           request: str, corpus_units: list[tuple[str, dict]], width: int,
+                           run_id: str, corpus_company: str | None = None,
+                           process_id: str | None = None) -> dict:
+    """Execute a process topology over a corpus. Called from BOTH the stage-4 fan-out and
+    registered-process runs (drive_run).
+
+    Semantics:
+      - candidate steps (kind=="sql" or kind=="analysis", per_unit false) run first, in plan
+        order; each result-row set REPLACES the unit set for subsequent per-unit judgment steps
+        (candidates pattern). sql runs read-only against the bound corpus; analysis commissions
+        a deterministic tool via createTool (cached per scope+step in the tools table) and runs
+        it over the current rows ({"rows": [...]} -> {"findings": [...]}).
+      - per-unit judgment steps keep the established behavior: seat-name defense, budget-stop,
+        per-unit isolation, real metering through complete_fn.
+      - candidate-only topologies: the final rows ARE the findings; rows carrying a truthy flag
+        column — or rows with no flag column at all (the query/tool itself is the detection) —
+        land as needs_review units so the review queue fills.
+      - sandbox_max_units caps LLM-JUDGED units only; sql steps run the full table.
+
+    Returns {"counts", "flagged", "done", "total", "partial", "sql_rows", "spot_checks",
+    "discrepancies"}.
+    """
+    from app.boundary.errors import BudgetExceeded
+    from app.sandbox import seeds
+
+    steps = plan_topology.get("steps") or []
+    candidate_steps = [s for s in steps
+                       if (s.get("kind") == "sql" and s.get("sql"))
+                       or (s.get("kind") == "analysis" and (s.get("purpose") or s.get("prompt_spec")))]
+    judgment_steps = [s for s in steps
+                      if s.get("per_unit", True) and s.get("kind") not in ("sql", "aggregate",
+                                                                           "analysis")]
+    if not candidate_steps and not judgment_steps:
+        judgment_steps = [_DEFAULT_STEP]
+
+    units = list(corpus_units)
+    sql_rows = 0
+    for step in candidate_steps:
+        if step.get("kind") == "sql":
+            try:
+                rows = await asyncio.to_thread(
+                    seeds.run_select, corpus_company, step["sql"],
+                    cap=settings.sql_step_row_cap, timeout_s=settings.sql_step_timeout_s)
+            except Exception as exc:  # noqa: BLE001 — a broken query is a run finding, not a crash
+                await emit_fn(E.SYSTEM_NOTICE, {
+                    "text": f"sql step {step.get('id')} failed: {type(exc).__name__}: {str(exc)[:200]}",
+                    "level": "error"})
+                rows = []
+            sql_rows = len(rows)
+            units = [(_row_ref(step.get("id", "sql"), i, r), r) for i, r in enumerate(rows)]
+            await emit_fn(E.RUN_SQL_STEP, {"run_id": run_id, "step": step.get("id"),
+                                           "label": step.get("label", ""), "rows": len(rows)})
+        else:   # analysis (T8 wire-up B): commission once, run deterministically over the rows
+            new_units = await _run_analysis_step(step, units, scope=scope,
+                                                 complete_fn=complete_fn, emit_fn=emit_fn,
+                                                 run_id=run_id)
+            if new_units is not None:
+                units = new_units
+                sql_rows = len(units)
+
+    counts = {"ok": 0, "needs_review": 0, "error": 0}
+    flagged: list[str] = []
+    budget_stop = asyncio.Event()
+    done_n = 0
+    completed: list[tuple[str, dict, bool]] = []   # (ref, content, flagged) for spot-checks
+
+    if not judgment_steps:
+        # sql-only: rows are the findings themselves
+        for i, (ref, row) in enumerate(units):
+            has_flag_col = any(k in row for k in _FLAG_KEYS)
+            is_finding = (not has_flag_col) or any(row.get(k) for k in _FLAG_KEYS)
+            status = "needs_review" if is_finding else "ok"
+            counts[status] += 1
+            if status == "needs_review":
+                flagged.append(ref)
+            await dao.add_run_unit(run_id=run_id, unit_ref=ref, status=status,
+                                   result={"candidate": row}, trace=[{"step": "sql", "kind": "sql"}],
+                                   unit_id=f"{run_id}-u{i}")
+            done_n += 1
+            if done_n % 25 == 0 or done_n == len(units):
+                await emit_fn(E.RUN_PROGRESS, {"run_id": run_id, "done": done_n, "total": len(units)})
+        return {"counts": counts, "flagged": flagged, "done": done_n, "total": len(units),
+                "partial": False, "sql_rows": sql_rows, "spot_checks": 0, "discrepancies": 0}
+
+    # LLM-judged units respect the cap; sql steps above already ran the full table
+    units = units[:settings.sandbox_max_units]
+
+    async def _judge(content: dict) -> tuple[dict, list]:
+        """One unit through the judgment steps. Raises on failure; caller isolates."""
+        result: dict = {}
+        trace: list = []
+        for step in judgment_steps:
+            seat_name = step.get("seat") or "coder"
+            if seat_name not in registry.seats or seat_name == "planner":
+                seat_name = "coder"   # live planners invent seat names; RAW never routes EXTERNAL
+            prompt = (f"{step.get('prompt_spec') or 'Process this unit and report findings.'}\n\n"
+                      f"Original request: {request[:500]}\n\n"
+                      f"candidate data:\n{json.dumps(content, default=str)[:4000]}")
+            comp = await complete_fn(seat_name, [Message(role="user", content=prompt)],
+                                     data_class="RAW",
+                                     schema=step.get("output_schema") or _DEFAULT_STEP["output_schema"])
+            result[step.get("id") or "step"] = comp.parsed or {}
+            trace.append({"step": step.get("id") or "step", "seat": seat_name})
+        return result, trace
+
+    sem = asyncio.Semaphore(max(1, width))
+
+    async def _unit(i: int, unit_ref: str, content: dict) -> None:
+        nonlocal done_n
+        async with sem:
+            if budget_stop.is_set():
+                return
+            status = "ok"
+            try:
+                result, trace = await _judge(content)
+                if _unit_flagged(result):
+                    status = "needs_review"
+            except BudgetExceeded:
+                budget_stop.set()
+                return
+            except Exception as exc:  # per-unit isolation — one bad unit never kills the sweep
+                status, result, trace = "error", {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}, []
+            counts[status] += 1
+            if status == "needs_review":
+                flagged.append(unit_ref)
+            if status != "error":
+                completed.append((unit_ref, content, status == "needs_review"))
+            await dao.add_run_unit(run_id=run_id, unit_ref=unit_ref, status=status,
+                                   result=result, trace=trace, unit_id=f"{run_id}-u{i}")
+            done_n += 1
+            await emit_fn(E.RUN_UNIT_COMPLETED, {"run_id": run_id, "unit": unit_ref, "status": status})
+            if done_n % 5 == 0 or done_n == len(units):
+                await emit_fn(E.RUN_PROGRESS, {"run_id": run_id, "done": done_n, "total": len(units)})
+
+    await asyncio.gather(*[_unit(i, ref, content) for i, (ref, content) in enumerate(units)])
+
+    # honest warranty spot-checks (08 §6): re-run K random completed units a second time and
+    # compare the flagged verdicts — a real discrepancy files a real ticket. No rehearsed beats.
+    spot_checks = discrepancies = 0
+    if process_id and completed and not budget_stop.is_set():
+        for ref, content, was_flagged in random.sample(completed, min(3, len(completed))):
+            spot_checks += 1
+            try:
+                re_result, _ = await _judge(content)
+                match = _unit_flagged(re_result) == was_flagged
+            except Exception:  # noqa: BLE001 — an inconclusive re-run is not a discrepancy
+                continue
+            await emit_fn(E.RUN_SPOTCHECK, {"run_id": run_id, "unit": ref,
+                                            "verdict": "match" if match else "mismatch"})
+            if not match:
+                discrepancies += 1
+                tid = await dao.create_ticket(
+                    scope=f"process:{process_id}", source="warranty", severity="minor",
+                    title="spot-check discrepancy",
+                    body={"instrument": "warranty",
+                          "repro": {"unit": ref, "first_flagged": was_flagged}})
+                await emit_fn(E.WARRANTY_TICKET, {"ticket_id": tid, "unit": ref})
+
+    return {"counts": counts, "flagged": flagged, "done": done_n, "total": len(units),
+            "partial": budget_stop.is_set(), "sql_rows": sql_rows,
+            "spot_checks": spot_checks, "discrepancies": discrepancies}
+
+
+async def run_process_fanout(ctx, plan: dict) -> None:
+    """Process-mode stage 4'/5' — corpus fan-out + aggregation (03 §8, 09 §3–4), through the
+    shared topology executor. Budget exhaustion degrades to a partial dashboard (09 §4)."""
+    from app.sandbox import seeds
+
+    job = await ctx.refresh()
+    spec = job.get("spec") or {}
+    request = job.get("request") or (spec.get("request", "") if isinstance(spec, dict) else "")
+    topology = plan.get("topology") or {}
+    unit_def = topology.get("unit") or {}
+    noun = unit_def.get("noun") or "unit"
+
+    company = spec.get("company") if isinstance(spec, dict) else None
+    units = seeds.load_units(company, source=unit_def.get("source"), noun=noun,
+                             cap=settings.sandbox_max_units)
+    if not units:
+        # ponytail: no corpus attached (non-sandbox process job) -> nominal refs; real customer
+        # corpus intake (uploads/connectors) is post-deadline scope
+        units = [(f"{noun}-{i}", {"ref": f"{noun}-{i}"}) for i in range(6)]
+
+    kind = "sandbox" if job.get("origin") == "sandbox" else "batch"
+    run_id = await ctx.dao.create_run(process_id="", version=1, kind=kind, input_ref=str(len(units)))
+    await ctx.checkpoint("fanout_run_id", run_id)
+    await ctx.dao.update_run(run_id, status="running")
+    await ctx.emit(E.RUN_STARTED, {"run_id": run_id, "kind": kind, "units": len(units)})
+
+    baseline = (await meter.scope_totals(ctx.scope))["cost_usd"]   # job spend before the fan-out
+
+    fleet = (plan.get("model_bom") or {}).get("fleet") or {}
+    width = max(1, min(8, int(fleet.get("parallel_width") or 4)))
+
+    summary = await execute_topology(
+        scope=ctx.scope, complete_fn=ctx.complete, emit_fn=ctx.emit, dao=ctx.dao,
+        plan_topology=topology, request=request, corpus_units=units, width=width,
+        run_id=run_id, corpus_company=company)
+
+    stats = {"units": summary["total"], "completed": summary["done"], **summary["counts"],
+             "flagged_refs": summary["flagged"][:20], "partial": summary["partial"],
+             "sql_rows": summary["sql_rows"]}
+    fanout_usd = round((await meter.scope_totals(ctx.scope))["cost_usd"] - baseline, 6)
+    cost = {"total_usd": fanout_usd,
+            "cost_per_unit": round(fanout_usd / max(1, summary["done"]), 6), "frontier_calls": 0}
+    # artifacts BEFORE the status flip — clients poll status==done and expect artifacts to exist
+    await _finalize_artifacts(run_id, process_name=job.get("title", ""), goal=job.get("goal", ""),
+                              corpus=company, stats=stats, cost=cost,
+                              deliverable=spec.get("deliverable") if isinstance(spec, dict) else None,
+                              mirror_emit=ctx.emit)
+    await ctx.dao.update_run(run_id, status="done", finished_at=now_iso(), stats=stats, cost=cost)
+    await ctx.emit(E.RUN_COMPLETED, {"run_id": run_id, "stats": stats, "cost": cost})
+    if summary["partial"]:
+        await ctx.emit(E.SYSTEM_NOTICE, {
+            "text": f"budget cap reached — partial dashboard ({summary['done']} of "
+                    f"{summary['total']} units)", "level": "warn"})
 
 
 async def drive_run(run_id: str) -> None:
+    """Registered-process run: load the version package, bind the corpus, execute the REAL
+    topology (or the real built artifact over the staging shim) with per-run metering."""
     run = await dao.get_run(run_id)
     if run is None:
         return
     scope = f"run:{run_id}"
-    manifest_sampling = 0.05   # TODO(wave2): read from the version manifest
+
+    async def _emit(type_: str, payload: dict | None = None) -> None:
+        await emit(scope, type_, payload or {})
+
+    try:
+        await _drive_run_inner(run, run_id, scope, _emit)
+    except Exception as exc:  # noqa: BLE001 — a failed run is a failed run, said out loud
+        await dao.update_run(run_id, status="failed", finished_at=now_iso())
+        await _emit(E.SYSTEM_NOTICE, {"text": f"run failed: {type(exc).__name__}: {str(exc)[:300]}",
+                                      "level": "error"})
+
+
+async def _drive_run_inner(run: dict, run_id: str, scope: str, _emit) -> None:
+    from app.sandbox import seeds
+
+    process = await dao.get_process(run["process_id"]) if run.get("process_id") else None
+    version = await dao.get_version(run["process_id"], run["version"]) if process else None
+    if not process or not version or not version.get("package_path"):
+        await dao.update_run(run_id, status="failed", finished_at=now_iso())
+        await _emit(E.SYSTEM_NOTICE, {"text": "run has no registered process/version package",
+                                      "level": "error"})
+        return
+    package = Path(version["package_path"])
+
+    params = run.get("params") or {}
+    company = ((params.get("corpus") or {}).get("company")
+               or process.get("corpus_company")
+               or (run.get("input_ref", "").removeprefix("company:")
+                   if str(run.get("input_ref", "")).startswith("company:") else None))
+    sample = params.get("sample") or {}
+
     await dao.update_run(run_id, status="running")
-    await emit(scope, E.RUN_STARTED, {"process_id": run["process_id"], "version": run["version"],
-                                      "kind": run["kind"]})
+    await _emit(E.RUN_STARTED, {"process_id": run["process_id"], "version": run["version"],
+                                "kind": run["kind"], "corpus": company})
 
-    n_units = _unit_count(run.get("input_ref", ""))
-    sem = asyncio.Semaphore(_UNIT_CONCURRENCY)
-    results = {"ok": 0, "needs_review": 0, "error": 0}
+    source_job = await dao.get_job(process.get("created_from_job") or "") or {}
+    request = source_job.get("request") or process.get("goal") or ""
+    spec = source_job.get("spec") if isinstance(source_job.get("spec"), dict) else {}
+    deliverable = params.get("deliverable") or (spec or {}).get("deliverable")
 
-    async def _unit(i: int) -> None:
-        async with sem:
-            unit_ref = f"unit-{i}"
-            # a per-unit judgment step through a LOCAL seat — accrues run cost, zero frontier
-            comp = await router.complete(
-                "oracle", [Message(role="user", content=f"Evaluate {unit_ref}")],
-                scope=scope, data_class="SANITIZED",
-                schema={"type": "object", "properties": {"score": {"type": "number"}},
-                        "required": ["score"]},
-            )
-            status = "needs_review" if i % 7 == 3 else ("error" if i % 11 == 9 else "ok")
-            results[status] += 1
-            await dao.add_run_unit(run_id=run_id, unit_ref=unit_ref, status=status,
-                                   result=comp.parsed or {}, trace=[{"step": "evaluate", "seat": "oracle"}],
-                                   unit_id=f"{run_id}-u{i}")
-            await emit(scope, E.RUN_UNIT_COMPLETED, {"unit": unit_ref, "status": status})
-            if (i + 1) % 4 == 0:
-                await emit(scope, E.RUN_PROGRESS, {"done": i + 1, "total": n_units})
-                await meter.tick(scope)
+    async def complete_fn(seat, messages, *, data_class, schema=None, **kw):
+        return await router.complete(seat, messages, scope=scope, data_class=data_class,
+                                     schema=schema, **kw)
 
-    await asyncio.gather(*[_unit(i) for i in range(n_units)])
-
-    # oracle spot-checks on a sample of ok units (08 §6); one deliberate discrepancy -> warranty ticket
-    n_spot = max(1, int(n_units * manifest_sampling))
-    for i in range(n_spot):
-        discrepancy = (i == 0 and run["kind"] == "batch")   # rehearsed warranty beat
-        await emit(scope, E.RUN_SPOTCHECK, {"unit": f"unit-{i}",
-                                            "verdict": "mismatch" if discrepancy else "match"})
-        if discrepancy:
-            tid = await dao.create_ticket(scope=f"process:{run['process_id']}", source="warranty",
-                                          severity="minor", title="spot-check discrepancy",
-                                          body={"instrument": "warranty", "repro": {"unit": f"unit-{i}"}})
-            await emit(scope, E.WARRANTY_TICKET, {"ticket_id": tid, "unit": f"unit-{i}"})
+    topo_file = package / "topology.json"
+    if topo_file.exists():
+        topology = json.loads(topo_file.read_text())
+        unit_def = topology.get("unit") or {}
+        noun = unit_def.get("noun") or "unit"
+        cap = int(sample.get("n") or settings.sandbox_max_units)
+        units = seeds.load_units(company, source=unit_def.get("source"), noun=noun,
+                                 cap=cap, sample=sample.get("mode", "first"))
+        summary = await execute_topology(
+            scope=scope, complete_fn=complete_fn, emit_fn=_emit, dao=dao,
+            plan_topology=topology, request=request, corpus_units=units, width=4,
+            run_id=run_id, corpus_company=company, process_id=run["process_id"])
+    else:
+        summary = await _drive_build_units(run, run_id, package, company, _emit)
 
     totals = await meter.scope_totals(scope)
-    stats = {"units": n_units, **results, "spot_checks": n_spot,
-             "discrepancies": 1 if run["kind"] == "batch" else 0}
-    cost = {"total_usd": totals["cost_usd"], "cost_per_unit": round(totals["cost_usd"] / max(1, n_units), 6),
+    stats = {"units": summary["total"], "completed": summary["done"], **summary["counts"],
+             "flagged_refs": summary["flagged"][:20], "partial": summary["partial"],
+             "sql_rows": summary["sql_rows"], "spot_checks": summary["spot_checks"],
+             "discrepancies": summary["discrepancies"], "corpus": company}
+    cost = {"total_usd": totals["cost_usd"],
+            "cost_per_unit": round(totals["cost_usd"] / max(1, summary["done"]), 6),
             "frontier_calls": 0}
-    await dao.update_run(run_id, status="done", finished_at=_now(), stats=stats, cost=cost)
-    await emit(scope, E.RUN_COMPLETED, {"stats": stats, "cost": cost})
+    # artifacts BEFORE the status flip — clients poll status==done and expect artifacts to exist
+    await _finalize_artifacts(run_id, process_name=process.get("name", ""),
+                              goal=process.get("goal", ""), corpus=company, stats=stats, cost=cost,
+                              deliverable=deliverable)
+    await dao.update_run(run_id, status="done", finished_at=now_iso(), stats=stats, cost=cost)
+    await _emit(E.RUN_COMPLETED, {"run_id": run_id, "stats": stats, "cost": cost})
 
 
-async def run_process_fanout(ctx, plan: dict) -> None:
-    """Process-mode stage 4'/5' — corpus fan-out + aggregation on the job scope (03 §8)."""
-    topology = plan.get("topology") or {}
-    unit_noun = topology.get("unit", {}).get("noun", "unit")
-    n_units = 6
-    for i in range(n_units):
-        comp = await ctx.complete("trust", [Message(role="user", content=f"Extract from {unit_noun} {i}")],
-                                  data_class="RAW",
-                                  schema={"type": "object", "properties": {"value": {"type": "string"}}})
-        await ctx.dao.add_run_unit(run_id=ctx.job_id, unit_ref=f"{unit_noun}-{i}", status="ok",
-                                   result=comp.parsed or {}, trace=[], unit_id=f"{ctx.job_id}-u{i}")
-        await ctx.emit(E.RUN_UNIT_COMPLETED, {"unit": f"{unit_noun}-{i}", "status": "ok"})
-        if (i + 1) % 3 == 0:
-            await ctx.emit(E.RUN_PROGRESS, {"done": i + 1, "total": n_units})
+async def _drive_build_units(run: dict, run_id: str, package: Path, company: str | None,
+                             _emit) -> dict:
+    """Build-mode process (entrypoint process.py): drive units through the staging shim over real
+    HTTP — the actual delivered artifact executes every unit.
+    # ponytail: in-proc uvicorn shim, not the per-process container — same contract (04 §3),
+    # upgrade path is the docker process-runtime image."""
+    from app.boundary.egress import http_client
+    from app.runtime import staging
+    from app.sandbox import seeds
+
+    manifest = {}
+    mf = package / "manifest.json"
+    if mf.exists():
+        manifest = json.loads(mf.read_text())
+
+    units = seeds.load_units(company, source=None, noun="unit", cap=settings.sandbox_max_units) \
+        if company else []
+    if not units:
+        n = int(run["input_ref"]) if str(run.get("input_ref", "")).isdigit() else 8
+        units = [(f"unit-{i}", {"id": f"unit-{i}"}) for i in range(n)]
+
+    handle = await staging.deploy(run["process_id"], manifest, str(package))
+    counts = {"ok": 0, "needs_review": 0, "error": 0}
+    flagged: list[str] = []
+    done = 0
+    responses: list[tuple[str, dict, dict]] = []
+    try:
+        for i, (ref, content) in enumerate(units):
+            try:
+                r = await http_client.post(f"{handle.base_url}/run_unit",
+                                           json={"id": ref, **content}, timeout=15.0)
+                body = r.json() if "json" in r.headers.get("content-type", "") else {}
+                if r.status_code != 200 or not isinstance(body, dict) or body.get("error"):
+                    status = "error"
+                elif any(body.get(k) for k in _FLAG_KEYS) or body.get("decision") == "review":
+                    status = "needs_review"
+                else:
+                    status = "ok"
+            except Exception as exc:  # noqa: BLE001
+                status, body = "error", {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+            counts[status] += 1
+            if status == "needs_review":
+                flagged.append(ref)
+            if status != "error":
+                responses.append((ref, content, body))
+            await dao.add_run_unit(run_id=run_id, unit_ref=ref, status=status,
+                                   result={"output": body}, trace=[{"step": "run_unit", "via": "staging"}],
+                                   unit_id=f"{run_id}-u{i}")
+            done += 1
+            if done % 5 == 0 or done == len(units):
+                await _emit(E.RUN_PROGRESS, {"run_id": run_id, "done": done, "total": len(units)})
+
+        # deterministic warranty spot-checks: the same input twice must answer the same
+        spot_checks = discrepancies = 0
+        for ref, content, first in random.sample(responses, min(3, len(responses))):
+            spot_checks += 1
+            try:
+                r2 = await http_client.post(f"{handle.base_url}/run_unit",
+                                            json={"id": ref, **content}, timeout=15.0)
+                second = r2.json() if "json" in r2.headers.get("content-type", "") else {}
+            except Exception:  # noqa: BLE001
+                continue
+            match = second == first
+            await _emit(E.RUN_SPOTCHECK, {"run_id": run_id, "unit": ref,
+                                          "verdict": "match" if match else "mismatch"})
+            if not match:
+                discrepancies += 1
+                tid = await dao.create_ticket(
+                    scope=f"process:{run['process_id']}", source="warranty", severity="minor",
+                    title="spot-check discrepancy",
+                    body={"instrument": "warranty", "repro": {"unit": ref}})
+                await _emit(E.WARRANTY_TICKET, {"ticket_id": tid, "unit": ref})
+    finally:
+        await handle.stop()
+
+    return {"counts": counts, "flagged": flagged, "done": done, "total": len(units),
+            "partial": False, "sql_rows": 0, "spot_checks": spot_checks,
+            "discrepancies": discrepancies}
 
 
-def _unit_count(input_ref: str) -> int:
-    if input_ref and input_ref.isdigit():
-        return int(input_ref)
-    return 8
+async def _finalize_artifacts(run_id: str, *, process_name: str, goal: str, corpus: str | None,
+                              stats: dict, cost: dict, deliverable: dict | None,
+                              mirror_emit=None) -> None:
+    """Generate findings.csv + report.html for a completed run and announce them. Never fails
+    the run — a deliverable bug must not eat the sweep that produced the data."""
+    from app.runtime import deliverables
 
-
-def _now() -> str:
-    from app.events import now_iso
-    return now_iso()
+    try:
+        units = await dao.list_run_units(run_id, limit=settings.sql_step_row_cap)
+        artifacts = deliverables.generate(run_id, process_name=process_name, goal=goal,
+                                          corpus=corpus, stats=stats, cost=cost, units=units,
+                                          deliverable=deliverable)
+    except Exception as exc:  # noqa: BLE001
+        await emit(f"run:{run_id}", E.SYSTEM_NOTICE,
+                   {"text": f"artifact generation failed: {type(exc).__name__}: {str(exc)[:200]}",
+                    "level": "warn"})
+        return
+    payload = {"run_id": run_id, "artifacts": artifacts}
+    await emit(f"run:{run_id}", E.RUN_ARTIFACTS_READY, payload)
+    if mirror_emit is not None:   # fan-out watchers live on the job scope
+        await mirror_emit(E.RUN_ARTIFACTS_READY, payload)

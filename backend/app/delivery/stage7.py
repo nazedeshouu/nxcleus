@@ -40,9 +40,19 @@ async def run(ctx) -> None:
     amendments = await ctx.dao.list_amendments(plan_id)
     consults = await ctx.dao.list_consults(plan_id)
 
-    # generated docs (trust seat)
+    # generated docs (trust seat). A budget-capped run (09 §4) must still deliver its partial
+    # dashboard — docs degrade to deterministic content rather than blocking the job.
     trust = seat("trust")
-    docs = await trust.write_docs(ctx.complete, ctx.emit, plan=plan, goal=goal)
+    try:
+        docs = await trust.write_docs(ctx.complete, ctx.emit, plan=plan, goal=goal)
+    except Exception as exc:
+        await ctx.emit(E.SYSTEM_NOTICE, {"text": f"docs generation skipped: {type(exc).__name__}",
+                                         "level": "warn", "scope": "delivery"})
+        docs = {"readme": f"# {job.get('title', 'Process')}\n\nGoal: {goal}\n",
+                "runbook": "## Runbook\n1. Provide a batch of units.\n2. Run the process.\n"
+                           "3. Review any needs_review units in the queue.\n",
+                "qa_report": "## QA report\nSee tickets and oracle checks in the package.\n",
+                "entry_module": "process"}
 
     # final invoice reconciled against the quote
     quote = await ctx.dao.get_quote(ctx.job_id)
@@ -78,8 +88,18 @@ async def run(ctx) -> None:
     process_id = await ctx.dao.create_process(slug=slug, name=job.get("title", slug), mode=mode,
                                               goal=goal, created_from_job=ctx.job_id,
                                               created_from=job.get("origin", "build"))
+    # corpus binding (hardening): registered-process runs default to the build-time corpus
+    company = (job.get("spec") or {}).get("company")
+    if company:
+        await ctx.dao.update_process(process_id, corpus_company=company)
     await ctx.dao.create_version(process_id=process_id, version=version, plan_id=plan_id,
                                  package_path=package_path, image_tag=manifest["image_tag"])
+
+    # link the build-time corpus run (process mode) to the registered process so the registry
+    # shows it as the process's first run with a filled dashboard
+    fanout_run_id = await ctx.get_checkpoint("fanout_run_id")
+    if fanout_run_id:
+        await ctx.dao.update_run(fanout_run_id, process_id=process_id, version=version)
 
     await ctx.emit(E.DELIVER_REGISTERED, {
         "process_id": process_id, "slug": slug, "version": version, "mode": mode,

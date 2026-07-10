@@ -70,6 +70,15 @@ push("intake.context_mapped", { files: 3, symbols: 0, tables: 4, masked_identifi
 push("intake.spec_updated", { spec: { summary: "Document intake → OCR → sanctions + PEP + adverse-media screening → risk scoring → audited case file.", acceptance: ["Every applicant yields a case file with a decision and evidence trail", "Sanctions matches cite the list and entry", "No raw PII crosses the boundary"] } });
 call("trust", "local:B/gemma-4-26b-a4b-it", "LOCAL", "RAW", 4200, 900, 0.0);
 push("intake.classified", { mode: "build", rationale: "A reusable pipeline with typed stages and tests fits build mode; the process runs forever on new applicants." });
+// the consultant beat: the platform parks and asks before spending anything
+push("intake.clarification_requested", {
+  questions: [
+    { id: "q_delivery", question: "How should each onboarding decision be delivered to your team?", kind: "delivery", options: ["Case-file report per applicant", "CSV for the ops queue", "Both"], required: true },
+    { id: "q_threshold", question: "Sanctions fuzzy-match threshold — stricter catches transliterations but flags more applicants for review.", kind: "threshold", options: ["Strict (0.82)", "Balanced (0.88)", "Loose (0.94)"], required: true },
+    { id: "q_population", question: "Which applicants should the first run cover?", kind: "population", options: ["All pending applicants", "New since last week"], required: false },
+  ],
+}, 400);
+push("intake.clarification_answered", { answers: 3 }, 40000);
 push("boundary.sanitized", {
   findings: [
     { rule_id: "PII-01", label: "Full names", count: 42, action: "masked" },
@@ -129,6 +138,8 @@ push("egress.request", { host: "api.anthropic.com", zone: "EXTERNAL", seat: "pla
 call("planner", "anthropic:claude-fable-5", "EXTERNAL", "SANITIZED", 240, 180, 0.02);
 push("certify.consult_resolved", { id: "cs_1", round: 1, resolution: "Add adverse-media weight 0.15; renormalize the other four weights." }, 320);
 amend("certifier", "Insert adverse-media into risk-score with weight 0.15; renormalize to sum 1.0.", "risk-score");
+push("certify.scenarios_emitted", { count: 12 }, 260);
+push("certify.rehydrated", { identifiers: 128 }, 240);
 meter();
 push("certify.certified", { tests: 34, vectors: 12, identifiers_rehydrated: 128 }, 400);
 push("job.stage_changed", { status: "quoted", stage: 3 }, 300);
@@ -213,8 +224,12 @@ push("job.stage_changed", { status: "qa", stage: 6 }, 300);
 /* ---------- stage 6: adversarial QA + oracle + goal check ---------- */
 push("qa.inspector_started", { scenario: "Sanctions evasion via transliterated name", seat: "inspector" }, 250);
 push("qa.probe", { scenario: "Sanctions evasion via transliterated name", probe: "Submit 'Vladimir' vs 'Wladimir' spelling variants" }, 240);
+push("qa.probe_update", { scenario: "Sanctions evasion via transliterated name", probe: "transliteration variants", status: "started" }, 200);
+push("qa.probe_update", { scenario: "Boundary integrity", probe: "exfiltrate raw PII via case-file notes", status: "started" }, 220);
 call("inspector", "local:B/qwen3.6-35b-a3b", "LOCAL", "RAW", 3400, 1600, 0.0);
+push("qa.probe_update", { scenario: "Boundary integrity", probe: "exfiltrate raw PII via case-file notes", status: "passed" }, 260);
 push("qa.finding", { scenario: "Sanctions evasion via transliterated name", result: "flag", detail: "Fuzzy matcher missed one transliteration; opened ticket." }, 260);
+push("qa.probe_update", { scenario: "Sanctions evasion via transliterated name", probe: "transliteration variants", status: "exhausted", detail: "found the gap after 3 attempts" }, 200);
 push("ticket.opened", { id: "tk_2", title: "sanctions-screen: add transliteration normalization", status: "opened", severity: "high", source: "inspector" }, 220);
 push("ticket.in_fix", { id: "tk_2", title: "sanctions-screen: add transliteration normalization", status: "in_fix", severity: "high", source: "inspector" }, 240);
 push("ticket.verified", { id: "tk_2", title: "sanctions-screen: add transliteration normalization", status: "verified", severity: "high", source: "inspector" }, 260);
@@ -230,6 +245,8 @@ meter(7, 30, 30);
 push("job.stage_changed", { status: "delivered", stage: 7 }, 300);
 
 /* ---------- stage 7: delivery ---------- */
+push("boundary.sweep", { clean: true, checked: 14 }, 240);
+push("deliver.docs_generated", { docs: ["runbook", "case-file template"] }, 260);
 push("deliver.registered", { process_id: "proc_kyc_onboarding", version: 1, package: { plan: true, docs: true, qa_report: true, tests: 62 } }, 300);
 push("job.done", { status: "done", stage: 7 }, 300);
 push("system.notice", { text: "Process registered. Ready to run on new applicants — zero frontier calls from here.", level: "info" }, 200);

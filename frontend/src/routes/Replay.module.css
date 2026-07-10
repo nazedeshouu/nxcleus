@@ -39,7 +39,7 @@
   border-radius: 50%;
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--paper);
   cursor: pointer;
   flex: none;
   transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);

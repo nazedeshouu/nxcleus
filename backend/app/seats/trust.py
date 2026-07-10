@@ -122,7 +122,16 @@ Write nothing that could reconstruct a protected value — not in an example, no
 comment, not in a narrative aside. If preserving fidelity would require leaking a value, \
 generalize instead and note the generalization. A downstream local model with full raw \
 access will restore production specificity after planning; your job is to lose no STRUCTURE \
-while leaking no VALUES. {ENGLISH_ONLY}
+while leaking no VALUES.
+
+CLARIFICATIONS: only if the request is MATERIALLY ambiguous, also emit `clarifications` — at \
+most 3 questions whose answers change the BUILT artifact: the delivery format (CSV, report, \
+case files), a numeric threshold, or the population/date-range in scope. NEVER ask what the \
+request already states, and never ask about anything that would not change what gets built. \
+Each question carries id, question, kind (delivery|threshold|population|scope), optional \
+options, and required. When nothing load-bearing is ambiguous, omit clarifications entirely. \
+If the context contains `clarification_answers`, treat them as binding facts and do not \
+re-ask. {ENGLISH_ONLY}
 
 {STRUCTURED_ONLY}"""
 
@@ -259,6 +268,16 @@ BRIEF_SCHEMA: dict[str, Any] = {
             "pii_fields_masked": {"type": "integer"}, "documents_ocred": {"type": "integer"},
             "policy_rules_applied": {"type": "array", "items": {"type": "string"}},
             "identifiers_generalized": {"type": "integer"}}},
+        # clarifying intake (hardening 2026-07-10): 0-3 questions whose answers change the artifact
+        "clarifications": {"type": "array", "items": {"type": "object", "properties": {
+            "id": {"type": "string"}, "question": {"type": "string"},
+            "kind": {"enum": ["delivery", "threshold", "population", "scope"]},
+            "options": {"type": "array", "items": {"type": "string"}},
+            "required": {"type": "boolean"}},
+            "required": ["id", "question", "kind"]}},
+        "deliverable": {"type": "object", "additionalProperties": True, "properties": {
+            "formats": {"type": "array", "items": {"type": "string"}},
+            "granularity": {"type": "string"}, "audience": {"type": "string"}}},
     },
     "required": ["title", "narrative", "mode"],
 }
@@ -291,6 +310,31 @@ DOCS_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "properties": {"readme_md": {"type": "string"}, "runbook_md": {"type": "string"}},
     "required": ["readme_md", "runbook_md"],
+}
+
+SYSTEM_NEXT_STEPS = f"""\
+A process run just finished; you advise the customer on what to do next. You receive the run's \
+goal, stats (units, flagged, errors, partial), open tickets, and deliverable preferences. \
+Return 3 to 5 concrete next steps, each with a title, a one-sentence why grounded in THIS \
+run's numbers, and an action the platform can execute: kind refine (change the process — give \
+the refine request in params.request), export (params.format csv|report), review (work the \
+needs_review queue), or rerun (params may raise budget, widen population, or set \
+sample.mode/n). Situation awareness, not boilerplate: many flagged items -> review first, then \
+a refine that tightens the threshold; zero flagged -> widen the population or loosen the \
+threshold; a partial run -> rerun with a higher budget. {ENGLISH_ONLY}
+
+{STRUCTURED_ONLY}"""
+
+NEXT_STEPS_SCHEMA: dict[str, Any] = {
+    "type": "object", "additionalProperties": False,
+    "properties": {"next_steps": {"type": "array", "items": {"type": "object", "properties": {
+        "title": {"type": "string"}, "why": {"type": "string"},
+        "action": {"type": "object", "properties": {
+            "kind": {"enum": ["refine", "export", "review", "rerun"]},
+            "params": {"type": "object", "additionalProperties": True}},
+            "required": ["kind"]}},
+        "required": ["title", "why", "action"]}}},
+    "required": ["next_steps"],
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -388,6 +432,15 @@ async def sanitization_sweep(
     return out
 
 
+async def suggest_next_steps(
+    complete: CompleteFn, emit: EmitFn, *, context: dict[str, Any], temperature: float | None = None,
+) -> dict[str, Any]:
+    """Post-run advisory (hardening 2026-07-10, M6). Returns {next_steps: [{title, why, action}]}."""
+    c = await complete("trust", convo(SYSTEM_NEXT_STEPS, as_json(context)),
+                       data_class=DATA_CLASS, schema=NEXT_STEPS_SCHEMA, temperature=temperature)
+    return parsed_or_raise(c, "trust.suggest_next_steps")
+
+
 async def generate_docs(
     complete: CompleteFn, emit: EmitFn, *, plan: dict[str, Any], goal: str, temperature: float | None = None,
 ) -> dict[str, str]:
@@ -445,7 +498,9 @@ async def sanitize_consult(
 
     masked, receipt = consult_sanitize(payload, vault_map)
     sweep = await sanitization_sweep(complete, emit, candidate_payload=masked,
-                                     placeholder_tokens=list(vault_map.values()), temperature=temperature)
+                                     # vault maps placeholder->raw; the sweep must see the PLACEHOLDER
+                                     # tokens — passing raw values would leak them into the receipt
+                                     placeholder_tokens=list(vault_map.keys()), temperature=temperature)
     final = masked if sweep.get("clean", True) else sweep.get("masked_payload", masked)
     receipt = {**receipt, "residuals": sweep.get("residuals", []), "clean": sweep.get("clean", True)}
     return final, receipt

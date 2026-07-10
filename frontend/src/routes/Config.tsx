@@ -1,23 +1,28 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Cpu, Plug, Lock, Trash, ShieldCheck, WifiHigh, WarningOctagon } from "@phosphor-icons/react";
+import { Cpu, Plug, Lock, Trash, ShieldCheck, WifiHigh, WarningOctagon, Warning } from "@phosphor-icons/react";
 import { api, type ConnectionInfo, type EgressRow, type ModelInfo } from "../api/client";
 import { ZoneBadge } from "../components/ui/ZoneBadge";
+import { DataClassChip } from "../components/ui/DataClassChip";
 import { useDemoToken } from "../api/useDemoToken";
 import { MOCK_FORCED } from "../api/config";
+import { SEAT_INFO } from "../api/adapt";
 import type { Seat, Zone } from "../lib/events";
 import styles from "./Config.module.css";
 
-const SEATS: { seat: Seat; zone: Zone }[] = [
-  { seat: "trust", zone: "LOCAL" },
-  { seat: "planner", zone: "EXTERNAL" },
-  { seat: "certifier", zone: "LOCAL" },
-  { seat: "conductor", zone: "LOCAL" },
-  { seat: "coder", zone: "LOCAL" },
-  { seat: "consolidator", zone: "LOCAL" },
-  { seat: "oracle", zone: "LOCAL" },
-  { seat: "inspector", zone: "LOCAL" },
+// ponytail: static seat→zone/role map mirrors infra/seats.yaml; fetch /seats if bindings go dynamic
+const SEATS: { seat: Seat; zone: Zone; role: string }[] = [
+  { seat: "trust", zone: "LOCAL", role: "Front door — intake dialogue, policy capture, sanitization" },
+  { seat: "planner", zone: "EXTERNAL", role: "Frontier architect — sees only the sanitized brief" },
+  { seat: "certifier", zone: "LOCAL", role: "Hardens the plan into checks, tests, and scope locks" },
+  { seat: "conductor", zone: "LOCAL", role: "Runs the build waves, reviews between each" },
+  { seat: "coder", zone: "LOCAL", role: "Writes the modules, fleet-parallel" },
+  { seat: "consolidator", zone: "LOCAL", role: "Merges modules behind the validation wall" },
+  { seat: "oracle", zone: "LOCAL", role: "Lineage-independent numeric verification" },
+  { seat: "inspector", zone: "LOCAL", role: "Adversarial QA probes" },
 ];
+
+const FLAG_PRESETS = ["code", "json", "long_context", "reasoning", "cheap"];
 
 function ModelRegistry({ models }: { models: ModelInfo[] }) {
   return (
@@ -61,20 +66,32 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
   const unlocked = useDemoToken();
   const qc = useQueryClient();
   const [form, setForm] = useState({ name: "", base_url: "", api_key: "", data_class_ceiling: "SANITIZED", counts_as_local: false });
+  const [modelId, setModelId] = useState("");
+  const [flags, setFlags] = useState<string[]>([]);
   const [flash, setFlash] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const refetch = () => qc.invalidateQueries({ queryKey: ["connections"] });
+  const toggleFlag = (f: string) => setFlags((fs) => (fs.includes(f) ? fs.filter((x) => x !== f) : [...fs, f]));
 
   const add = async () => {
     if (!form.name || !form.base_url) return;
     setBusy(true);
     setFlash(null);
     try {
-      await api.addConnection(form);
+      const res = await api.addConnection(form);
+      // register the first model with its capability flags in the same gesture
+      if (modelId.trim() && res?.connection?.id) {
+        await api
+          .addConnectionModel(res.connection.id, { provider_model_id: modelId.trim(), display_name: modelId.trim(), flags })
+          .catch(() => setFlash({ kind: "err", msg: "Connection saved, but the model registration failed — add it again below." }));
+      }
       setForm({ name: "", base_url: "", api_key: "", data_class_ceiling: "SANITIZED", counts_as_local: false });
-      setFlash({ kind: "ok", msg: "Connection registered. The key is stored write-only and returned masked." });
+      setModelId("");
+      setFlags([]);
+      setFlash((f) => f ?? { kind: "ok", msg: "Connection registered. The key is stored write-only and returned masked." });
       await refetch();
+      await qc.invalidateQueries({ queryKey: ["models"] });
     } catch (e) {
       const status = (e as { status?: number }).status;
       setFlash({ kind: "err", msg: status === 401 ? "401 — presenter token required." : `Could not add: ${(e as Error).message}` });
@@ -103,6 +120,11 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
           </div>
           <span className={styles.seatZone}>{c.zone}</span>
           <span className={styles.seatZone}>ceiling {c.data_class_ceiling ?? "SANITIZED"}</span>
+          {c.counts_as_local && (
+            <span className={styles.attest} title="Attested by you: this endpoint is treated as inside the walls — RAW data may route here">
+              <Warning weight="fill" /> counts as LOCAL
+            </span>
+          )}
           <span className={`${styles.spacer} ${styles.connKey}`}>{c.api_key}</span>
           <button className={styles.remove} disabled={!unlocked} onClick={() => remove(c.id)} title={unlocked ? "" : "Presenter mode required"}>
             <Trash weight="regular" style={{ width: 12, verticalAlign: "-2px" }} /> remove
@@ -130,10 +152,31 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
             <option value="RAW">RAW — raw data allowed (counts as local)</option>
           </select>
         </div>
+        <div className={styles.field}>
+          <label className={styles.label}>First model id (optional)</label>
+          <input className={styles.input} value={modelId} onChange={(e) => setModelId(e.target.value)} placeholder="glm-4.6" disabled={!unlocked} />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Capability flags</label>
+          <div className={styles.flagPick}>
+            {FLAG_PRESETS.map((f) => (
+              <button key={f} type="button" className={`${styles.flagChip} ${flags.includes(f) ? styles.on : ""}`} onClick={() => toggleFlag(f)} disabled={!unlocked}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
         <label className={`${styles.field} ${styles.full} ${styles.checkbox}`}>
           <input type="checkbox" checked={form.counts_as_local} onChange={(e) => setForm({ ...form, counts_as_local: e.target.checked })} disabled={!unlocked} />
           Counts as local (inside the walls — raw data may be routed here)
         </label>
+        {form.counts_as_local && (
+          <div className={`${styles.full} ${styles.warnNote}`}>
+            <Warning weight="fill" />
+            You are attesting that this endpoint sits inside your boundary. RAW customer data may be routed to it,
+            and the egress ledger will record it as a LOCAL zone. Only attest infrastructure you control.
+          </div>
+        )}
         {flash && <div className={`${styles.flash} ${flash.kind === "ok" ? styles.ok : styles.err}`}>{flash.msg}</div>}
         {unlocked ? (
           <button className={styles.submit} onClick={add} disabled={busy || !form.name || !form.base_url}>
@@ -147,15 +190,17 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
   );
 }
 
-function SeatBindings({ models }: { models: ModelInfo[] }) {
+function SeatCards({ models }: { models: ModelInfo[] }) {
   const unlocked = useDemoToken();
   const modelKeys = models.map((m) => m.key);
   const servedBy = (seat: Seat) => models.filter((m) => (m.serves ?? []).some((s) => s.startsWith(seat)));
   const [flash, setFlash] = useState<Record<string, { kind: "ok" | "err"; msg: string } | undefined>>({});
+  const [bound, setBound] = useState<Record<string, string>>({}); // optimistic override display
 
   const rebind = async (seat: Seat, model_key: string) => {
     try {
       await api.bindSeat(seat, { model_key });
+      setBound((b) => ({ ...b, [seat]: model_key }));
       setFlash((f) => ({ ...f, [seat]: { kind: "ok", msg: "rebound" } }));
     } catch (e) {
       const status = (e as { status?: number }).status;
@@ -164,25 +209,35 @@ function SeatBindings({ models }: { models: ModelInfo[] }) {
   };
 
   return (
-    <div className={styles.body}>
-      {SEATS.map(({ seat, zone }) => {
+    <div className={styles.seatGrid}>
+      {SEATS.map(({ seat, zone, role }) => {
         const serving = servedBy(seat);
+        const binding = bound[seat] ?? serving[0]?.key ?? SEAT_INFO[seat]?.model ?? "default binding";
         return (
-          <div key={seat} className={styles.seatRow}>
-            <span className={styles.seatName}>{seat}</span>
-            <span className={styles.seatZone}>{zone}</span>
-            <span className={styles.seatServe}>{serving.length ? serving.map((m) => m.key).join(", ") : "default binding"}</span>
-            {flash[seat] && <span className={`${styles.seatFlash} ${flash[seat]!.kind === "ok" ? styles.ok : styles.err}`}>{flash[seat]!.msg}</span>}
-            <select
-              className={styles.seatSelect}
-              defaultValue=""
-              disabled={!unlocked}
-              onChange={(e) => e.target.value && rebind(seat, e.target.value)}
-              title={unlocked ? "Rebind this seat" : "Presenter mode required"}
-            >
-              <option value="">rebind…</option>
-              {modelKeys.map((k) => <option key={k} value={k}>{k}</option>)}
-            </select>
+          <div key={seat} className={styles.seatCard}>
+            <div className={styles.seatCardHead}>
+              <span className={styles.seatName}>{seat}</span>
+              <ZoneBadge zone={zone} size="xs" />
+            </div>
+            <p className={styles.seatRole}>{role}</p>
+            <div className={styles.seatBind}>
+              <span className={styles.seatBindLbl}>binding</span>
+              <span className={styles.seatBindModel}>{binding}</span>
+              <DataClassChip cls={zone === "LOCAL" ? "RAW" : "SANITIZED"} size="xs" />
+            </div>
+            <div className={styles.seatCardFoot}>
+              <select
+                className={styles.seatSelect}
+                value=""
+                disabled={!unlocked}
+                onChange={(e) => e.target.value && rebind(seat, e.target.value)}
+                title={unlocked ? "Override this seat's binding" : "Presenter mode required"}
+              >
+                <option value="">override…</option>
+                {modelKeys.map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+              {flash[seat] && <span className={`${styles.seatFlash} ${flash[seat]!.kind === "ok" ? styles.ok : styles.err}`}>{flash[seat]!.msg}</span>}
+            </div>
           </div>
         );
       })}
@@ -258,12 +313,23 @@ export function Config() {
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
-        <h1 className={styles.title}>Configuration</h1>
+        <h1 className={styles.title}>Models & seats</h1>
         <p className={styles.sub}>
           The routing substrate. Application code addresses seats, never models — bindings and BYOK endpoints live here, and every
           route is checked against the seat's zone and data-class ceiling before a single token moves.
         </p>
       </div>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHead}>
+          <ShieldCheck weight="regular" style={{ width: 16, color: "var(--text-muted)" }} />
+          <span className={styles.sectionTitle}>Seats</span>
+          <span className={styles.sectionNote}>who does what, and which model holds the seat · overriding to an ineligible model is rejected (409)</span>
+        </div>
+        <div className={styles.body}>
+          <SeatCards models={models} />
+        </div>
+      </section>
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
@@ -283,15 +349,6 @@ export function Config() {
           <span className={styles.sectionNote}>keys stored write-only, returned masked</span>
         </div>
         <Connections connections={connections} />
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionHead}>
-          <ShieldCheck weight="regular" style={{ width: 16, color: "var(--text-muted)" }} />
-          <span className={styles.sectionTitle}>Seat bindings</span>
-          <span className={styles.sectionNote}>rebinding to an ineligible model is rejected (409)</span>
-        </div>
-        <SeatBindings models={models} />
       </section>
 
       <EgressLedger />

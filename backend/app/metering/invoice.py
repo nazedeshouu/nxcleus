@@ -47,5 +47,5 @@ async def build_invoice(scope: str, quote_body: dict | None = None) -> dict:
     }
     if quote_body:
         invoice["quote_total_est_usd"] = quote_body.get("total_est_usd")
-        invoice["delta_vs_quote"] = round(total - (quote_body.get("total_est_usd", [0, 0])[0]), 6)
+        invoice["delta_vs_quote"] = round(total - (quote_body.get("total_est_usd") or [0, 0])[0], 6)
     return invoice

@@ -16,6 +16,8 @@ import type {
   TelemetryGpuPayload,
   TicketStatus,
   TicketSeverity,
+  ClarifyQuestion,
+  RunArtifact,
 } from "../lib/events";
 
 export interface ChatTurn {
@@ -39,6 +41,15 @@ export interface ConsultEntry {
   brief_tokens: number;
   resolution?: string;
   repaired?: boolean; // scope-lock was auto-repaired to a valid region
+  requested?: boolean; // consult_requested seen, not yet opened (still sanitizing)
+  reason?: string;
+  seq: number;
+}
+export interface ProbeEntry {
+  scenario: string;
+  probe: string;
+  status: "started" | "passed" | "timeout" | "exhausted";
+  detail?: string;
   seq: number;
 }
 export interface ScopeViolationEntry {
@@ -136,6 +147,7 @@ export interface JobView {
     modules?: number;
     bom: BomLine[];
     streaming: boolean;
+    replans: Array<{ note?: string; wave?: number; seq: number }>;
   };
 
   certify: {
@@ -146,6 +158,8 @@ export interface JobView {
     certified?: { tests: number; vectors: number; identifiers_rehydrated: number };
     deferredConsults?: number;
     scopeViolations: ScopeViolationEntry[];
+    scenariosEmitted?: number;
+    rehydrated?: number;
   };
 
   quote: { lines: QuoteLine[]; low?: number; high?: number; approved?: number };
@@ -159,15 +173,29 @@ export interface JobView {
   qa: {
     inspectors: Array<{ scenario: string; seat: string }>;
     probes: Array<{ scenario: string; probe: string }>;
+    probeBoard: Record<string, ProbeEntry>; // key `${scenario}#${probe}` — live probe status
     findings: Array<{ scenario: string; result: "clear" | "flag"; detail?: string }>;
     oracleChecks: Array<{ vector: string; verdict: "match" | "mismatch"; model: string }>;
+    votes: Array<{ vector: string; vote: string }>;
     goalCheck?: { verdict: "fulfilled" | "partial" | "failed"; gaps: string[] };
     passed?: { scenarios: number; probes: number; tickets_resolved: number };
   };
 
+  fixes: Array<{ module: string; note?: string; seq: number }>;
+
   tickets: Record<string, TicketState>;
 
   delivery?: { process_id: string; version: number; package: { plan: boolean; docs: boolean; qa_report: boolean; tests: number } };
+  deliveryDocs?: string[];
+
+  boundarySweep?: { seq: number; clean: boolean; checked?: number; findings?: number };
+  clarifications?: { questions: ClarifyQuestion[]; answered: boolean };
+  runArtifacts?: RunArtifact[];
+  traceCount: number;
+  /** runtime-commissioned python tools (F7): created names + invocation count */
+  tools: { created: Array<{ name: string; agent?: string }>; invocations: number };
+  /** the "now" strip: one always-fresh line derived from the latest meaningful event */
+  now?: { seq: number; text: string };
 
   cost: { cost_usd: number; tokens: number; gpu_seconds: number };
   modelCalls: Array<{ seq: number; seat: string; backend: string; zone: string; data_class: string; cost_usd: number; tokens: number }>;
@@ -195,14 +223,17 @@ export function initialJobView(scope = ""): JobView {
     status: "created",
     stage: 0,
     intake: { messages: [], acceptance: [] },
-    plan: { deltaText: "", bom: [], streaming: false },
+    plan: { deltaText: "", bom: [], streaming: false, replans: [] },
     certify: { checks: [], amendments: [], consults: [], scopeViolations: [] },
     quote: { lines: [] },
     fleet: { nodes: {} },
     build: { waves: {}, tasks: {}, taskWave: {} },
     consolidate: { testRuns: [] },
-    qa: { inspectors: [], probes: [], findings: [], oracleChecks: [] },
+    qa: { inspectors: [], probes: [], probeBoard: {}, findings: [], oracleChecks: [], votes: [] },
+    fixes: [],
     tickets: {},
+    traceCount: 0,
+    tools: { created: [], invocations: 0 },
     cost: { cost_usd: 0, tokens: 0, gpu_seconds: 0 },
     modelCalls: [],
     egress: [],
@@ -266,6 +297,17 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
     case "boundary.sanitized":
       v.intake = { ...v.intake, boundary: { findings: ev.payload.findings, never_leaves: ev.payload.never_leaves, brief_tokens: ev.payload.brief_tokens } };
       break;
+    case "boundary.sweep":
+      v.boundarySweep = { seq: ev.seq, clean: ev.payload.clean, checked: ev.payload.checked, findings: ev.payload.findings };
+      break;
+    case "intake.clarification_requested":
+      v.clarifications = { questions: ev.payload.questions, answered: false };
+      if (v.stage === 0) v.status = "awaiting_input";
+      break;
+    case "intake.clarification_answered":
+      if (v.clarifications) v.clarifications = { ...v.clarifications, answered: true };
+      if (v.status === "awaiting_input") v.status = "intake";
+      break;
 
     /* stage 1 */
     case "plan.started":
@@ -277,10 +319,30 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
     case "plan.completed":
       v.plan = { ...v.plan, summary: ev.payload.summary, topology: ev.payload.topology, modules: ev.payload.modules, bom: ev.payload.bom, streaming: false };
       break;
+    case "plan.replanned":
+      v.plan = { ...v.plan, replans: [...v.plan.replans, { note: ev.payload.note, wave: ev.payload.wave, seq: ev.seq }] };
+      break;
 
     /* stage 2 */
     case "certify.check_started":
       v.certify = { ...v.certify, checks: [...v.certify.checks, { check: ev.payload.check, status: "running" }] };
+      break;
+    case "certify.check_completed": {
+      // upsert: sql-step validations can complete without a check_started
+      const known = v.certify.checks.some((c) => c.check === ev.payload.check);
+      v.certify = {
+        ...v.certify,
+        checks: known
+          ? v.certify.checks.map((c) => (c.check === ev.payload.check && c.status === "running" ? { ...c, status: "done" } : c))
+          : [...v.certify.checks, { check: ev.payload.check, status: "done" }],
+      };
+      break;
+    }
+    case "certify.scenarios_emitted":
+      v.certify = { ...v.certify, scenariosEmitted: ev.payload.count };
+      break;
+    case "certify.rehydrated":
+      v.certify = { ...v.certify, rehydrated: ev.payload.identifiers };
       break;
     case "certify.finding":
       v.certify = { ...v.certify, checks: v.certify.checks.map((c) => (c.check === ev.payload.check ? { ...c, status: "finding", finding: ev.payload.finding, severity: ev.payload.severity } : c)) };
@@ -293,9 +355,24 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       v.certify = { ...v.certify, amendments: [...v.certify.amendments, { id: ev.payload.id, origin: ev.payload.origin, summary: ev.payload.summary, hash: ev.payload.hash, prev_hash, region: ev.payload.region, seq: ev.seq }] };
       break;
     }
-    case "certify.consult_opened":
-      v.certify = { ...v.certify, consults: [...v.certify.consults, { id: ev.payload.id, scope: ev.payload.scope, round: ev.payload.round, rules_applied: ev.payload.sanitization_receipt.rules_applied, brief_tokens: ev.payload.sanitization_receipt.brief_tokens, seq: ev.seq }] };
+    case "certify.consult_requested": {
+      // pre-open beat: shows as "requested · sanitizing" until consult_opened lands
+      if (v.certify.consults.some((c) => c.id === ev.payload.id)) break;
+      const entry: ConsultEntry = { id: ev.payload.id, scope: ev.payload.scope ?? "", round: 0, rules_applied: [], brief_tokens: 0, requested: true, reason: ev.payload.reason, seq: ev.seq };
+      v.certify = { ...v.certify, consults: [...v.certify.consults, entry] };
       break;
+    }
+    case "certify.consult_opened": {
+      const opened: ConsultEntry = { id: ev.payload.id, scope: ev.payload.scope, round: ev.payload.round, rules_applied: ev.payload.sanitization_receipt.rules_applied, brief_tokens: ev.payload.sanitization_receipt.brief_tokens, seq: ev.seq };
+      const exists = v.certify.consults.some((c) => c.id === ev.payload.id);
+      v.certify = {
+        ...v.certify,
+        consults: exists
+          ? v.certify.consults.map((c) => (c.id === ev.payload.id ? { ...c, ...opened, requested: false, seq: c.seq } : c))
+          : [...v.certify.consults, opened],
+      };
+      break;
+    }
     case "certify.consult_resolved":
       v.certify = { ...v.certify, consults: v.certify.consults.map((c) => (c.id === ev.payload.id ? { ...c, resolution: ev.payload.resolution } : c)) };
       break;
@@ -380,6 +457,18 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       if (w) v.build = { ...v.build, waves: { ...v.build.waves, [ev.payload.wave]: { ...w, status: "green" } } };
       break;
     }
+    case "conductor.goal_drift": {
+      const waveKeys = Object.keys(v.build.waves).map(Number);
+      const wn = ev.payload.wave ?? (waveKeys.length ? Math.max(...waveKeys) : 1);
+      const w = v.build.waves[wn] ?? { wave: wn, of: 0, modules: [], status: "running" as const };
+      v.build = { ...v.build, waves: { ...v.build.waves, [wn]: { ...w, goal_drift: ev.payload.drift, note: ev.payload.note ?? w.note } } };
+      break;
+    }
+    case "task.fix_applied":
+      v.fixes = [...v.fixes, { module: ev.payload.module, note: ev.payload.note, seq: ev.seq }];
+      break;
+    case "task.files_written":
+      break; // narrated by the "now" strip; the worker card shows tests/LOC from task.completed
 
     /* stage 5 */
     case "consolidate.started":
@@ -398,6 +487,14 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       break;
     case "qa.probe":
       v.qa = { ...v.qa, probes: [...v.qa.probes, { scenario: ev.payload.scenario, probe: ev.payload.probe }] };
+      break;
+    case "qa.probe_update": {
+      const key = `${ev.payload.scenario}#${ev.payload.probe}`;
+      v.qa = { ...v.qa, probeBoard: { ...v.qa.probeBoard, [key]: { scenario: ev.payload.scenario, probe: ev.payload.probe, status: ev.payload.status, detail: ev.payload.detail, seq: ev.seq } } };
+      break;
+    }
+    case "qa.oracle_vote":
+      v.qa = { ...v.qa, votes: [...v.qa.votes, { vector: ev.payload.vector, vote: ev.payload.vote }] };
       break;
     case "qa.finding":
       v.qa = { ...v.qa, findings: [...v.qa.findings, { scenario: ev.payload.scenario, result: ev.payload.result, detail: ev.payload.detail }] };
@@ -418,6 +515,7 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       v.tickets = { ...v.tickets, [ev.payload.id]: { id: ev.payload.id, title: ev.payload.title, status: ev.payload.status, severity: ev.payload.severity, source: ev.payload.source, scope: ev.payload.scope } };
       break;
     case "ticket.in_fix":
+    case "ticket.fix_applied":
     case "ticket.verified":
     case "ticket.human_review": {
       // status transition: keep the ticket's opened metadata, only advance status
@@ -434,8 +532,14 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       v.stage = 7;
       break;
     }
+    case "deliver.docs_generated":
+      v.deliveryDocs = ev.payload.docs;
+      break;
     case "run.started":
       v.runs = { ...v.runs, [ev.payload.run_id]: { units: ev.payload.units, done: 0, flagged: 0, status: "running" } };
+      break;
+    case "run.artifacts_ready":
+      v.runArtifacts = ev.payload.artifacts;
       break;
     case "run.progress": {
       const anyKey = Object.keys(v.runs)[Object.keys(v.runs).length - 1];
@@ -463,6 +567,17 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
     /* router / meter / egress / telemetry */
     case "model.call":
       v.modelCalls = [{ seq: ev.seq, seat: ev.payload.seat, backend: ev.payload.backend, zone: ev.payload.zone, data_class: ev.payload.data_class, cost_usd: ev.payload.cost_usd, tokens: ev.payload.tokens_in + ev.payload.tokens_out }, ...v.modelCalls].slice(0, MAX_CALLS);
+      break;
+    case "model.trace":
+      v.traceCount = v.traceCount + 1; // full traces live in the /traces inspector
+      break;
+    case "run.sql_step":
+      break; // narrated by the "now" strip
+    case "tool.created":
+      v.tools = { ...v.tools, created: [...v.tools.created, { name: ev.payload.name, agent: ev.payload.agent }] };
+      break;
+    case "tool.invoked":
+      v.tools = { ...v.tools, invocations: v.tools.invocations + 1 };
       break;
     case "meter.tick":
       v.cost = { cost_usd: ev.payload.cost_usd, tokens: ev.payload.tokens, gpu_seconds: ev.payload.gpu_seconds };
@@ -507,7 +622,131 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       return _never;
     }
   }
+  const line = nowText(ev);
+  if (line) v.now = { seq: ev.seq, text: line };
   return v;
+}
+
+const shortBackend = (b: string) => b.replace(/^local:[A-Z]\//, "").replace(/^anthropic:/, "");
+
+/** One human line per meaningful event — feeds the mission-control "now" strip. */
+function nowText(ev: NxEvent): string | null {
+  switch (ev.type) {
+    case "intake.message":
+      return ev.payload.role === "trust" ? "intake: the trust seat is talking to the customer" : null;
+    case "intake.classified":
+      return `intake: classified as ${ev.payload.mode} mode`;
+    case "intake.clarification_requested":
+      return `intake: ${ev.payload.questions.length} question${ev.payload.questions.length === 1 ? "" : "s"} for you — parked until you answer`;
+    case "intake.clarification_answered":
+      return "intake: answers received, resuming";
+    case "intake.policy_registered":
+      return `intake: ${ev.payload.rule_count} policy rules registered`;
+    case "intake.context_mapped":
+      return `intake: mapped ${ev.payload.tables} tables, masked ${ev.payload.masked_identifiers} identifiers`;
+    case "boundary.sanitized":
+      return `boundary: brief sanitized — ${ev.payload.brief_tokens} tokens may cross`;
+    case "boundary.sweep":
+      return ev.payload.clean ? "boundary: sweep clean" : `boundary: sweep found ${ev.payload.findings} issue${ev.payload.findings === 1 ? "" : "s"}`;
+    case "plan.started":
+      return `planner: drafting on ${shortBackend(ev.payload.planner_model)}`;
+    case "plan.completed":
+      return `planner: ${ev.payload.modules} modules, ${ev.payload.topology} topology`;
+    case "plan.replanned":
+      return ev.payload.note ? `planner: revised — ${ev.payload.note}` : "planner: plan revised after review";
+    case "certify.check_started":
+      return `certifier: running ${ev.payload.check}`;
+    case "certify.check_completed":
+      return `certifier: ${ev.payload.check} complete`;
+    case "certify.finding":
+      return `certifier: ${ev.payload.severity} finding in ${ev.payload.check}`;
+    case "certify.consult_requested":
+      return "certifier: consult requested — sanitizing the brief";
+    case "certify.consult_opened":
+      return `certifier: consult ${ev.payload.round} sanitized → planner`;
+    case "certify.consult_resolved":
+      return `certifier: consult ${ev.payload.round} resolved`;
+    case "certify.scenarios_emitted":
+      return `certifier: ${ev.payload.count} adversarial scenarios emitted`;
+    case "certify.rehydrated":
+      return `certifier: ${ev.payload.identifiers} identifiers rehydrated inside the walls`;
+    case "certify.certified":
+      return `certified — ${ev.payload.tests} tests, ${ev.payload.vectors} oracle vectors`;
+    case "quote.issued":
+      return "quote issued — awaiting approval";
+    case "quote.approved":
+      return "quote approved, provisioning the fleet";
+    case "fleet.node_ready":
+      return `fleet: node ${ev.payload.node} up with ${ev.payload.gpus} GPUs`;
+    case "conductor.wave_started":
+      return `wave ${ev.payload.wave}/${ev.payload.of}: ${ev.payload.modules.length} modules dispatched`;
+    case "task.started":
+      return `wave ${ev.payload.wave}: building ${ev.payload.module} on ${shortBackend(ev.payload.backend)}`;
+    case "task.tests":
+      return `${ev.payload.module}: ${ev.payload.passed} tests passing${ev.payload.failed ? `, ${ev.payload.failed} failing` : ""}`;
+    case "task.completed":
+      return `${ev.payload.module} complete`;
+    case "task.failed":
+      return `${ev.payload.module} failed — conductor stepping in`;
+    case "task.fix_applied":
+      return `fix applied to ${ev.payload.module}`;
+    case "task.files_written":
+      return `${ev.payload.module}: ${ev.payload.files} files written`;
+    case "conductor.review":
+      return `conductor: reviewing wave ${ev.payload.wave}`;
+    case "conductor.green_flag":
+      return `conductor: wave ${ev.payload.wave} green-flagged`;
+    case "conductor.goal_drift":
+      return ev.payload.drift != null ? `conductor: goal drift ${(ev.payload.drift * 100).toFixed(0)}%` : "conductor: checking against the original goal";
+    case "consolidate.started":
+      return `consolidating ${ev.payload.modules} modules`;
+    case "consolidate.test_run":
+      return `validation wall: ${ev.payload.passed}/${ev.payload.total} tests passing`;
+    case "qa.inspector_started":
+      return `QA: ${ev.payload.scenario}`;
+    case "qa.probe":
+      return `QA: probing ${ev.payload.scenario}`;
+    case "qa.probe_update":
+      return ev.payload.status === "started"
+        ? `QA: probing ${ev.payload.probe}`
+        : `QA: probe ${ev.payload.status} — ${ev.payload.probe}`;
+    case "qa.finding":
+      return ev.payload.result === "flag" ? `QA: flagged ${ev.payload.scenario}` : `QA: ${ev.payload.scenario} clear`;
+    case "qa.oracle_check":
+      return `oracle: ${ev.payload.vector} ${ev.payload.verdict}`;
+    case "qa.oracle_vote":
+      return `oracle: vote on ${ev.payload.vector} — ${ev.payload.vote}`;
+    case "qa.passed":
+      return `QA passed — ${ev.payload.probes} probes across ${ev.payload.scenarios} scenarios`;
+    case "ticket.opened":
+      return `ticket opened: ${ev.payload.title}`;
+    case "ticket.fix_applied":
+      return `fix applied: ${ev.payload.title} (retest pending)`;
+    case "ticket.verified":
+      return `ticket verified: ${ev.payload.title}`;
+    case "deliver.docs_generated":
+      return "delivery: docs generated";
+    case "deliver.registered":
+      return "delivered to the operations registry";
+    case "run.progress":
+      return `run: ${ev.payload.done}/${ev.payload.total} units processed`;
+    case "run.artifacts_ready":
+      return "run: deliverables ready — report and CSV";
+    case "run.sql_step":
+      return `sql step: ${ev.payload.label} — ${ev.payload.rows.toLocaleString()} candidates`;
+    case "tool.created":
+      return `${ev.payload.agent ?? "agent"}: commissioned tool ${ev.payload.name}`;
+    case "tool.invoked":
+      return ev.payload.ok
+        ? `tool ${ev.payload.name} ran${ev.payload.ms != null ? ` in ${ev.payload.ms}ms` : ""}`
+        : `tool ${ev.payload.name} failed`;
+    case "run.completed":
+      return `run complete — ${ev.payload.units} units, ${ev.payload.flagged} flagged`;
+    case "egress.violation":
+      return "BLOCKED: external call stopped at the boundary";
+    default:
+      return null;
+  }
 }
 
 export function foldEvents(events: NxEvent[], scope = ""): JobView {

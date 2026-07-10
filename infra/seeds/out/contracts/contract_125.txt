@@ -11,10 +11,14 @@ This Agreement does not renew automatically and expires at the end of the initia
 3. CONFIDENTIALITY. Each party shall protect the other's Confidential Information and shall not
 disclose it to any third party without prior written consent.
 
-4. TERMINATION. Either party may terminate for material breach upon 30 days' written notice if the
+4. LIMITATION OF LIABILITY. Under no circumstances shall either party be liable beyond the fees received under this Agreement.
+
+5. INDEMNIFICATION. The indemnity provided herein is bounded by, and shall not exceed, the liability cap in this Agreement.
+
+6. TERMINATION. Either party may terminate for material breach upon 30 days' written notice if the
 breach remains uncured.
 
-5. GOVERNING LAW. This Agreement is governed by the laws of the State of Delaware.
+7. GOVERNING LAW. This Agreement is governed by the laws of the State of Delaware.
 
 IN WITNESS WHEREOF, the parties have executed this Agreement.
 

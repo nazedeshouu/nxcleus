@@ -1,0 +1,800 @@
+<title>Solano Marketplace — Dataset Dossier (market.db)</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --ink: #e9f4f8;
+  --paper: #060f14;
+  --surface: #0a1a21;
+  --surface-sunk: #071319;
+  --surface-raised: #0d2029;
+  --hairline: #163542;
+  --hairline-soft: #112834;
+  --text: #dcebf0;
+  --text-muted: #85a0aa;
+  --text-faint: #567179;
+  --accent: #38a6d2;
+  --accent-strong: #85d3f0;
+  --accent-mid: #216f92;
+  --accent-pale: #0e2c3a;
+  --accent-wash: rgba(56, 166, 210, 0.09);
+  --ok: #4bcb90;
+  --warn: #e2a35e;
+  --danger: #ff5f65;
+  --danger-strong: #ff888c;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+  --maxw: 1180px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+code { font-family: var(--font-mono); font-size: 0.92em; color: var(--accent-strong); }
+h1, h2, h3 { font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
+a { color: var(--accent-strong); }
+
+.topnav {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(6, 15, 20, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--hairline);
+}
+.topnav .wrap { display: flex; align-items: center; justify-content: space-between; height: 52px; }
+.nav-brand { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); }
+.nav-links { display: flex; gap: 22px; }
+.nav-links a { font-size: 0.85rem; color: var(--text-muted); text-decoration: none; }
+.nav-links a:hover { color: var(--accent-strong); }
+
+#masthead { padding: 64px 0 44px; border-bottom: 1px solid var(--hairline); }
+.mh-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 32px; flex-wrap: wrap; }
+.mh-kicker { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.mh-id h1 { font-size: clamp(2.2rem, 4vw, 3rem); margin: 10px 0 14px; }
+.mh-premise { max-width: 62ch; color: var(--text-muted); font-size: 1.05rem; }
+.chip {
+  font-family: var(--font-mono); font-size: 0.76rem; letter-spacing: 0.02em;
+  border: 1px solid var(--hairline); border-radius: 999px; padding: 7px 14px;
+  color: var(--accent-strong); white-space: nowrap; background: var(--accent-wash);
+}
+.mh-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--hairline); margin-top: 40px; border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+.mh-stats > div { background: var(--surface); padding: 20px 22px; }
+.mh-stats dt { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; }
+.mh-stats dd { margin: 0; font-family: var(--font-mono); font-size: 1.4rem; color: var(--ink); }
+
+section { padding: 64px 0; border-bottom: 1px solid var(--hairline); }
+section h2 { font-size: clamp(1.5rem, 2.4vw, 2rem); margin: 0 0 10px; }
+.section-lede { color: var(--text-muted); max-width: 74ch; margin: 0 0 36px; }
+
+.scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.scenario-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 26px 28px; }
+.scenario-card h3 { font-size: 1.15rem; margin: 0 0 16px; }
+.prompt-label, .planted-label, .sql-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); margin: 18px 0 6px; }
+.prompt-label { margin-top: 0; }
+.prompt { font-style: italic; color: var(--accent-strong); border-left: 2px solid var(--accent-mid); padding-left: 14px; margin: 0; }
+.value { color: var(--text); margin: 14px 0 0; }
+.planted { color: var(--text-muted); font-size: 0.94rem; margin: 0; }
+pre.sql {
+  font-family: var(--font-mono); font-size: 0.76rem; line-height: 1.55; color: var(--text-muted);
+  background: var(--surface-sunk); border: 1px solid var(--hairline-soft); border-radius: 8px;
+  padding: 14px 16px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin: 0;
+}
+.result-note { font-size: 0.8rem; color: var(--text-faint); margin: 14px 0 10px; }
+.tbl-scroll { overflow-x: auto; border: 1px solid var(--hairline-soft); border-radius: 8px; }
+table.result-table { border-collapse: collapse; width: 100%; font-size: 0.82rem; white-space: nowrap; }
+table.result-table th, table.result-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--hairline-soft); }
+table.result-table th { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-faint); background: var(--surface-sunk); position: sticky; top: 0; }
+table.result-table td { font-family: var(--font-mono); color: var(--text); }
+table.result-table tbody tr:last-child td { border-bottom: none; }
+table.result-table tbody tr:hover { background: var(--accent-wash); }
+
+.sbadge {
+  display: inline-block; font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600;
+  letter-spacing: 0.02em; padding: 1px 6px; border-radius: 4px; margin-left: 6px;
+  border: 1px solid; vertical-align: middle;
+}
+.sbadge-pii { color: var(--warn); border-color: var(--warn); background: rgba(226,163,94,0.1); }
+.sbadge-geo { color: var(--danger-strong); border-color: var(--danger); background: rgba(255,95,101,0.1); }
+.sbadge-pseudo { color: var(--accent-strong); border-color: var(--accent); background: var(--accent-wash); }
+.sbadge-pci { color: var(--danger-strong); border-color: var(--danger); background: rgba(255,95,101,0.1); }
+.sbadge-biz { color: var(--text-muted); border-color: var(--hairline); background: var(--surface-sunk); }
+
+.model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 44px; }
+.model-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+.model-card-head { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 18px; border-bottom: 1px solid var(--hairline-soft); }
+.model-card-head h3 { margin: 0; font-size: 0.95rem; font-family: var(--font-mono); }
+.rowcount { font-size: 0.72rem; color: var(--text-faint); font-family: var(--font-mono); }
+table.model-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+table.model-table td { padding: 7px 18px; border-bottom: 1px solid var(--hairline-soft); }
+table.model-table tr:last-child td { border-bottom: none; }
+.colname { font-family: var(--font-mono); color: var(--text); }
+.coltype { font-family: var(--font-mono); color: var(--text-faint); text-align: right; }
+.fk-map { background: var(--surface-sunk); border: 1px solid var(--hairline-soft); border-radius: 10px; padding: 20px 26px; }
+.fk-map h3 { font-size: 0.9rem; margin: 0 0 14px; color: var(--text-muted); }
+.fk-row { font-family: var(--font-mono); font-size: 0.86rem; display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--text); }
+.fk-arrow { color: var(--accent); }
+
+.sample-block { margin-bottom: 32px; }
+.sample-block h3 { font-family: var(--font-mono); font-size: 1rem; margin: 0 0 10px; display: flex; align-items: baseline; gap: 10px; }
+
+.inventory-heading { font-size: 1rem; color: var(--text-muted); margin: 0 0 12px; }
+.inventory-table { margin-bottom: 40px; }
+.terms-doc { max-width: 76ch; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 8px 36px 28px; }
+.terms-doc h3 { margin-top: 30px; font-size: 1.1rem; }
+.terms-doc p { color: var(--text-muted); }
+.terms-doc ul { padding-left: 20px; color: var(--text-muted); }
+.terms-doc li { margin-bottom: 10px; }
+.terms-doc strong { color: var(--text); }
+
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.chart-fig { margin: 0; background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 20px 20px 18px; }
+.chart-fig-wide { grid-column: 1 / -1; }
+.chart-svg { width: 100%; height: auto; display: block; }
+.chart-fig figcaption { font-size: 0.85rem; color: var(--text-muted); margin-top: 10px; }
+.chart-panel-title { font-family: var(--font-mono); font-size: 11px; fill: var(--text-muted); }
+.grid-line { stroke: var(--hairline-soft); stroke-width: 1; }
+.axis-line { stroke: var(--hairline); stroke-width: 1; }
+.tick-label { font-family: var(--font-mono); font-size: 11px; fill: var(--text-faint); }
+.axis-caption { font-family: var(--font-sans); font-size: 11px; fill: var(--text-muted); }
+.bar-value { font-family: var(--font-mono); font-size: 11px; fill: var(--text); }
+.sub-label { font-family: var(--font-mono); font-size: 10px; fill: var(--text-faint); }
+.bar-neutral { fill: var(--accent-mid); }
+.bar-danger { fill: var(--danger); }
+.ref-line { stroke: var(--warn); stroke-width: 1.4; stroke-dasharray: 4 3; }
+.ref-label { font-family: var(--font-mono); font-size: 11px; fill: var(--warn); }
+
+.scaling-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px 40px; }
+.scaling-grid h3 { font-size: 1rem; margin: 0 0 10px; }
+.scaling-grid p { color: var(--text-muted); font-size: 0.92rem; }
+.scaling-grid pre.sql { white-space: pre; }
+
+footer { padding: 40px 0 60px; border-bottom: none; }
+footer p { color: var(--text-faint); font-size: 0.82rem; margin: 4px 0; }
+footer code { color: var(--text-muted); }
+.synthetic-note { color: var(--text-muted); font-style: italic; }
+
+@media (max-width: 920px) {
+  .scenario-grid, .model-grid, .chart-grid, .scaling-grid { grid-template-columns: 1fr; }
+  .mh-stats { grid-template-columns: repeat(2, 1fr); }
+  .wrap { padding: 0 18px; }
+}
+</style>
+
+<nav class="topnav">
+  <div class="wrap">
+    <span class="nav-brand">market.db &mdash; dossier</span>
+    <div class="nav-links">
+      <a href="#scenarios">Scenarios</a>
+      <a href="#model">Model</a>
+      <a href="#sample">Sample</a>
+      <a href="#terms">Terms</a>
+      <a href="#charts">Charts</a>
+      <a href="#scaling">Scaling</a>
+    </div>
+  </div>
+</nav>
+
+
+<header id="masthead">
+  <div class="wrap">
+    <div class="mh-top">
+      <div class="mh-id">
+        <span class="mh-kicker">Dataset dossier &middot; judge sandbox</span>
+        <h1>Solano Marketplace</h1>
+        <p class="mh-premise">A consumer e-commerce marketplace &mdash; the platform's trust-and-safety
+          and marketplace-abuse sandbox: sellers, listings, buyers, orders, reviews and refunds shaped
+          around four concealed abuse patterns.</p>
+      </div>
+      <span class="chip chip-reg">CCPA / CPRA &middot; GDPR (EU/UK) &middot; PCI&nbsp;DSS</span>
+    </div>
+    <dl class="mh-stats">
+      <div><dt>Total rows</dt><dd>748,536</dd></div>
+      <div><dt>Tables</dt><dd>6</dd></div>
+      <div><dt>DB size on disk</dt><dd>67.4&nbsp;MB</dd></div>
+      <div><dt>Planted patterns</dt><dd>4 types &middot; 411 flagged rows</dd></div>
+    </dl>
+  </div>
+</header>
+
+
+<section id="scenarios">
+  <div class="wrap">
+    <h2>Scenarios</h2>
+    <p class="section-lede">Four sandbox prompts, four planted abuse patterns. Every row below is a
+      real hit against <code>market.db</code> right now &mdash; no canned output.</p>
+    <div class="scenario-grid">
+      
+  <article class="scenario-card">
+    <h3>Review-ring sweep</h3>
+    <p class="prompt-label">Sandbox prompt</p>
+    <p class="prompt">&ldquo;Surface sellers boosted by review rings — clusters of buyer accounts posting unverified 5-star reviews on the same seller within days&rdquo;</p>
+    <p class="value">Coordinated fake-review rings inflate ratings and defraud buyers; catching pumped sellers protects search-ranking integrity.</p>
+    <p class="planted-label">How the pattern was planted</p>
+    <p class="planted">10 reserved sellers (ids 501&ndash;510) are each assigned 8&ndash;20 dedicated &ldquo;ring&rdquo; buyer accounts. Every ring buyer posts exactly 4 five-star reviews, all <code>verified_purchase&nbsp;=&nbsp;0</code>, all landing on that seller's own dedicated listings inside a single 0&ndash;4 day window &mdash; a burst no organic buyer population produces (see Chart 1).</p>
+    <p class="sql-label">Evidence SQL</p>
+    <pre class="sql">SELECT l.seller_id, COUNT(DISTINCT rv.buyer_id) AS ring_buyers, COUNT(*) AS fake_five_stars FROM reviews rv JOIN listings l ON l.id = rv.listing_id WHERE rv.rating = 5 AND rv.verified_purchase = 0 GROUP BY l.seller_id HAVING COUNT(DISTINCT rv.buyer_id) &gt;= 8 AND COUNT(*) &gt;= 30 ORDER BY fake_five_stars DESC</pre>
+    <p class="result-note">all 10 flagged rows shown &middot; evidence floor &ge;10</p>
+    <div class="tbl-scroll"><table class="result-table"><thead><tr><th>seller_id</th><th>ring_buyers</th><th>fake_five_stars</th></tr></thead><tbody><tr><td>506</td><td>24</td><td>78</td></tr><tr><td>503</td><td>22</td><td>73</td></tr><tr><td>509</td><td>22</td><td>70</td></tr><tr><td>504</td><td>16</td><td>58</td></tr><tr><td>501</td><td>15</td><td>54</td></tr><tr><td>510</td><td>13</td><td>49</td></tr><tr><td>507</td><td>14</td><td>44</td></tr><tr><td>508</td><td>11</td><td>35</td></tr><tr><td>505</td><td>9</td><td>33</td></tr><tr><td>502</td><td>9</td><td>33</td></tr></tbody></table></div>
+  </article>
+  <article class="scenario-card">
+    <h3>Refund-abuse detection</h3>
+    <p class="prompt-label">Sandbox prompt</p>
+    <p class="prompt">&ldquo;Flag buyers with abnormal refund rates — over 40% of 10+ orders refunded across many different sellers&rdquo;</p>
+    <p class="value">Serial refund abusers extract free goods and absorb chargeback losses across the marketplace.</p>
+    <p class="planted-label">How the pattern was planted</p>
+    <p class="planted">60 reserved buyers (ids 1001&ndash;1060) each place 12&ndash;25 orders against random listings (and so random sellers), then 55&ndash;70% of each buyer's own orders are refunded with reason <code>changed_mind</code> &mdash; far above the ~7.7% marketplace-wide refund rate on normal orders.</p>
+    <p class="sql-label">Evidence SQL</p>
+    <pre class="sql">SELECT o.buyer_id, COUNT(*) AS orders, COUNT(rf.id) AS refunds, ROUND(COUNT(rf.id)*1.0/COUNT(*), 2) AS refund_rate, COUNT(DISTINCT l.seller_id) AS distinct_sellers FROM orders o JOIN listings l ON l.id = o.listing_id LEFT JOIN refunds rf ON rf.order_id = o.id GROUP BY o.buyer_id HAVING COUNT(*) &gt;= 10 AND COUNT(rf.id)*1.0/COUNT(*) &gt; 0.4 AND COUNT(DISTINCT l.seller_id) &gt;= 5 ORDER BY refund_rate DESC</pre>
+    <p class="result-note">showing 15 of 68 flagged rows &middot; evidence floor &ge;55</p>
+    <div class="tbl-scroll"><table class="result-table"><thead><tr><th>buyer_id</th><th>orders</th><th>refunds</th><th>refund_rate</th><th>distinct_sellers</th></tr></thead><tbody><tr><td>1003</td><td>21</td><td>15</td><td>0.71</td><td>21</td></tr><tr><td>1040</td><td>13</td><td>9</td><td>0.69</td><td>13</td></tr><tr><td>1041</td><td>16</td><td>11</td><td>0.69</td><td>16</td></tr><tr><td>1005</td><td>22</td><td>15</td><td>0.68</td><td>22</td></tr><tr><td>1021</td><td>25</td><td>17</td><td>0.68</td><td>25</td></tr><tr><td>1057</td><td>25</td><td>17</td><td>0.68</td><td>24</td></tr><tr><td>1058</td><td>19</td><td>13</td><td>0.68</td><td>19</td></tr><tr><td>1017</td><td>21</td><td>14</td><td>0.67</td><td>21</td></tr><tr><td>1018</td><td>12</td><td>8</td><td>0.67</td><td>12</td></tr><tr><td>1020</td><td>24</td><td>16</td><td>0.67</td><td>24</td></tr><tr><td>1024</td><td>12</td><td>8</td><td>0.67</td><td>12</td></tr><tr><td>1026</td><td>12</td><td>8</td><td>0.67</td><td>12</td></tr><tr><td>1029</td><td>12</td><td>8</td><td>0.67</td><td>12</td></tr><tr><td>1038</td><td>12</td><td>8</td><td>0.67</td><td>12</td></tr><tr><td>1044</td><td>15</td><td>10</td><td>0.67</td><td>15</td></tr></tbody></table></div>
+  </article>
+  <article class="scenario-card">
+    <h3>Counterfeit-signal triage</h3>
+    <p class="prompt-label">Sandbox prompt</p>
+    <p class="prompt">&ldquo;Triage likely-counterfeit listings priced under 40% of their category median from sellers that joined less than 90 days before listing&rdquo;</p>
+    <p class="value">Cheap goods from brand-new sellers are the classic counterfeit signature; ranks highest-risk inventory first for manual review.</p>
+    <p class="planted-label">How the pattern was planted</p>
+    <p class="planted">40 reserved sellers (ids 701&ndash;740) join within roughly the final two years of the dataset, then each lists 7&ndash;9 items &mdash; titled things like &ldquo;AirPods Pro (Genuine)&rdquo; or &ldquo;Rolex-Style Watch&rdquo; &mdash; priced 0.15&ndash;0.35&times; the category base, safely under the 0.4&times;-median line, within 0&ndash;89 days of joining.</p>
+    <p class="sql-label">Evidence SQL</p>
+    <pre class="sql">WITH ranked AS (SELECT category, price_usd, ROW_NUMBER() OVER (PARTITION BY category ORDER BY price_usd) AS rn, COUNT(*) OVER (PARTITION BY category) AS cnt FROM listings), med AS (SELECT category, price_usd AS median_price FROM ranked WHERE rn = cnt/2 + 1) SELECT li.id, li.seller_id, li.category, li.price_usd, med.median_price, s.joined, li.created FROM listings li JOIN med ON med.category = li.category JOIN sellers s ON s.id = li.seller_id WHERE li.price_usd &lt; 0.4*med.median_price AND julianday(li.created) - julianday(s.joined) BETWEEN 0 AND 89 ORDER BY li.price_usd/med.median_price</pre>
+    <p class="result-note">showing 15 of 318 flagged rows &middot; evidence floor &ge;250</p>
+    <div class="tbl-scroll"><table class="result-table"><thead><tr><th>id</th><th>seller_id</th><th>category</th><th>price_usd</th><th>median_price</th><th>joined</th><th>created</th></tr></thead><tbody><tr><td>177</td><td>709</td><td>Fashion</td><td>6.3</td><td>50.58</td><td>2025-10-06</td><td>2025-11-21</td></tr><tr><td>220</td><td>714</td><td>Garden</td><td>7.26</td><td>57.73</td><td>2025-10-28</td><td>2025-12-11</td></tr><tr><td>283</td><td>723</td><td>Toys &amp; Games</td><td>4.59</td><td>35.86</td><td>2024-12-26</td><td>2025-01-23</td></tr><tr><td>245</td><td>718</td><td>Garden</td><td>7.4</td><td>57.73</td><td>2025-07-15</td><td>2025-09-20</td></tr><tr><td>420</td><td>739</td><td>Toys &amp; Games</td><td>4.6</td><td>35.86</td><td>2024-11-09</td><td>2024-11-16</td></tr><tr><td>154</td><td>706</td><td>Sports &amp; Outdoors</td><td>9.94</td><td>77.41</td><td>2025-04-28</td><td>2025-05-06</td></tr><tr><td>352</td><td>731</td><td>Garden</td><td>7.42</td><td>57.73</td><td>2024-10-21</td><td>2024-12-28</td></tr><tr><td>136</td><td>704</td><td>Sports &amp; Outdoors</td><td>9.99</td><td>77.41</td><td>2024-03-20</td><td>2024-03-23</td></tr><tr><td>311</td><td>726</td><td>Electronics</td><td>33.89</td><td>261.57</td><td>2025-05-02</td><td>2025-05-11</td></tr><tr><td>330</td><td>728</td><td>Electronics</td><td>34.1</td><td>261.57</td><td>2026-01-28</td><td>2026-04-02</td></tr><tr><td>373</td><td>733</td><td>Beauty</td><td>4.08</td><td>31.23</td><td>2025-06-10</td><td>2025-07-23</td></tr><tr><td>266</td><td>720</td><td>Fashion</td><td>6.62</td><td>50.58</td><td>2025-01-04</td><td>2025-03-11</td></tr><tr><td>343</td><td>730</td><td>Electronics</td><td>34.26</td><td>261.57</td><td>2025-03-21</td><td>2025-05-09</td></tr><tr><td>137</td><td>704</td><td>Fashion</td><td>6.63</td><td>50.58</td><td>2024-03-20</td><td>2024-04-05</td></tr><tr><td>199</td><td>712</td><td>Toys &amp; Games</td><td>4.71</td><td>35.86</td><td>2024-02-20</td><td>2024-05-18</td></tr></tbody></table></div>
+  </article>
+  <article class="scenario-card">
+    <h3>Brushing detection</h3>
+    <p class="prompt-label">Sandbox prompt</p>
+    <p class="prompt">&ldquo;Detect brushing sellers — order bursts on a seller&#x27;s own listings from a small set of linked buyer accounts sharing one ship address, each followed by a 5-star review&rdquo;</p>
+    <p class="value">Brushing fabricates sales volume and reviews to game rankings; a shared-address cluster exposes a manufactured reputation in one query.</p>
+    <p class="planted-label">How the pattern was planted</p>
+    <p class="planted">15 reserved sellers (ids 601&ndash;615) each get 3&ndash;6 linked buyer accounts that all check out under one shared <code>ship_address_hash</code>, burst-ordering the seller's own 4 dedicated listings; every order is followed within 0&ndash;2 days by a verified 5-star review. The shared hash resolves to one real cleartext street address (see Terms) &mdash; the abuse signal survives in the clear, not just the pseudonym.</p>
+    <p class="sql-label">Evidence SQL</p>
+    <pre class="sql">SELECT l.seller_id, o.ship_address_hash, COUNT(*) AS burst_orders, COUNT(DISTINCT o.buyer_id) AS linked_buyers FROM orders o JOIN listings l ON l.id = o.listing_id GROUP BY l.seller_id, o.ship_address_hash HAVING COUNT(*) &gt;= 10 AND COUNT(DISTINCT o.buyer_id) BETWEEN 2 AND 8 ORDER BY burst_orders DESC</pre>
+    <p class="result-note">all 15 flagged rows shown &middot; evidence floor &ge;15</p>
+    <div class="tbl-scroll"><table class="result-table"><thead><tr><th>seller_id</th><th>ship_address_hash</th><th>burst_orders</th><th>linked_buyers</th></tr></thead><tbody><tr><td>609</td><td>brush_609</td><td>36</td><td>6</td></tr><tr><td>614</td><td>brush_614</td><td>33</td><td>6</td></tr><tr><td>608</td><td>brush_608</td><td>32</td><td>5</td></tr><tr><td>602</td><td>brush_602</td><td>31</td><td>6</td></tr><tr><td>615</td><td>brush_615</td><td>29</td><td>5</td></tr><tr><td>604</td><td>brush_604</td><td>27</td><td>5</td></tr><tr><td>610</td><td>brush_610</td><td>26</td><td>4</td></tr><tr><td>605</td><td>brush_605</td><td>22</td><td>4</td></tr><tr><td>612</td><td>brush_612</td><td>22</td><td>4</td></tr><tr><td>611</td><td>brush_611</td><td>20</td><td>4</td></tr><tr><td>601</td><td>brush_601</td><td>19</td><td>3</td></tr><tr><td>603</td><td>brush_603</td><td>19</td><td>4</td></tr><tr><td>613</td><td>brush_613</td><td>19</td><td>3</td></tr><tr><td>607</td><td>brush_607</td><td>18</td><td>3</td></tr><tr><td>606</td><td>brush_606</td><td>16</td><td>3</td></tr></tbody></table></div>
+  </article>
+    </div>
+  </div>
+</section>
+
+
+<section id="model">
+  <div class="wrap">
+    <h2>Data model</h2>
+    <p class="section-lede">Six tables, no declared SQLite foreign keys &mdash; referential integrity
+      is enforced purely by the generator's own id discipline. Sensitive columns carry the same class
+      badge used in Sample and Terms below.</p>
+    <div class="model-grid">
+      
+    <div class="model-card">
+      <div class="model-card-head">
+        <h3>sellers</h3>
+        <span class="rowcount">4,000 rows</span>
+      </div>
+      <table class="model-table"><tbody><tr><td class='colname'>id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>name</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>joined</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>country<span class="sbadge sbadge-biz" title="Business location">BIZ</span></td><td class='coltype'>TEXT</td></tr></tbody></table>
+    </div>
+    <div class="model-card">
+      <div class="model-card-head">
+        <h3>listings</h3>
+        <span class="rowcount">50,000 rows</span>
+      </div>
+      <table class="model-table"><tbody><tr><td class='colname'>id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>seller_id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>title</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>category</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>price_usd</td><td class='coltype'>REAL</td></tr><tr><td class='colname'>created</td><td class='coltype'>TEXT</td></tr></tbody></table>
+    </div>
+    <div class="model-card">
+      <div class="model-card-head">
+        <h3>buyers</h3>
+        <span class="rowcount">30,000 rows</span>
+      </div>
+      <table class="model-table"><tbody><tr><td class='colname'>id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>name<span class="sbadge sbadge-pii" title="Personal data">PII</span></td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>joined</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>email<span class="sbadge sbadge-pii" title="Personal data">PII</span></td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>phone<span class="sbadge sbadge-pii" title="Personal data">PII</span></td><td class='coltype'>TEXT</td></tr></tbody></table>
+    </div>
+    <div class="model-card">
+      <div class="model-card-head">
+        <h3>orders</h3>
+        <span class="rowcount">449,478 rows</span>
+      </div>
+      <table class="model-table"><tbody><tr><td class='colname'>id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>listing_id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>buyer_id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>ts</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>qty</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>total_usd</td><td class='coltype'>REAL</td></tr><tr><td class='colname'>ship_address_hash<span class="sbadge sbadge-pseudo" title="Pseudonymized">PSEUDO</span></td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>ship_address<span class="sbadge sbadge-geo" title="Precise geolocation">GEO</span></td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>card_last4<span class="sbadge sbadge-pci" title="Cardholder data (PCI)">PCI</span></td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>card_network<span class="sbadge sbadge-pci" title="Cardholder data (PCI)">PCI</span></td><td class='coltype'>TEXT</td></tr></tbody></table>
+    </div>
+    <div class="model-card">
+      <div class="model-card-head">
+        <h3>reviews</h3>
+        <span class="rowcount">179,865 rows</span>
+      </div>
+      <table class="model-table"><tbody><tr><td class='colname'>id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>listing_id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>buyer_id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>rating</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>ts</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>verified_purchase</td><td class='coltype'>INTEGER</td></tr></tbody></table>
+    </div>
+    <div class="model-card">
+      <div class="model-card-head">
+        <h3>refunds</h3>
+        <span class="rowcount">35,193 rows</span>
+      </div>
+      <table class="model-table"><tbody><tr><td class='colname'>id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>order_id</td><td class='coltype'>INTEGER</td></tr><tr><td class='colname'>ts</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>reason</td><td class='coltype'>TEXT</td></tr><tr><td class='colname'>amount_usd</td><td class='coltype'>REAL</td></tr></tbody></table>
+    </div>
+    </div>
+    <div class="fk-map">
+      <h3>Relationships</h3>
+      <div class="fk-row"><code>listings.seller_id</code><span class="fk-arrow">&rarr;</span><code>sellers.id</code></div><div class="fk-row"><code>orders.listing_id</code><span class="fk-arrow">&rarr;</span><code>listings.id</code></div><div class="fk-row"><code>orders.buyer_id</code><span class="fk-arrow">&rarr;</span><code>buyers.id</code></div><div class="fk-row"><code>reviews.listing_id</code><span class="fk-arrow">&rarr;</span><code>listings.id</code></div><div class="fk-row"><code>reviews.buyer_id</code><span class="fk-arrow">&rarr;</span><code>buyers.id</code></div><div class="fk-row"><code>refunds.order_id</code><span class="fk-arrow">&rarr;</span><code>orders.id</code></div>
+    </div>
+  </div>
+</section>
+
+
+<section id="sample">
+  <div class="wrap">
+    <h2>Sample data</h2>
+    <p class="section-lede">First 15 rows of every table, <code>SELECT * ORDER BY id LIMIT 15</code>.
+      Sensitive columns are badged exactly as classified in the Terms of Sensitive Data Use.</p>
+    
+    <div class="sample-block">
+      <h3>sellers <span class="rowcount">first 15 of 4,000</span></h3>
+      <div class="tbl-scroll"><table class="result-table sample-table"><thead><tr><th>id</th><th>name</th><th>joined</th><th>country<span class="sbadge sbadge-biz" title="Business location">BIZ</span></th></tr></thead>
+        <tbody><tr><td>1</td><td>Ember Emporium</td><td>2025-06-26</td><td>UA</td></tr><tr><td>2</td><td>Peak Collective</td><td>2025-08-12</td><td>US</td></tr><tr><td>3</td><td>Peak Trading</td><td>2024-05-25</td><td>RU</td></tr><tr><td>4</td><td>Cedar Wholesale</td><td>2025-06-15</td><td>US</td></tr><tr><td>5</td><td>Coral Wholesale</td><td>2022-03-28</td><td>IN</td></tr><tr><td>6</td><td>Onyx Merchants</td><td>2023-07-25</td><td>BR</td></tr><tr><td>7</td><td>Vintage Trading</td><td>2024-01-01</td><td>TR</td></tr><tr><td>8</td><td>Ember Market</td><td>2023-05-28</td><td>CN</td></tr><tr><td>9</td><td>Willow Wholesale</td><td>2025-02-26</td><td>CN</td></tr><tr><td>10</td><td>Peak Wholesale</td><td>2023-12-29</td><td>KZ</td></tr><tr><td>11</td><td>Harbor Merchants</td><td>2023-01-10</td><td>AE</td></tr><tr><td>12</td><td>Vintage Trading</td><td>2022-03-16</td><td>UA</td></tr><tr><td>13</td><td>Solar Works</td><td>2023-07-22</td><td>FR</td></tr><tr><td>14</td><td>Peak Trading</td><td>2025-09-05</td><td>NG</td></tr><tr><td>15</td><td>Lunar Outfitters</td><td>2023-08-24</td><td>GB</td></tr></tbody></table></div>
+    </div>
+    <div class="sample-block">
+      <h3>listings <span class="rowcount">first 15 of 50,000</span></h3>
+      <div class="tbl-scroll"><table class="result-table sample-table"><thead><tr><th>id</th><th>seller_id</th><th>title</th><th>category</th><th>price_usd</th><th>created</th></tr></thead>
+        <tbody><tr><td>1</td><td>501</td><td>Electronics item</td><td>Electronics</td><td>363.11</td><td>2025-12-31</td></tr><tr><td>2</td><td>501</td><td>Toys &amp; Games item</td><td>Toys &amp; Games</td><td>31.68</td><td>2026-06-12</td></tr><tr><td>3</td><td>501</td><td>Electronics item</td><td>Electronics</td><td>390.15</td><td>2025-04-04</td></tr><tr><td>4</td><td>501</td><td>Fashion item</td><td>Fashion</td><td>38.9</td><td>2025-12-15</td></tr><tr><td>5</td><td>501</td><td>Electronics item</td><td>Electronics</td><td>180.55</td><td>2026-02-08</td></tr><tr><td>6</td><td>502</td><td>Home &amp; Kitchen item</td><td>Home &amp; Kitchen</td><td>35.12</td><td>2022-04-21</td></tr><tr><td>7</td><td>502</td><td>Beauty item</td><td>Beauty</td><td>17.52</td><td>2022-05-01</td></tr><tr><td>8</td><td>502</td><td>Fashion item</td><td>Fashion</td><td>56.97</td><td>2026-05-30</td></tr><tr><td>9</td><td>502</td><td>Beauty item</td><td>Beauty</td><td>33.23</td><td>2023-08-24</td></tr><tr><td>10</td><td>502</td><td>Beauty item</td><td>Beauty</td><td>23.83</td><td>2023-06-15</td></tr><tr><td>11</td><td>503</td><td>Garden item</td><td>Garden</td><td>67.69</td><td>2026-04-28</td></tr><tr><td>12</td><td>503</td><td>Books item</td><td>Books</td><td>28.49</td><td>2026-06-04</td></tr><tr><td>13</td><td>503</td><td>Beauty item</td><td>Beauty</td><td>24.21</td><td>2026-05-08</td></tr><tr><td>14</td><td>503</td><td>Books item</td><td>Books</td><td>12.35</td><td>2026-05-29</td></tr><tr><td>15</td><td>503</td><td>Books item</td><td>Books</td><td>19.69</td><td>2026-04-29</td></tr></tbody></table></div>
+    </div>
+    <div class="sample-block">
+      <h3>buyers <span class="rowcount">first 15 of 30,000</span></h3>
+      <div class="tbl-scroll"><table class="result-table sample-table"><thead><tr><th>id</th><th>name<span class="sbadge sbadge-pii" title="Personal data">PII</span></th><th>joined</th><th>email<span class="sbadge sbadge-pii" title="Personal data">PII</span></th><th>phone<span class="sbadge sbadge-pii" title="Personal data">PII</span></th></tr></thead>
+        <tbody><tr><td>1</td><td>Anna Al-Rashid</td><td>2026-01-20</td><td>anna.al-rashid1@mail.example</td><td>+1-415-555-7179</td></tr><tr><td>2</td><td>Noor Okoro</td><td>2023-10-28</td><td>noor.okoro2@mail.example</td><td>+1-415-555-8560</td></tr><tr><td>3</td><td>Lena Ivanova</td><td>2025-05-08</td><td>lena.ivanova3@mail.example</td><td>+1-415-555-1393</td></tr><tr><td>4</td><td>Anna Dubois</td><td>2022-10-13</td><td>anna.dubois4@mail.example</td><td>+1-415-555-6513</td></tr><tr><td>5</td><td>Ivan Nguyen</td><td>2024-12-08</td><td>ivan.nguyen5@mail.example</td><td>+1-415-555-3752</td></tr><tr><td>6</td><td>Elena Kowalski</td><td>2022-08-25</td><td>elena.kowalski6@mail.example</td><td>+1-415-555-5569</td></tr><tr><td>7</td><td>Diego Marchenko</td><td>2026-06-09</td><td>diego.marchenko7@mail.example</td><td>+1-415-555-6091</td></tr><tr><td>8</td><td>Diego Kowalski</td><td>2026-06-26</td><td>diego.kowalski8@mail.example</td><td>+1-415-555-9334</td></tr><tr><td>9</td><td>Anna Popova</td><td>2024-07-11</td><td>anna.popova9@mail.example</td><td>+1-415-555-5975</td></tr><tr><td>10</td><td>Leila Smith</td><td>2026-03-14</td><td>leila.smith10@mail.example</td><td>+1-415-555-1861</td></tr><tr><td>11</td><td>Nadia Fernandez</td><td>2022-08-12</td><td>nadia.fernandez11@mail.example</td><td>+1-415-555-9262</td></tr><tr><td>12</td><td>Nadia Johnson</td><td>2025-05-29</td><td>nadia.johnson12@mail.example</td><td>+1-415-555-2917</td></tr><tr><td>13</td><td>Ivan Andersson</td><td>2023-05-31</td><td>ivan.andersson13@mail.example</td><td>+1-415-555-5970</td></tr><tr><td>14</td><td>Liam Costa</td><td>2025-05-22</td><td>liam.costa14@mail.example</td><td>+1-415-555-9532</td></tr><tr><td>15</td><td>Kofi Novak</td><td>2022-01-10</td><td>kofi.novak15@mail.example</td><td>+1-415-555-5508</td></tr></tbody></table></div>
+    </div>
+    <div class="sample-block">
+      <h3>orders <span class="rowcount">first 15 of 449,478</span></h3>
+      <div class="tbl-scroll"><table class="result-table sample-table"><thead><tr><th>id</th><th>listing_id</th><th>buyer_id</th><th>ts</th><th>qty</th><th>total_usd</th><th>ship_address_hash<span class="sbadge sbadge-pseudo" title="Pseudonymized">PSEUDO</span></th><th>ship_address<span class="sbadge sbadge-geo" title="Precise geolocation">GEO</span></th><th>card_last4<span class="sbadge sbadge-pci" title="Cardholder data (PCI)">PCI</span></th><th>card_network<span class="sbadge sbadge-pci" title="Cardholder data (PCI)">PCI</span></th></tr></thead>
+        <tbody><tr><td>1</td><td>45221</td><td>28939</td><td>2026-02-01</td><td>1</td><td>40.39</td><td>addr_28939</td><td>2643 Sunset Blvd, Sacramento, CA 95814</td><td>3331</td><td>Mastercard</td></tr><tr><td>2</td><td>32439</td><td>26799</td><td>2026-05-22</td><td>3</td><td>104.01</td><td>addr_26799</td><td>1863 Pine Rd, Oakland, CA 94607</td><td>1953</td><td>Mastercard</td></tr><tr><td>3</td><td>16825</td><td>24857</td><td>2025-10-05</td><td>3</td><td>655.86</td><td>addr_24857</td><td>8409 Birch Ct, Denver, CO 80202</td><td>8133</td><td>Amex</td></tr><tr><td>4</td><td>19789</td><td>8090</td><td>2025-01-07</td><td>3</td><td>138.6</td><td>addr_8090</td><td>5430 Cedar Ln, Fresno, CA 93721</td><td>4755</td><td>Visa</td></tr><tr><td>5</td><td>15247</td><td>15340</td><td>2025-01-15</td><td>2</td><td>454.08</td><td>addr_15340</td><td>9080 Elm Dr, Austin, TX 78701</td><td>2199</td><td>Amex</td></tr><tr><td>6</td><td>19707</td><td>7106</td><td>2025-09-04</td><td>1</td><td>17.89</td><td>addr_7106</td><td>8222 Cedar Ln, San Jose, CA 95112</td><td>0673</td><td>Visa</td></tr><tr><td>7</td><td>21706</td><td>26822</td><td>2024-10-14</td><td>1</td><td>37.75</td><td>addr_26822</td><td>2714 Cedar Ln, Sacramento, CA 95814</td><td>2000</td><td>Visa</td></tr><tr><td>8</td><td>1203</td><td>6807</td><td>2026-03-27</td><td>1</td><td>28.5</td><td>addr_6807</td><td>6959 Pine Rd, Denver, CO 80202</td><td>4057</td><td>Visa</td></tr><tr><td>9</td><td>3220</td><td>11021</td><td>2026-06-21</td><td>1</td><td>43.41</td><td>addr_11021</td><td>6077 Birch Ct, Austin, TX 78701</td><td>4967</td><td>Amex</td></tr><tr><td>10</td><td>21457</td><td>19394</td><td>2026-06-28</td><td>1</td><td>20.08</td><td>addr_19394</td><td>2278 Cedar Ln, San Jose, CA 95112</td><td>5195</td><td>Visa</td></tr><tr><td>11</td><td>12520</td><td>22348</td><td>2023-10-16</td><td>3</td><td>175.89</td><td>addr_22348</td><td>3776 Elm Dr, Austin, TX 78701</td><td>7963</td><td>Mastercard</td></tr><tr><td>12</td><td>32663</td><td>18491</td><td>2026-06-28</td><td>3</td><td>131.22</td><td>addr_18491</td><td>8067 Mission St, Portland, OR 97205</td><td>0677</td><td>Mastercard</td></tr><tr><td>13</td><td>26077</td><td>22442</td><td>2024-01-17</td><td>1</td><td>26.43</td><td>addr_22442</td><td>7254 Cedar Ln, Austin, TX 78701</td><td>8300</td><td>Visa</td></tr><tr><td>14</td><td>49248</td><td>27007</td><td>2026-03-20</td><td>2</td><td>134.7</td><td>addr_27007</td><td>9559 Sunset Blvd, Fresno, CA 93721</td><td>3373</td><td>Visa</td></tr><tr><td>15</td><td>45673</td><td>24865</td><td>2025-10-01</td><td>3</td><td>150.18</td><td>addr_24865</td><td>8705 Oak Ave, San Jose, CA 95112</td><td>1094</td><td>Amex</td></tr></tbody></table></div>
+    </div>
+    <div class="sample-block">
+      <h3>reviews <span class="rowcount">first 15 of 179,865</span></h3>
+      <div class="tbl-scroll"><table class="result-table sample-table"><thead><tr><th>id</th><th>listing_id</th><th>buyer_id</th><th>rating</th><th>ts</th><th>verified_purchase</th></tr></thead>
+        <tbody><tr><td>1</td><td>16558</td><td>8462</td><td>2</td><td>2026-06-13</td><td>1</td></tr><tr><td>2</td><td>45924</td><td>9230</td><td>4</td><td>2024-02-19</td><td>1</td></tr><tr><td>3</td><td>2673</td><td>28501</td><td>5</td><td>2026-06-15</td><td>1</td></tr><tr><td>4</td><td>47250</td><td>5096</td><td>4</td><td>2026-05-25</td><td>1</td></tr><tr><td>5</td><td>7218</td><td>15019</td><td>5</td><td>2025-09-10</td><td>0</td></tr><tr><td>6</td><td>34687</td><td>21550</td><td>3</td><td>2024-01-13</td><td>1</td></tr><tr><td>7</td><td>4054</td><td>4419</td><td>5</td><td>2025-06-05</td><td>1</td></tr><tr><td>8</td><td>17489</td><td>7095</td><td>5</td><td>2024-11-10</td><td>1</td></tr><tr><td>9</td><td>39612</td><td>5373</td><td>5</td><td>2024-08-20</td><td>0</td></tr><tr><td>10</td><td>20039</td><td>6592</td><td>3</td><td>2026-06-27</td><td>1</td></tr><tr><td>11</td><td>28838</td><td>4473</td><td>2</td><td>2025-04-09</td><td>1</td></tr><tr><td>12</td><td>4141</td><td>20996</td><td>1</td><td>2026-02-24</td><td>0</td></tr><tr><td>13</td><td>19376</td><td>21643</td><td>3</td><td>2026-05-11</td><td>1</td></tr><tr><td>14</td><td>2377</td><td>6825</td><td>5</td><td>2026-06-25</td><td>1</td></tr><tr><td>15</td><td>46754</td><td>23031</td><td>1</td><td>2026-05-24</td><td>1</td></tr></tbody></table></div>
+    </div>
+    <div class="sample-block">
+      <h3>refunds <span class="rowcount">first 15 of 35,193</span></h3>
+      <div class="tbl-scroll"><table class="result-table sample-table"><thead><tr><th>id</th><th>order_id</th><th>ts</th><th>reason</th><th>amount_usd</th></tr></thead>
+        <tbody><tr><td>1</td><td>151830</td><td>2025-03-11</td><td>never_arrived</td><td>67.23</td></tr><tr><td>2</td><td>100573</td><td>2026-01-28</td><td>item_not_as_described</td><td>92.35</td></tr><tr><td>3</td><td>78960</td><td>2025-11-25</td><td>wrong_item</td><td>191.12</td></tr><tr><td>4</td><td>238993</td><td>2023-04-28</td><td>item_not_as_described</td><td>66.72</td></tr><tr><td>5</td><td>260862</td><td>2022-06-30</td><td>late_delivery</td><td>27.99</td></tr><tr><td>6</td><td>408087</td><td>2024-06-04</td><td>late_delivery</td><td>27.18</td></tr><tr><td>7</td><td>305657</td><td>2023-09-08</td><td>changed_mind</td><td>112.13</td></tr><tr><td>8</td><td>154001</td><td>2022-05-05</td><td>changed_mind</td><td>73.91</td></tr><tr><td>9</td><td>38985</td><td>2022-05-27</td><td>never_arrived</td><td>166.18</td></tr><tr><td>10</td><td>170012</td><td>2025-03-16</td><td>late_delivery</td><td>191.07</td></tr><tr><td>11</td><td>139818</td><td>2024-11-13</td><td>item_not_as_described</td><td>169.85</td></tr><tr><td>12</td><td>361983</td><td>2024-04-10</td><td>damaged</td><td>185.62</td></tr><tr><td>13</td><td>306758</td><td>2022-12-25</td><td>damaged</td><td>82.85</td></tr><tr><td>14</td><td>56356</td><td>2024-11-26</td><td>damaged</td><td>175.82</td></tr><tr><td>15</td><td>193365</td><td>2022-12-12</td><td>counterfeit_suspected</td><td>92.38</td></tr></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+
+<section id="terms">
+  <div class="wrap">
+    <h2>Terms of Sensitive Data Use</h2>
+    <p class="section-lede">Stage-0 wiring: these terms are auto-distilled into the masking policy
+      applied to any job run against this company &mdash; the sandbox never hand-writes a policy per
+      run, it reads this document.</p>
+    <h3 class="inventory-heading">Sensitive-field inventory</h3>
+    <div class="tbl-scroll">
+      <table class="result-table inventory-table"><thead><tr><th>Field</th><th>Sensitivity class</th></tr></thead>
+        <tbody><tr><td><code>buyers.name</code></td><td><span class="sbadge sbadge-pii" title="Personal data">PII</span> Personal data</td></tr><tr><td><code>buyers.email</code></td><td><span class="sbadge sbadge-pii" title="Personal data">PII</span> Personal data</td></tr><tr><td><code>buyers.phone</code></td><td><span class="sbadge sbadge-pii" title="Personal data">PII</span> Personal data</td></tr><tr><td><code>orders.ship_address</code></td><td><span class="sbadge sbadge-geo" title="Precise geolocation">GEO</span> Precise geolocation</td></tr><tr><td><code>orders.ship_address_hash</code></td><td><span class="sbadge sbadge-pseudo" title="Pseudonymized">PSEUDO</span> Pseudonymized</td></tr><tr><td><code>orders.card_last4</code></td><td><span class="sbadge sbadge-pci" title="Cardholder data (PCI)">PCI</span> Cardholder data (PCI)</td></tr><tr><td><code>orders.card_network</code></td><td><span class="sbadge sbadge-pci" title="Cardholder data (PCI)">PCI</span> Cardholder data (PCI)</td></tr><tr><td><code>sellers.country</code></td><td><span class="sbadge sbadge-biz" title="Business location">BIZ</span> Business location</td></tr></tbody></table>
+    </div>
+    <div class="terms-doc">
+      
+<h3>Solano Marketplace, Inc.</h3>
+<p>Solano Marketplace operates a consumer e-commerce platform on which independent sellers list
+goods and buyers place orders, pay, and leave reviews. In the course of that activity Solano
+collects personal contact details, shipping locations, and payment instruments belonging to
+natural persons. This document defines how that sensitive data may be used, and &mdash; critically
+&mdash; the limits that apply whenever any of it would be transmitted to a system, model, or
+partner outside Solano-controlled infrastructure. It exists to keep the platform aligned with
+consumer-privacy law (CCPA/CPRA and, for EU/UK residents, the GDPR) and with the Payment Card
+Industry Data Security Standard (PCI&nbsp;DSS) as it applies to cardholder data.</p>
+
+<h3>Data classification</h3>
+<p>The following fields are classified as sensitive and are governed by the rules in this document.</p>
+<ul>
+  <li><strong>buyers.name</strong> &mdash; Personal data (identity). A buyer's real name.</li>
+  <li><strong>buyers.email</strong> &mdash; Personal data (contact). Direct electronic identifier of
+    a natural person.</li>
+  <li><strong>buyers.phone</strong> &mdash; Personal data (contact). Direct telephone identifier of
+    a natural person.</li>
+  <li><strong>orders.ship_address</strong> &mdash; Personal data (precise geolocation). Cleartext
+    residential or delivery address tied to a specific order and buyer.</li>
+  <li><strong>orders.ship_address_hash</strong> &mdash; Pseudonymized data (linkage key). Salted
+    digest of the shipping address; permits cross-order linkage without revealing the address
+    itself.</li>
+  <li><strong>orders.card_last4</strong> &mdash; Cardholder data (PCI). The final four digits of the
+    payment card used on an order. Solano stores no primary account number (PAN); only the last
+    four are retained.</li>
+  <li><strong>orders.card_network</strong> &mdash; Cardholder data (PCI). The card scheme (for
+    example Visa or Mastercard) associated with an order's payment.</li>
+  <li><strong>sellers.country</strong> &mdash; Business location data. Used to determine the
+    residency rules that apply to a seller's payouts and records.</li>
+</ul>
+
+<h3>Handling rules</h3>
+<ul>
+  <li><strong>Buyer contact identifiers must never leave Solano infrastructure in cleartext.</strong>
+    The values in buyers.email and buyers.phone must be masked before any external transmission
+    &mdash; for example an email rendered as its local-part initial plus domain, and a phone reduced
+    to its last two digits.</li>
+  <li><strong>Buyer names may appear in external planning materials only in pseudonymized form.</strong>
+    No process that sends data to an external model may include buyers.name in plaintext;
+    substitute a stable pseudonym or the buyer id.</li>
+  <li><strong>Shipping addresses must never be transmitted externally.</strong> orders.ship_address
+    is precise geolocation data and may not appear in any brief, prompt, or export leaving Solano
+    infrastructure; only the pseudonymized orders.ship_address_hash may be used to express
+    cross-order linkage in external analysis.</li>
+  <li><strong>Payment card data is handled strictly under PCI DSS.</strong> Solano never stores a
+    full PAN. Card numbers must always be masked to orders.card_last4 before any external
+    transmission, and orders.card_last4 must never be combined with buyers.name or buyers.email in
+    material sent outside Solano infrastructure.</li>
+  <li><strong>Card network is reportable but not identifying alone.</strong> orders.card_network may
+    be shared in aggregate for fraud and settlement analysis, but never joined to an individual
+    buyer's contact identifiers in external materials.</li>
+  <li><strong>Data residency follows the buyer and seller.</strong> Personal data of EU/UK residents
+    must be processed and retained on infrastructure located in the EU/UK; seller records are
+    governed by sellers.country, and payout and tax data for a seller must remain within that
+    seller's jurisdiction.</li>
+  <li><strong>Retention is bounded.</strong> Order, review, and refund records are retained for seven
+    years for financial-compliance purposes; buyers.email and buyers.phone are purged within thirty
+    days of a verified account-closure request, subject only to open dispute or chargeback holds.</li>
+  <li><strong>External planning is minimized by default.</strong> Any brief prepared for an external
+    frontier model must carry the smallest set of fields needed for the task, and must exclude
+    every field in the Data classification section above unless this document expressly permits its
+    masked form.</li>
+</ul>
+
+<h3>Note</h3>
+<p>This corpus is fully synthetic demo data; these terms exercise the platform's
+policy-distillation boundary.</p>
+
+    </div>
+  </div>
+</section>
+
+
+<section id="charts">
+  <div class="wrap">
+    <h2>Charts</h2>
+    <div class="chart-grid">
+      <figure class="chart-fig chart-fig-wide">
+        
+<svg viewBox="0 0 940 300" class="chart-svg" role="img" aria-label="Review timing burst vs organic baseline for seller 506">
+  <g transform="translate(70,56)">
+<text x="280.0" y="-14" class="chart-panel-title" text-anchor="middle">Seller #506 — organic monthly reviews, Apr 2024–Jul 2026</text>
+<line x1="0" y1="150.0" x2="560" y2="150.0" class="grid-line"/>
+<text x="-8" y="153.0" class="tick-label" text-anchor="end">0</text>
+<line x1="0" y1="75.0" x2="560" y2="75.0" class="grid-line"/>
+<text x="-8" y="78.0" class="tick-label" text-anchor="end">7</text>
+<line x1="0" y1="0.0" x2="560" y2="0.0" class="grid-line"/>
+<text x="-8" y="3.0" class="tick-label" text-anchor="end">14</text>
+<line x1="0" y1="150" x2="560" y2="150" class="axis-line"/>
+<rect x="2.5" y="139.3" width="15.0" height="10.7" class="bar-neutral"/>
+<text x="10.0" y="166" class="tick-label" text-anchor="middle">24-04</text>
+<rect x="22.5" y="150.0" width="15.0" height="0.0" class="bar-neutral"/>
+<text x="30.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="42.5" y="150.0" width="15.0" height="0.0" class="bar-neutral"/>
+<text x="50.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="62.5" y="139.3" width="15.0" height="10.7" class="bar-neutral"/>
+<text x="70.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="82.5" y="128.6" width="15.0" height="21.4" class="bar-neutral"/>
+<text x="90.0" y="166" class="tick-label" text-anchor="middle">24-08</text>
+<rect x="102.5" y="128.6" width="15.0" height="21.4" class="bar-neutral"/>
+<text x="110.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="122.5" y="139.3" width="15.0" height="10.7" class="bar-neutral"/>
+<text x="130.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="142.5" y="128.6" width="15.0" height="21.4" class="bar-neutral"/>
+<text x="150.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="162.5" y="96.4" width="15.0" height="53.6" class="bar-neutral"/>
+<text x="170.0" y="166" class="tick-label" text-anchor="middle">24-12</text>
+<rect x="182.5" y="150.0" width="15.0" height="0.0" class="bar-neutral"/>
+<text x="190.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="202.5" y="128.6" width="15.0" height="21.4" class="bar-neutral"/>
+<text x="210.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="222.5" y="117.9" width="15.0" height="32.1" class="bar-neutral"/>
+<text x="230.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="242.5" y="139.3" width="15.0" height="10.7" class="bar-neutral"/>
+<text x="250.0" y="166" class="tick-label" text-anchor="middle">25-04</text>
+<rect x="262.5" y="85.7" width="15.0" height="64.3" class="bar-neutral"/>
+<text x="270.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="282.5" y="139.3" width="15.0" height="10.7" class="bar-neutral"/>
+<text x="290.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="302.5" y="128.6" width="15.0" height="21.4" class="bar-neutral"/>
+<text x="310.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="322.5" y="107.1" width="15.0" height="42.9" class="bar-neutral"/>
+<text x="330.0" y="166" class="tick-label" text-anchor="middle">25-08</text>
+<rect x="342.5" y="128.6" width="15.0" height="21.4" class="bar-neutral"/>
+<text x="350.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="362.5" y="117.9" width="15.0" height="32.1" class="bar-neutral"/>
+<text x="370.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="382.5" y="128.6" width="15.0" height="21.4" class="bar-neutral"/>
+<text x="390.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="402.5" y="75.0" width="15.0" height="75.0" class="bar-neutral"/>
+<text x="410.0" y="166" class="tick-label" text-anchor="middle">25-12</text>
+<rect x="422.5" y="128.6" width="15.0" height="21.4" class="bar-neutral"/>
+<text x="430.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="442.5" y="107.1" width="15.0" height="42.9" class="bar-neutral"/>
+<text x="450.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="462.5" y="139.3" width="15.0" height="10.7" class="bar-neutral"/>
+<text x="470.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="482.5" y="53.6" width="15.0" height="96.4" class="bar-neutral"/>
+<text x="490.0" y="166" class="tick-label" text-anchor="middle">26-04</text>
+<rect x="502.5" y="85.7" width="15.0" height="64.3" class="bar-neutral"/>
+<text x="510.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="522.5" y="21.4" width="15.0" height="128.6" class="bar-neutral"/>
+<text x="530.0" y="166" class="tick-label" text-anchor="middle"></text>
+<rect x="542.5" y="139.3" width="15.0" height="10.7" class="bar-neutral"/>
+<text x="550.0" y="166" class="tick-label" text-anchor="middle"></text>
+<text x="280.0" y="190" class="axis-caption" text-anchor="middle">month</text>
+<text x="-40" y="75.0" class="axis-caption" text-anchor="middle" transform="rotate(-90 -40 75.0)">reviews</text>
+</g>
+  <g transform="translate(690,56)">
+<text x="100.0" y="-14" class="chart-panel-title" text-anchor="middle">Nov 10–22, 2025 zoom — the ring burst</text>
+<line x1="0" y1="150.0" x2="200" y2="150.0" class="grid-line"/>
+<text x="-8" y="153.0" class="tick-label" text-anchor="end">0</text>
+<line x1="0" y1="75.0" x2="200" y2="75.0" class="grid-line"/>
+<text x="-8" y="78.0" class="tick-label" text-anchor="end">10</text>
+<line x1="0" y1="0.0" x2="200" y2="0.0" class="grid-line"/>
+<text x="-8" y="3.0" class="tick-label" text-anchor="end">20</text>
+<line x1="0" y1="150" x2="200" y2="150" class="axis-line"/>
+<rect x="1.5" y="150.0" width="12.3" height="0.0" class="bar-neutral"/>
+<text x="7.7" y="166" class="tick-label" text-anchor="middle">10</text>
+<rect x="16.9" y="150.0" width="12.3" height="0.0" class="bar-neutral"/>
+<text x="23.1" y="166" class="tick-label" text-anchor="middle">11</text>
+<rect x="32.3" y="150.0" width="12.3" height="0.0" class="bar-neutral"/>
+<text x="38.5" y="166" class="tick-label" text-anchor="middle">12</text>
+<rect x="47.7" y="150.0" width="12.3" height="0.0" class="bar-neutral"/>
+<text x="53.8" y="166" class="tick-label" text-anchor="middle">13</text>
+<rect x="63.1" y="82.5" width="12.3" height="67.5" class="bar-danger"/>
+<text x="69.2" y="166" class="tick-label" text-anchor="middle">14</text>
+<rect x="78.5" y="22.5" width="12.3" height="127.5" class="bar-danger"/>
+<text x="84.6" y="166" class="tick-label" text-anchor="middle">15</text>
+<rect x="93.8" y="45.0" width="12.3" height="105.0" class="bar-danger"/>
+<text x="100.0" y="166" class="tick-label" text-anchor="middle">16</text>
+<rect x="109.2" y="0.0" width="12.3" height="150.0" class="bar-danger"/>
+<text x="115.4" y="166" class="tick-label" text-anchor="middle">17</text>
+<rect x="124.6" y="60.0" width="12.3" height="90.0" class="bar-danger"/>
+<text x="130.8" y="166" class="tick-label" text-anchor="middle">18</text>
+<rect x="140.0" y="150.0" width="12.3" height="0.0" class="bar-neutral"/>
+<text x="146.2" y="166" class="tick-label" text-anchor="middle">19</text>
+<rect x="155.4" y="150.0" width="12.3" height="0.0" class="bar-neutral"/>
+<text x="161.5" y="166" class="tick-label" text-anchor="middle">20</text>
+<rect x="170.8" y="150.0" width="12.3" height="0.0" class="bar-neutral"/>
+<text x="176.9" y="166" class="tick-label" text-anchor="middle">21</text>
+<rect x="186.2" y="150.0" width="12.3" height="0.0" class="bar-neutral"/>
+<text x="192.3" y="166" class="tick-label" text-anchor="middle">22</text>
+<text x="100.0" y="190" class="axis-caption" text-anchor="middle">November 2025</text>
+</g>
+</svg>
+        <figcaption>Seller #506's ordinary review flow never spikes (left) &mdash; the ring's
+          78 unverified five-star reviews land almost entirely in a single 5-day window (right),
+          the signature the review-ring sweep is built to catch.</figcaption>
+      </figure>
+      <figure class="chart-fig">
+        
+<svg viewBox="0 0 640 280" class="chart-svg" role="img" aria-label="Refund rate distribution across buyers with 10 or more orders">
+  <g transform="translate(70,40)">
+<line x1="0" y1="180.0" x2="520" y2="180.0" class="grid-line"/>
+<text x="-8" y="183.0" class="tick-label" text-anchor="end">0</text>
+<line x1="0" y1="135.0" x2="520" y2="135.0" class="grid-line"/>
+<text x="-8" y="138.0" class="tick-label" text-anchor="end">5000</text>
+<line x1="0" y1="90.0" x2="520" y2="90.0" class="grid-line"/>
+<text x="-8" y="93.0" class="tick-label" text-anchor="end">10000</text>
+<line x1="0" y1="45.0" x2="520" y2="45.0" class="grid-line"/>
+<text x="-8" y="48.0" class="tick-label" text-anchor="end">15000</text>
+<line x1="0" y1="0.0" x2="520" y2="0.0" class="grid-line"/>
+<text x="-8" y="3.0" class="tick-label" text-anchor="end">20000</text>
+<line x1="0" y1="180" x2="520" y2="180" class="axis-line"/>
+<rect x="4.7" y="24.2" width="37.8" height="155.8" class="bar-neutral"/>
+<text x="23.6" y="20.2" class="bar-value" text-anchor="middle">17312</text>
+<text x="23.6" y="196" class="tick-label" text-anchor="middle">0</text>
+<rect x="52.0" y="114.6" width="37.8" height="65.4" class="bar-neutral"/>
+<text x="70.9" y="110.6" class="bar-value" text-anchor="middle">7265</text>
+<text x="70.9" y="196" class="tick-label" text-anchor="middle">10</text>
+<rect x="99.3" y="167.4" width="37.8" height="12.6" class="bar-neutral"/>
+<text x="118.2" y="163.4" class="bar-value" text-anchor="middle">1400</text>
+<text x="118.2" y="196" class="tick-label" text-anchor="middle">20</text>
+<rect x="146.5" y="178.9" width="37.8" height="1.1" class="bar-neutral"/>
+<text x="165.5" y="174.9" class="bar-value" text-anchor="middle">121</text>
+<text x="165.5" y="196" class="tick-label" text-anchor="middle">30</text>
+<rect x="193.8" y="179.9" width="37.8" height="0.1" class="bar-danger"/>
+<text x="212.7" y="175.9" class="bar-value" text-anchor="middle">13</text>
+<text x="212.7" y="196" class="tick-label" text-anchor="middle">40</text>
+<rect x="241.1" y="180.0" width="37.8" height="0.0" class="bar-danger"/>
+<text x="260.0" y="176.0" class="bar-value" text-anchor="middle">1</text>
+<text x="260.0" y="196" class="tick-label" text-anchor="middle">50</text>
+<rect x="288.4" y="180.0" width="37.8" height="0.0" class="bar-danger"/>
+<text x="307.3" y="196" class="tick-label" text-anchor="middle">60</text>
+<rect x="335.6" y="180.0" width="37.8" height="0.0" class="bar-danger"/>
+<text x="354.5" y="196" class="tick-label" text-anchor="middle">70</text>
+<rect x="382.9" y="180.0" width="37.8" height="0.0" class="bar-danger"/>
+<text x="401.8" y="196" class="tick-label" text-anchor="middle">80</text>
+<rect x="430.2" y="180.0" width="37.8" height="0.0" class="bar-danger"/>
+<text x="449.1" y="196" class="tick-label" text-anchor="middle">90</text>
+<rect x="477.5" y="180.0" width="37.8" height="0.0" class="bar-danger"/>
+<text x="496.4" y="196" class="tick-label" text-anchor="middle">100</text>
+<text x="260.0" y="220" class="axis-caption" text-anchor="middle">refund rate, buckets of 10 percentage points (left edge shown)</text>
+<text x="-40" y="90.0" class="axis-caption" text-anchor="middle" transform="rotate(-90 -40 90.0)">buyers</text>
+</g>
+  <g transform="translate(70,40)"><line x1="189.1" y1="0" x2="189.1" y2="180" class="ref-line"/><text x="193.1" y="10" class="ref-label">40% — abuse threshold</text></g>
+</svg>
+        <figcaption>Refund rate for the 26,112 ordinary
+          buyers with 10+ orders drops off sharply past 20%; the 68
+          flagged abusers all sit past the 40% line the evidence query enforces.</figcaption>
+      </figure>
+      <figure class="chart-fig">
+        
+<svg viewBox="0 0 640 280" class="chart-svg" role="img" aria-label="Listing price ratio to category median">
+  <g transform="translate(70,40)">
+<line x1="0" y1="180.0" x2="520" y2="180.0" class="grid-line"/>
+<text x="-8" y="183.0" class="tick-label" text-anchor="end">0</text>
+<line x1="0" y1="135.0" x2="520" y2="135.0" class="grid-line"/>
+<text x="-8" y="138.0" class="tick-label" text-anchor="end">2500</text>
+<line x1="0" y1="90.0" x2="520" y2="90.0" class="grid-line"/>
+<text x="-8" y="93.0" class="tick-label" text-anchor="end">5000</text>
+<line x1="0" y1="45.0" x2="520" y2="45.0" class="grid-line"/>
+<text x="-8" y="48.0" class="tick-label" text-anchor="end">7500</text>
+<line x1="0" y1="0.0" x2="520" y2="0.0" class="grid-line"/>
+<text x="-8" y="3.0" class="tick-label" text-anchor="end">10000</text>
+<line x1="0" y1="180" x2="520" y2="180" class="axis-line"/>
+<rect x="4.3" y="177.5" width="34.7" height="2.5" class="bar-danger"/>
+<text x="21.7" y="196" class="tick-label" text-anchor="middle">0.0</text>
+<rect x="47.7" y="176.8" width="34.7" height="3.2" class="bar-danger"/>
+<text x="65.0" y="196" class="tick-label" text-anchor="middle">0.2</text>
+<rect x="91.0" y="94.2" width="34.7" height="85.8" class="bar-neutral"/>
+<text x="108.3" y="196" class="tick-label" text-anchor="middle">0.4</text>
+<rect x="134.3" y="0.6" width="34.7" height="179.4" class="bar-neutral"/>
+<text x="151.7" y="196" class="tick-label" text-anchor="middle">0.6</text>
+<rect x="177.7" y="1.0" width="34.7" height="179.0" class="bar-neutral"/>
+<text x="195.0" y="196" class="tick-label" text-anchor="middle">0.8</text>
+<rect x="221.0" y="2.4" width="34.7" height="177.6" class="bar-neutral"/>
+<text x="238.3" y="196" class="tick-label" text-anchor="middle">1.0</text>
+<rect x="264.3" y="1.8" width="34.7" height="178.2" class="bar-neutral"/>
+<text x="281.7" y="196" class="tick-label" text-anchor="middle">1.2</text>
+<rect x="307.7" y="85.6" width="34.7" height="94.4" class="bar-neutral"/>
+<text x="325.0" y="196" class="tick-label" text-anchor="middle">1.4</text>
+<rect x="351.0" y="180.0" width="34.7" height="0.0" class="bar-neutral"/>
+<text x="368.3" y="196" class="tick-label" text-anchor="middle">1.6</text>
+<rect x="394.3" y="180.0" width="34.7" height="0.0" class="bar-neutral"/>
+<text x="411.7" y="196" class="tick-label" text-anchor="middle">1.8</text>
+<rect x="437.7" y="180.0" width="34.7" height="0.0" class="bar-neutral"/>
+<text x="455.0" y="196" class="tick-label" text-anchor="middle">2.0</text>
+<rect x="481.0" y="180.0" width="34.7" height="0.0" class="bar-neutral"/>
+<text x="498.3" y="196" class="tick-label" text-anchor="middle">2.2</text>
+<text x="260.0" y="220" class="axis-caption" text-anchor="middle">listing price ÷ category median (bucket left edge, step 0.2)</text>
+<text x="-40" y="90.0" class="axis-caption" text-anchor="middle" transform="rotate(-90 -40 90.0)">listings</text>
+</g>
+  <g transform="translate(70,40)"><line x1="86.7" y1="0" x2="86.7" y2="180" class="ref-line"/><text x="90.7" y="10" class="ref-label">0.4× median — counterfeit-triage threshold</text></g>
+</svg>
+        <figcaption>Listing prices cluster tightly around their category median (0.5&ndash;1.5&times;);
+          the 318 counterfeit-signal listings sit isolated below the
+          0.4&times; line, priced by design out of the organic range.</figcaption>
+      </figure>
+      <figure class="chart-fig">
+        
+<svg viewBox="0 0 640 300" class="chart-svg" role="img" aria-label="Brushing order bursts by seller and shared ship address">
+  <g transform="translate(70,40)">
+<line x1="0" y1="170.0" x2="520" y2="170.0" class="grid-line"/>
+<text x="-8" y="173.0" class="tick-label" text-anchor="end">0</text>
+<line x1="0" y1="127.5" x2="520" y2="127.5" class="grid-line"/>
+<text x="-8" y="130.5" class="tick-label" text-anchor="end">12</text>
+<line x1="0" y1="85.0" x2="520" y2="85.0" class="grid-line"/>
+<text x="-8" y="88.0" class="tick-label" text-anchor="end">25</text>
+<line x1="0" y1="42.5" x2="520" y2="42.5" class="grid-line"/>
+<text x="-8" y="45.5" class="tick-label" text-anchor="end">38</text>
+<line x1="0" y1="0.0" x2="520" y2="0.0" class="grid-line"/>
+<text x="-8" y="3.0" class="tick-label" text-anchor="end">50</text>
+<line x1="0" y1="170" x2="520" y2="170" class="axis-line"/>
+<rect x="5.2" y="47.6" width="24.3" height="122.4" class="bar-danger"/>
+<text x="17.3" y="43.6" class="bar-value" text-anchor="middle">36</text>
+<text x="17.3" y="186" class="tick-label" text-anchor="middle">609</text>
+<rect x="39.9" y="57.8" width="24.3" height="112.2" class="bar-danger"/>
+<text x="52.0" y="53.8" class="bar-value" text-anchor="middle">33</text>
+<text x="52.0" y="186" class="tick-label" text-anchor="middle">614</text>
+<rect x="74.5" y="61.2" width="24.3" height="108.8" class="bar-danger"/>
+<text x="86.7" y="57.2" class="bar-value" text-anchor="middle">32</text>
+<text x="86.7" y="186" class="tick-label" text-anchor="middle">608</text>
+<rect x="109.2" y="64.6" width="24.3" height="105.4" class="bar-danger"/>
+<text x="121.3" y="60.6" class="bar-value" text-anchor="middle">31</text>
+<text x="121.3" y="186" class="tick-label" text-anchor="middle">602</text>
+<rect x="143.9" y="71.4" width="24.3" height="98.6" class="bar-danger"/>
+<text x="156.0" y="67.4" class="bar-value" text-anchor="middle">29</text>
+<text x="156.0" y="186" class="tick-label" text-anchor="middle">615</text>
+<rect x="178.5" y="78.2" width="24.3" height="91.8" class="bar-danger"/>
+<text x="190.7" y="74.2" class="bar-value" text-anchor="middle">27</text>
+<text x="190.7" y="186" class="tick-label" text-anchor="middle">604</text>
+<rect x="213.2" y="81.6" width="24.3" height="88.4" class="bar-danger"/>
+<text x="225.3" y="77.6" class="bar-value" text-anchor="middle">26</text>
+<text x="225.3" y="186" class="tick-label" text-anchor="middle">610</text>
+<rect x="247.9" y="95.2" width="24.3" height="74.8" class="bar-danger"/>
+<text x="260.0" y="91.2" class="bar-value" text-anchor="middle">22</text>
+<text x="260.0" y="186" class="tick-label" text-anchor="middle">605</text>
+<rect x="282.5" y="95.2" width="24.3" height="74.8" class="bar-danger"/>
+<text x="294.7" y="91.2" class="bar-value" text-anchor="middle">22</text>
+<text x="294.7" y="186" class="tick-label" text-anchor="middle">612</text>
+<rect x="317.2" y="102.0" width="24.3" height="68.0" class="bar-danger"/>
+<text x="329.3" y="98.0" class="bar-value" text-anchor="middle">20</text>
+<text x="329.3" y="186" class="tick-label" text-anchor="middle">611</text>
+<rect x="351.9" y="105.4" width="24.3" height="64.6" class="bar-danger"/>
+<text x="364.0" y="101.4" class="bar-value" text-anchor="middle">19</text>
+<text x="364.0" y="186" class="tick-label" text-anchor="middle">601</text>
+<rect x="386.5" y="105.4" width="24.3" height="64.6" class="bar-danger"/>
+<text x="398.7" y="101.4" class="bar-value" text-anchor="middle">19</text>
+<text x="398.7" y="186" class="tick-label" text-anchor="middle">603</text>
+<rect x="421.2" y="105.4" width="24.3" height="64.6" class="bar-danger"/>
+<text x="433.3" y="101.4" class="bar-value" text-anchor="middle">19</text>
+<text x="433.3" y="186" class="tick-label" text-anchor="middle">613</text>
+<rect x="455.9" y="108.8" width="24.3" height="61.2" class="bar-danger"/>
+<text x="468.0" y="104.8" class="bar-value" text-anchor="middle">18</text>
+<text x="468.0" y="186" class="tick-label" text-anchor="middle">607</text>
+<rect x="490.5" y="115.6" width="24.3" height="54.4" class="bar-danger"/>
+<text x="502.7" y="111.6" class="bar-value" text-anchor="middle">16</text>
+<text x="502.7" y="186" class="tick-label" text-anchor="middle">606</text>
+<text x="260.0" y="210" class="axis-caption" text-anchor="middle">seller id (each bar = one seller + shared ship-address cluster)</text>
+<text x="-40" y="85.0" class="axis-caption" text-anchor="middle" transform="rotate(-90 -40 85.0)">burst orders</text>
+</g>
+  <text x="87.3" y="240" class="sub-label" text-anchor="middle">6buy</text><text x="122.0" y="240" class="sub-label" text-anchor="middle">6buy</text><text x="156.7" y="240" class="sub-label" text-anchor="middle">5buy</text><text x="191.3" y="240" class="sub-label" text-anchor="middle">6buy</text><text x="226.0" y="240" class="sub-label" text-anchor="middle">5buy</text><text x="260.7" y="240" class="sub-label" text-anchor="middle">5buy</text><text x="295.3" y="240" class="sub-label" text-anchor="middle">4buy</text><text x="330.0" y="240" class="sub-label" text-anchor="middle">4buy</text><text x="364.7" y="240" class="sub-label" text-anchor="middle">4buy</text><text x="399.3" y="240" class="sub-label" text-anchor="middle">4buy</text><text x="434.0" y="240" class="sub-label" text-anchor="middle">3buy</text><text x="468.7" y="240" class="sub-label" text-anchor="middle">4buy</text><text x="503.3" y="240" class="sub-label" text-anchor="middle">3buy</text><text x="538.0" y="240" class="sub-label" text-anchor="middle">3buy</text><text x="572.7" y="240" class="sub-label" text-anchor="middle">3buy</text>
+</svg>
+        <figcaption>All 15 brushing clusters concentrate 16&ndash;36 orders behind just 3&ndash;6
+          linked buyer accounts sharing one ship address &mdash; a ratio no ordinary address
+          (always exactly one buyer) can produce.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+
+<section id="scaling">
+  <div class="wrap">
+    <h2>Further use &amp; scaling</h2>
+    <div class="scaling-grid">
+      <div>
+        <h3>Regenerate</h3>
+        <pre class="sql">uv run --project backend python scripts/seed.py market</pre>
+        <p>Or regenerate every seed kit at once with <code>scripts/seed.py</code> and no argument.</p>
+      </div>
+      <div>
+        <h3>Determinism</h3>
+        <p>Every generator seeds a local <code>random.Random(SEED + salt)</code> from
+          <code>infra/seeds/_gen.py</code> (<code>SEED = 20260709</code>); market.py draws two
+          independent streams &mdash; <code>rng(14)</code> for structure and the planted patterns,
+          <code>rng(15)</code> for PII/payment fields &mdash; so a regenerate reproduces
+          <strong>byte-for-byte identical</strong> output. No global <code>random</code> state is
+          touched.</p>
+      </div>
+      <div>
+        <h3>Row-count knobs</h3>
+        <p>All in <code>infra/seeds/market.py</code>: <code>N_SELLERS</code> (4,000), the
+          50,000-listing fill loop, <code>N_BUYERS</code> (30,000), <code>N_NORMAL_ORDERS</code>
+          (448,000), <code>N_NORMAL_REVIEWS</code> (179,000), and the 7.7% normal-refund rate
+          constant. The reserved id blocks for each planted pattern
+          (<code>RING_SELLERS</code>, <code>ABUSER_BUYERS</code>, <code>COUNTERFEIT_SELLERS</code>,
+          <code>BRUSHING_SELLERS</code>) sit just above them.</p>
+      </div>
+      <div>
+        <h3>Adding columns safely</h3>
+        <p>Keep every new value a deterministic draw from one of the two named RNG streams (never
+          <code>random</code> directly), append &mdash; don't reorder &mdash; existing
+          <code>r.choice</code>/<code>r.randint</code> calls so earlier planted patterns stay
+          byte-identical, and re-run <code>backend/tests/test_seeds_new.py</code>
+          (<code>test_planted_patterns_fire</code>) to confirm every evidence-query floor in this
+          dossier still holds green.</p>
+      </div>
+      <div>
+        <h3>Prompts &rarr; sandbox UI</h3>
+        <p>The four prompts in Scenarios are defined verbatim in the <code>COMPANIES</code> list of
+          <code>backend/app/api/sandbox.py</code> under the <code>market</code> entry; the judge
+          sandbox lists them as one-click suggestions before a freeform prompt box, and each launches
+          a real process-mode run against this database.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<footer id="footer">
+  <div class="wrap">
+    <p>Generated from <code>infra/seeds/out/market.db</code>, generator
+      <code>infra/seeds/market.py</code>, terms
+      <code>infra/seeds/out/terms/market_terms.md</code>.</p>
+    <p class="synthetic-note">Fully synthetic demo data. No real sellers, buyers, orders, or
+      payment instruments.</p>
+  </div>
+</footer>
+

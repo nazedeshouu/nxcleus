@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { ArrowRight, Circle } from "@phosphor-icons/react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Circle, Lightning, Lock, ShieldCheck } from "@phosphor-icons/react";
 import { api, type JobSummary } from "../api/client";
 import { MOCK_FORCED } from "../api/config";
+import { useDemoToken } from "../api/useDemoToken";
 import { KYC_JOB_ID } from "../fixtures/kycJob";
 import styles from "./JobList.module.css";
 
@@ -14,6 +16,77 @@ const DEMO_JOB: JobSummary = {
   mode: "build",
   goal: "Auditable case file per applicant, no raw PII across the boundary.",
 };
+
+function NewProcess() {
+  const navigate = useNavigate();
+  const unlocked = useDemoToken();
+  const [request, setRequest] = useState("");
+  const [title, setTitle] = useState("");
+  const [policy, setPolicy] = useState("");
+  const [showPolicy, setShowPolicy] = useState(false);
+  const [sovereign, setSovereign] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const create = async () => {
+    if (!request.trim()) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await api.createJob({
+        request: request.trim(),
+        title: title.trim() || undefined,
+        policy_text: policy.trim() || undefined,
+        sovereign,
+      });
+      navigate(`/build/${res.job.id}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      setErr(status === 401 ? "Presenter token required — unlock top-right." : `Could not start: ${(e as Error).message}`);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.create}>
+      <textarea
+        className={styles.createText}
+        value={request}
+        onChange={(e) => setRequest(e.target.value)}
+        placeholder="Describe the process you need. e.g. Every month, flag duplicate claims and coverage breaches; the claims committee gets a case file per flagged entity and a CSV for recovery."
+        rows={3}
+      />
+      {showPolicy && (
+        <textarea
+          className={styles.createText}
+          value={policy}
+          onChange={(e) => setPolicy(e.target.value)}
+          placeholder="Confidentiality policy — what must never leave your walls, on top of the PII baseline."
+          rows={2}
+        />
+      )}
+      <div className={styles.createMeta}>
+        <input
+          className={styles.createTitle}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Title (optional)"
+        />
+        <button className={`${styles.createOpt} ${showPolicy ? styles.on : ""}`} onClick={() => setShowPolicy((s) => !s)}>
+          {showPolicy ? "Policy attached" : "Attach policy text"}
+        </button>
+        <label className={`${styles.createOpt} ${sovereign ? styles.on : ""}`} title="Zero external calls — even the sanitized planner brief stays inside">
+          <input type="checkbox" checked={sovereign} onChange={(e) => setSovereign(e.target.checked)} hidden />
+          <ShieldCheck weight={sovereign ? "fill" : "regular"} /> Sovereign
+        </label>
+        <button className={styles.createGo} disabled={busy || !request.trim()} onClick={create} title={unlocked ? "" : "May require Presenter mode"}>
+          {unlocked ? <Lightning weight="fill" /> : <Lock weight="regular" />} {busy ? "Starting…" : "Start the build"}
+        </button>
+      </div>
+      {err && <div className={styles.createErr}>{err}</div>}
+    </div>
+  );
+}
 
 export function JobList() {
   const q = useQuery({ queryKey: ["jobs"], queryFn: () => api.listJobs(), enabled: !MOCK_FORCED, retry: 0 });
@@ -31,6 +104,8 @@ export function JobList() {
           </p>
         </div>
       </div>
+
+      <NewProcess />
 
       <ul className={styles.grid}>
         {jobs.map((j) => (

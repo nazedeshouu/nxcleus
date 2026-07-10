@@ -15,7 +15,18 @@ async def run(ctx) -> None:
     await ctx.emit(E.PLAN_STARTED, {"title": brief.get("title", ""), "sovereign": ctx.sovereign})
 
     planner = seat("planner")
-    plan = await planner.plan(ctx.complete, ctx.emit, brief=brief)
+    company = brief.get("company") if isinstance(brief, dict) else None
+    sandbox_fn = getattr(planner, "sandbox_plan", None) \
+        if job.get("origin") == "sandbox" and company else None
+    if sandbox_fn:
+        # sandbox planning is company-schema-scoped with polite out-of-scope refusal (09 §2)
+        from app.sandbox import seeds
+        plan = await sandbox_fn(ctx.complete, ctx.emit,
+                                prompt=brief.get("request") or brief.get("summary") or brief.get("title", ""),
+                                company=company,
+                                company_schema={"tables": seeds.company_schema(company)})
+    else:
+        plan = await planner.plan(ctx.complete, ctx.emit, brief=brief)
 
     # deterministic plan id so a resumed stage upserts the same row (07 §4)
     plan_id = deterministic("plan", ctx.job_id, "v1")

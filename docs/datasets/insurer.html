@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cascadia Mutual &mdash; insurer dataset dossier</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<style>
+:root {
+  --bg: #060f14;
+  --surface: #0a1a21;
+  --surface-raised: #0d2029;
+  --surface-sunk: #071319;
+  --hairline: #163542;
+  --hairline-soft: #112834;
+  --text: #dcebf0;
+  --text-muted: #85a0aa;
+  --text-faint: #567179;
+  --accent: #38a6d2;
+  --accent-strong: #85d3f0;
+  --accent-mid: #216f92;
+  --accent-pale: #0e2c3a;
+  --ok: #4bcb90;
+  --warn: #e2a35e;
+  --danger: #ff5f65;
+  --font-sans: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --maxw: 1180px;
+}
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(60vw 40vw at 85% -10%, rgba(56,166,210,0.07), transparent 60%),
+    radial-gradient(50vw 30vw at 5% 10%, rgba(56,166,210,0.04), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+a { color: var(--accent-strong); }
+h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.01em; color: var(--text); margin: 0 0 0.5em; }
+p { margin: 0 0 1em; color: var(--text); max-width: 72ch; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+
+nav.topnav {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 1.4rem;
+  padding: 0.85rem 2rem;
+  background: rgba(6,15,20,0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--hairline);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+nav.topnav .brand { font-weight: 600; color: var(--text); margin-right: 0.6rem; font-size: 0.92rem; }
+nav.topnav a { color: var(--text-muted); text-decoration: none; font-size: 0.86rem; font-family: var(--font-mono); }
+nav.topnav a:hover { color: var(--accent-strong); }
+
+main { position: relative; z-index: 1; }
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 2rem; }
+section { padding: 4.5rem 0; border-bottom: 1px solid var(--hairline-soft); }
+section:last-of-type { border-bottom: none; }
+.eyebrow {
+  font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 0.6rem;
+}
+h2.section-title { font-size: clamp(1.5rem, 2.2vw, 2rem); margin-bottom: 0.4rem; }
+.section-sub { color: var(--text-muted); max-width: 68ch; margin-bottom: 2.4rem; }
+
+/* ---- masthead ---- */
+header#masthead { padding: 3.6rem 0 3rem; border-bottom: 1px solid var(--hairline); position: relative; z-index: 1; }
+header#masthead .kicker { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.9rem; }
+header#masthead h1 { font-size: clamp(2.2rem, 4.4vw, 3.4rem); line-height: 1.04; margin-bottom: 0.9rem; }
+header#masthead .premise { font-size: 1.12rem; color: var(--text-muted); max-width: 62ch; margin-bottom: 1.6rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2.4rem; }
+.chip {
+  font-family: var(--font-mono); font-size: 0.78rem; padding: 0.32rem 0.7rem;
+  border: 1px solid var(--hairline); border-radius: 999px; color: var(--text-muted);
+  background: var(--surface);
+}
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+.stat { background: var(--surface); padding: 1.4rem 1.6rem; }
+.stat .n { font-family: var(--font-mono); font-size: 1.9rem; font-weight: 600; color: var(--accent-strong); display: block; }
+.stat .l { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+/* ---- scenario cards ---- */
+.scenario-grid { display: grid; grid-template-columns: 1fr; gap: 1.6rem; }
+.card {
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 1.8rem 2rem 2rem;
+}
+.card h3 { font-size: 1.25rem; margin-bottom: 0.9rem; display: flex; align-items: center; gap: 0.6rem; }
+.card h3 .idx { font-family: var(--font-mono); color: var(--accent); font-size: 0.9rem; border: 1px solid var(--accent-mid); background: var(--accent-pale); border-radius: 6px; padding: 0.1rem 0.5rem; }
+.prompt-bubble {
+  font-family: var(--font-mono); font-size: 0.92rem; color: var(--text);
+  background: var(--accent-pale); border: 1px solid var(--accent-mid); border-left: 3px solid var(--accent);
+  border-radius: 8px; padding: 0.85rem 1.1rem; margin-bottom: 1rem;
+}
+.prompt-bubble::before { content: "judge sandbox prompt"; display: block; font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin-bottom: 0.4rem; }
+.value-line { color: var(--text); font-size: 0.98rem; margin-bottom: 1rem; }
+.value-line strong { color: var(--accent-strong); }
+.plant-note { color: var(--text-muted); font-size: 0.92rem; background: var(--surface-sunk); border: 1px solid var(--hairline-soft); border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 1.1rem; }
+.plant-note::before { content: "how the pattern was planted"; display: block; font-family: var(--font-mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); margin-bottom: 0.35rem; }
+
+pre {
+  font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.55; color: var(--accent-strong);
+  background: var(--surface-sunk); border: 1px solid var(--hairline); border-radius: 8px;
+  padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.1rem;
+}
+.result-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+.result-meta .hit { color: var(--danger); font-weight: 600; font-family: var(--font-mono); }
+
+.tbl-scroll { overflow-x: auto; border: 1px solid var(--hairline); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+table.data-table th, table.data-table td { padding: 0.55rem 0.85rem; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--hairline-soft); }
+table.data-table thead th {
+  font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-muted); background: var(--surface-raised); position: sticky; top: 0;
+}
+table.data-table tbody tr:hover { background: var(--surface-raised); }
+table.data-table td.mono, table.data-table td.numcell { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
+table.data-table tbody tr:last-child td { border-bottom: none; }
+
+.tag {
+  display: inline-block; font-family: var(--font-mono); font-size: 0.62rem; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 0.08rem 0.4rem; border-radius: 5px; margin-left: 0.4rem; vertical-align: middle;
+}
+.tag-restricted { color: var(--danger); background: rgba(255,95,101,0.1); border: 1px solid rgba(255,95,101,0.35); }
+.tag-confidential { color: var(--warn); background: rgba(226,163,94,0.1); border: 1px solid rgba(226,163,94,0.35); }
+.tag-internal { color: var(--text-muted); background: rgba(133,160,170,0.08); border: 1px solid var(--hairline); }
+th .tag { display: block; margin: 0.25rem 0 0; }
+
+/* ---- data model ---- */
+.model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.4rem; margin-bottom: 2rem; }
+.model-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 1.3rem 1.5rem; }
+.model-card h4 { font-family: var(--font-mono); font-size: 1rem; color: var(--accent-strong); display: flex; justify-content: space-between; align-items: baseline; }
+.model-card h4 .cnt { font-size: 0.78rem; color: var(--text-muted); font-weight: 400; }
+.model-card ul { list-style: none; margin: 0.8rem 0 0; padding: 0; font-family: var(--font-mono); font-size: 0.8rem; }
+.model-card li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.28rem 0; border-bottom: 1px solid var(--hairline-soft); color: var(--text-muted); }
+.model-card li:last-child { border-bottom: none; }
+.model-card li .colname { color: var(--text); }
+.model-card li .coltype { color: var(--text-faint); }
+.fk-map {
+  font-family: var(--font-mono); font-size: 0.86rem; color: var(--text-muted);
+  background: var(--surface-sunk); border: 1px solid var(--hairline); border-radius: 10px;
+  padding: 1.4rem 1.6rem; white-space: pre; overflow-x: auto; line-height: 1.7;
+}
+.fk-map .t { color: var(--accent-strong); }
+
+/* ---- sample ---- */
+.sample-block { margin-bottom: 2.2rem; }
+.sample-block h4 { font-family: var(--font-mono); color: var(--accent-strong); font-size: 1rem; margin-bottom: 0.7rem; }
+.sample-block .cap { color: var(--text-faint); font-size: 0.82rem; margin: 0.6rem 0 0; }
+
+/* ---- terms ---- */
+.terms-inventory { margin-bottom: 2.4rem; }
+.terms-doc {
+  background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 2.2rem 2.4rem; max-width: 78ch;
+}
+.terms-doc h2 { font-size: 1.5rem; border-bottom: 1px solid var(--hairline); padding-bottom: 0.7rem; margin-bottom: 1rem; }
+.terms-doc h3 { font-size: 1.1rem; color: var(--accent-strong); margin-top: 1.8rem; }
+.terms-doc p { color: var(--text-muted); }
+.terms-doc ul { padding-left: 1.2rem; color: var(--text-muted); }
+.terms-doc li { margin-bottom: 0.55rem; }
+.terms-doc strong { color: var(--text); }
+.wiring-note {
+  font-size: 0.88rem; color: var(--text-muted); background: var(--accent-pale);
+  border: 1px solid var(--accent-mid); border-radius: 8px; padding: 0.9rem 1.1rem; margin-bottom: 1.8rem; max-width: 78ch;
+}
+.wiring-note strong { color: var(--accent-strong); }
+
+/* ---- charts ---- */
+.chart-grid { display: grid; grid-template-columns: 1fr; gap: 2.4rem; }
+.chart-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 1.6rem 1.8rem 1.4rem; }
+.chart-card h4 { font-size: 1.05rem; margin-bottom: 0.2rem; }
+.chart-card .cap { color: var(--text-muted); font-size: 0.88rem; margin-top: 0.8rem; }
+.chart-card svg { display: block; }
+
+/* ---- scaling ---- */
+.scaling-grid { display: grid; grid-template-columns: 1fr; gap: 1.4rem; }
+.scaling-item { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 1.3rem 1.6rem; }
+.scaling-item h4 { font-size: 0.98rem; color: var(--accent-strong); margin-bottom: 0.5rem; }
+.scaling-item p, .scaling-item ul { color: var(--text-muted); font-size: 0.92rem; margin-bottom: 0; }
+.scaling-item ul { padding-left: 1.2rem; }
+.scaling-item li { margin-bottom: 0.4rem; }
+.scaling-item code { font-family: var(--font-mono); background: var(--surface-sunk); border: 1px solid var(--hairline); border-radius: 5px; padding: 0.1rem 0.4rem; color: var(--accent-strong); font-size: 0.85rem; }
+
+footer { padding: 3rem 0 4rem; }
+footer .paths { font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-muted); line-height: 2; }
+footer .synthetic { margin-top: 1.4rem; color: var(--text-faint); font-size: 0.86rem; }
+
+@media (max-width: 760px) {
+  .wrap { padding: 0 1.1rem; }
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+  nav.topnav { padding: 0.7rem 1.1rem; gap: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">CASCADIA MUTUAL &middot; insurer</span>
+  <a href="#scenarios">scenarios</a>
+  <a href="#model">model</a>
+  <a href="#sample">sample</a>
+  <a href="#terms">terms</a>
+  <a href="#charts">charts</a>
+  <a href="#scaling">scaling</a>
+</nav>
+
+<main>
+
+<header id="masthead">
+  <div class="wrap">
+    <div class="kicker">Dataset dossier &middot; judge sandbox company</div>
+    <h1>Cascadia Mutual</h1>
+    <p class="premise">A policyholder-owned property &amp; casualty carrier writing auto, home, and
+    commercial lines across Washington and Oregon. Its claims ledger carries four planted
+    fraud-and-leakage shapes &mdash; duplicate claims, staged-accident rings, over-coverage payouts, and
+    a rubber-stamping adjuster anomaly &mdash; each one discoverable with plain SQL over the final database,
+    never hand-tuned into the output.</p>
+    <div class="chips">
+      <span class="chip">P&amp;C insurer &middot; WA / OR</span>
+      <span class="chip">RCW Title 48 + Oregon Insurance Code</span>
+      <span class="chip">NAIC Insurance Data Security Model Law</span>
+      <span class="chip">GLBA safeguards</span>
+      <span class="chip">HIPAA-adjacent bodily-injury data</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><span class="n mono">358,254</span><span class="l">total rows across 5 tables</span></div>
+      <div class="stat"><span class="n mono">5</span><span class="l">tables (policies, adjusters, repair_shops, claims, claim_payments)</span></div>
+      <div class="stat"><span class="n mono">24.4&nbsp;MB</span><span class="l">insurer.db on disk</span></div>
+      <div class="stat"><span class="n mono">4 / 351</span><span class="l">planted pattern types / total evidence hits</span></div>
+    </div>
+  </div>
+</header>
+
+
+<section id="scenarios">
+  <div class="wrap">
+    <div class="eyebrow">01 &middot; Scenarios</div>
+    <h2 class="section-title">What the judge sandbox finds</h2>
+    <p class="section-sub">Four prompts, four provable patterns. Each card's SQL runs live against
+    <code class="mono">insurer.db</code> to produce the table beneath it — nothing here is canned.</p>
+    <div class="scenario-grid">
+      
+    <div class="card">
+      <h3><span class="idx">01</span>Duplicate claims</h3>
+      <div class="prompt-bubble">&ldquo;Flag duplicate claims filed against the same policy for one incident — same incident date, amounts within 5%, different claim IDs&rdquo;</div>
+      <p class="value-line">Stops the same loss being paid out twice under one policy — the single most common leakage vector in a P&amp;C claims shop, and the easiest one for a human reviewer to miss across 140k claims.</p>
+      <div class="plant-note">120 duplicate pairs are inserted explicitly: pick a policy and an incident date already in play, then file a second claim against the same policy/date with an amount drawn within ±4% of the first (<code>r.uniform(0.96, 1.04)</code>), a different shop and adjuster, always approved. The evidence query below actually returns <strong>137</strong> pairs — the extra 17 are incidental collisions inside the 140,000 base claims that happen to share a policy + incident date within the same 5% amount band, which is exactly the leakage an amount-similarity join is supposed to catch, planted or not.</div>
+      <pre>SELECT a.id AS claim_a, b.id AS claim_b, a.policy_id, a.incident_date, a.amount_claimed AS amount_a, b.amount_claimed AS amount_b
+FROM claims a JOIN claims b
+  ON a.policy_id = b.policy_id AND a.incident_date = b.incident_date AND a.id &lt; b.id
+WHERE ABS(a.amount_claimed - b.amount_claimed) &lt;= 0.05 * a.amount_claimed
+ORDER BY a.policy_id</pre>
+      
+    <div class="result-meta">Showing 15 of <span class="hit">137</span> real hit rows returned by this query, right now.</div>
+    <div class="tbl-scroll"><table class="data-table"><thead><tr><th>claim_a</th><th>claim_b</th><th>policy_id</th><th>incident_date</th><th>amount_a</th><th>amount_b</th></tr></thead><tbody>
+      <tr><td class="numcell">140047</td><td class="numcell">140048</td><td class="numcell">469</td><td class="mono">2025-07-08</td><td class="numcell">$103,693.31</td><td class="numcell">$102,007.58</td></tr><tr><td class="numcell">140213</td><td class="numcell">140214</td><td class="numcell">586</td><td class="mono">2026-06-12</td><td class="numcell">$66,970.59</td><td class="numcell">$67,816.85</td></tr><tr><td class="numcell">140003</td><td class="numcell">140004</td><td class="numcell">845</td><td class="mono">2025-04-02</td><td class="numcell">$95,379.02</td><td class="numcell">$98,181.78</td></tr><tr><td class="numcell">140165</td><td class="numcell">140166</td><td class="numcell">1564</td><td class="mono">2025-12-17</td><td class="numcell">$31,955.89</td><td class="numcell">$31,897.75</td></tr><tr><td class="numcell">140081</td><td class="numcell">140082</td><td class="numcell">1897</td><td class="mono">2022-09-27</td><td class="numcell">$33,972.09</td><td class="numcell">$33,667.60</td></tr><tr><td class="numcell">140217</td><td class="numcell">140218</td><td class="numcell">2005</td><td class="mono">2024-06-17</td><td class="numcell">$45,389.70</td><td class="numcell">$46,469.98</td></tr><tr><td class="numcell">140219</td><td class="numcell">140220</td><td class="numcell">2349</td><td class="mono">2023-07-27</td><td class="numcell">$14,734.90</td><td class="numcell">$14,740.60</td></tr><tr><td class="numcell">140175</td><td class="numcell">140176</td><td class="numcell">2359</td><td class="mono">2025-03-09</td><td class="numcell">$695,790.23</td><td class="numcell">$684,336.17</td></tr><tr><td class="numcell">140045</td><td class="numcell">140046</td><td class="numcell">2748</td><td class="mono">2022-02-01</td><td class="numcell">$113,691.46</td><td class="numcell">$115,232.14</td></tr><tr><td class="numcell">140209</td><td class="numcell">140210</td><td class="numcell">3270</td><td class="mono">2024-06-07</td><td class="numcell">$472,778.06</td><td class="numcell">$463,358.20</td></tr><tr><td class="numcell">12612</td><td class="numcell">33648</td><td class="numcell">3355</td><td class="mono">2023-08-31</td><td class="numcell">$37,944.04</td><td class="numcell">$38,475.72</td></tr><tr><td class="numcell">140057</td><td class="numcell">140058</td><td class="numcell">3361</td><td class="mono">2025-06-12</td><td class="numcell">$8,360.72</td><td class="numcell">$8,665.75</td></tr><tr><td class="numcell">140079</td><td class="numcell">140080</td><td class="numcell">3580</td><td class="mono">2026-02-03</td><td class="numcell">$17,466.28</td><td class="numcell">$17,381.60</td></tr><tr><td class="numcell">140119</td><td class="numcell">140120</td><td class="numcell">3591</td><td class="mono">2024-08-27</td><td class="numcell">$9,494.45</td><td class="numcell">$9,711.68</td></tr><tr><td class="numcell">140025</td><td class="numcell">140026</td><td class="numcell">3638</td><td class="mono">2025-10-19</td><td class="numcell">$128,204.40</td><td class="numcell">$128,002.94</td></tr>
+    </tbody></table></div>
+    
+    </div>
+    
+    <div class="card">
+      <h3><span class="idx">02</span>Staged-accident rings</h3>
+      <div class="prompt-bubble">&ldquo;Detect staged-accident rings where unrelated policies funnel claims through one repair shop and claimant phone inside a tight window&rdquo;</div>
+      <p class="value-line">Surfaces organized ring fraud — unrelated policyholders funneled through one shop/phone controller — before the payouts clear, not after a special investigations unit stumbles onto it months later.</p>
+      <div class="plant-note">8 rings are built directly: for each ring, one <code>repair_shop_id</code> and one <code>claimant_phone</code> are fixed, an anchor date is chosen, then 6–12 otherwise-unrelated policies (<code>r.sample</code> across all 50,000) each file one claim against that shop/phone within a 0–21 day window of the anchor. Amounts and adjusters are drawn normally so only the shop+phone clustering gives the ring away.</div>
+      <pre>SELECT repair_shop_id, claimant_phone, COUNT(*) AS ring_claims,
+       COUNT(DISTINCT policy_id) AS distinct_policies,
+       MIN(incident_date) AS first_incident, MAX(incident_date) AS last_incident
+FROM claims
+WHERE repair_shop_id IS NOT NULL
+GROUP BY repair_shop_id, claimant_phone
+HAVING COUNT(*) &gt;= 6 AND COUNT(DISTINCT policy_id) &gt;= 6
+ORDER BY ring_claims DESC</pre>
+      
+    <div class="result-meta">Showing 8 of <span class="hit">8</span> real hit rows returned by this query, right now.</div>
+    <div class="tbl-scroll"><table class="data-table"><thead><tr><th>repair_shop_id</th><th>claimant_phone</th><th>ring_claims</th><th>distinct_policies</th><th>first_incident</th><th>last_incident</th></tr></thead><tbody>
+      <tr><td class="numcell">297</td><td class="mono">+1-418-534-7344</td><td class="numcell">9</td><td class="numcell">9</td><td class="mono">2024-02-19</td><td class="mono">2024-03-04</td></tr><tr><td class="numcell">375</td><td class="mono">+1-936-236-8590</td><td class="numcell">9</td><td class="numcell">9</td><td class="mono">2024-06-25</td><td class="mono">2024-07-11</td></tr><tr><td class="numcell">461</td><td class="mono">+1-825-902-7539</td><td class="numcell">8</td><td class="numcell">8</td><td class="mono">2024-01-12</td><td class="mono">2024-01-30</td></tr><tr><td class="numcell">192</td><td class="mono">+1-304-887-6731</td><td class="numcell">7</td><td class="numcell">7</td><td class="mono">2024-09-10</td><td class="mono">2024-09-27</td></tr><tr><td class="numcell">205</td><td class="mono">+1-789-786-9670</td><td class="numcell">7</td><td class="numcell">7</td><td class="mono">2024-06-15</td><td class="mono">2024-06-28</td></tr><tr><td class="numcell">433</td><td class="mono">+1-380-877-1502</td><td class="numcell">7</td><td class="numcell">7</td><td class="mono">2024-05-13</td><td class="mono">2024-06-02</td></tr><tr><td class="numcell">452</td><td class="mono">+1-695-638-6418</td><td class="numcell">6</td><td class="numcell">6</td><td class="mono">2025-07-10</td><td class="mono">2025-07-25</td></tr><tr><td class="numcell">496</td><td class="mono">+1-937-919-4322</td><td class="numcell">6</td><td class="numcell">6</td><td class="mono">2025-04-01</td><td class="mono">2025-04-20</td></tr>
+    </tbody></table></div>
+    
+    </div>
+    
+    <div class="card">
+      <h3><span class="idx">03</span>Over-coverage payouts</h3>
+      <div class="prompt-bubble">&ldquo;Audit claims whose total payments exceed the policy&#x27;s coverage limit&rdquo;</div>
+      <p class="value-line">Flags claims paid out beyond what the policy legally covers — a leakage and control-failure signature that should never reach a ledger close, let alone 200 of them.</p>
+      <div class="plant-note">200 already-approved claims are selected after decisioning; their installment payments are regenerated to sum to 105–140% of the policy's <code>coverage_limit_usd</code> (<code>r.uniform(1.05, 1.4)</code>) instead of the approved amount, split across 2–4 installments so no single payment row looks anomalous on its own — only the <code>SUM(claim_payments.amount)</code> per claim does.</div>
+      <pre>SELECT c.id AS claim_id, c.policy_id, p.coverage_limit_usd, SUM(cp.amount) AS total_paid
+FROM claims c
+JOIN policies p ON p.id = c.policy_id
+JOIN claim_payments cp ON cp.claim_id = c.id
+GROUP BY c.id
+HAVING SUM(cp.amount) &gt; p.coverage_limit_usd
+ORDER BY total_paid - p.coverage_limit_usd DESC</pre>
+      
+    <div class="result-meta">Showing 15 of <span class="hit">200</span> real hit rows returned by this query, right now.</div>
+    <div class="tbl-scroll"><table class="data-table"><thead><tr><th>claim_id</th><th>policy_id</th><th>coverage_limit_usd</th><th>total_paid</th></tr></thead><tbody>
+      <tr><td class="numcell">78883</td><td class="numcell">12547</td><td class="numcell">$4,340,699.87</td><td class="numcell">$5,928,898.78</td></tr><tr><td class="numcell">105484</td><td class="numcell">35353</td><td class="numcell">$3,803,194.50</td><td class="numcell">$5,203,674.09</td></tr><tr><td class="numcell">71081</td><td class="numcell">48464</td><td class="numcell">$3,367,549.56</td><td class="numcell">$4,690,431.20</td></tr><tr><td class="numcell">108094</td><td class="numcell">43212</td><td class="numcell">$5,949,804.26</td><td class="numcell">$7,223,151.17</td></tr><tr><td class="numcell">132638</td><td class="numcell">20775</td><td class="numcell">$3,258,594.47</td><td class="numcell">$4,482,946.21</td></tr><tr><td class="numcell">128233</td><td class="numcell">45471</td><td class="numcell">$3,719,723.91</td><td class="numcell">$4,913,722.51</td></tr><tr><td class="numcell">132197</td><td class="numcell">41037</td><td class="numcell">$4,033,255.30</td><td class="numcell">$5,178,266.05</td></tr><tr><td class="numcell">77871</td><td class="numcell">4225</td><td class="numcell">$3,931,768.87</td><td class="numcell">$5,023,930.59</td></tr><tr><td class="numcell">40248</td><td class="numcell">20021</td><td class="numcell">$4,566,728.87</td><td class="numcell">$5,656,017.11</td></tr><tr><td class="numcell">6965</td><td class="numcell">19382</td><td class="numcell">$4,932,811.89</td><td class="numcell">$5,873,698.54</td></tr><tr><td class="numcell">17696</td><td class="numcell">41654</td><td class="numcell">$3,172,799.96</td><td class="numcell">$4,094,497.76</td></tr><tr><td class="numcell">136450</td><td class="numcell">2460</td><td class="numcell">$2,301,626.06</td><td class="numcell">$3,097,426.31</td></tr><tr><td class="numcell">91183</td><td class="numcell">19518</td><td class="numcell">$1,852,049.84</td><td class="numcell">$2,396,363.68</td></tr><tr><td class="numcell">131885</td><td class="numcell">2543</td><td class="numcell">$3,499,524.78</td><td class="numcell">$3,943,314.90</td></tr><tr><td class="numcell">92347</td><td class="numcell">32980</td><td class="numcell">$1,740,568.45</td><td class="numcell">$2,152,993.46</td></tr>
+    </tbody></table></div>
+    
+    </div>
+    
+    <div class="card">
+      <h3><span class="idx">04</span>Adjuster anomaly</h3>
+      <div class="prompt-bubble">&ldquo;Rank adjusters by approval rate and average payout to flag those rubber-stamping claims above the peer mean&rdquo;</div>
+      <p class="value-line">Surfaces the adjusters approving almost everything at inflated amounts — the behavioral fraud signature auditors chase — with zero flag anywhere in the adjusters table itself.</p>
+      <div class="plant-note">6 of 150 adjusters are marked anomalous at generation time, a fact recorded only in the generator's run-time set, never written to any column. Every claim landing on one of them approves at ~99.5% (peers cluster 73–86%) and, when approved, pays the full <code>amount_claimed</code> instead of a peer's 60–90% haircut — drawn from an inflated 45–68% of the policy limit rather than peers' 2–28%. The anomaly is purely behavioral, provable only by aggregating <code>claims</code>.</div>
+      <pre>SELECT c.adjuster_id, a.name,
+       SUM(c.status = &#x27;approved&#x27;) AS approved,
+       SUM(c.status IN (&#x27;approved&#x27;,&#x27;denied&#x27;)) AS decided,
+       ROUND(1.0 * SUM(c.status = &#x27;approved&#x27;) / SUM(c.status IN (&#x27;approved&#x27;,&#x27;denied&#x27;)), 3) AS approval_rate,
+       ROUND(AVG(CASE WHEN c.status = &#x27;approved&#x27; THEN c.amount_approved END), 0) AS avg_approved
+FROM claims c JOIN adjusters a ON a.id = c.adjuster_id
+GROUP BY c.adjuster_id
+HAVING decided &gt; 50 AND approval_rate &gt; 0.98
+       AND avg_approved &gt; (SELECT AVG(amount_approved) FROM claims WHERE status = &#x27;approved&#x27;)
+ORDER BY approval_rate DESC</pre>
+      
+    <div class="result-meta">Showing 6 of <span class="hit">6</span> real hit rows returned by this query, right now.</div>
+    <div class="tbl-scroll"><table class="data-table"><thead><tr><th>adjuster_id</th><th>name</th><th>approved</th><th>decided</th><th>approval_rate</th><th>avg_approved</th></tr></thead><tbody>
+      <tr><td class="numcell">2</td><td class="mono">Omar Garcia</td><td class="numcell">841</td><td class="numcell">842</td><td class="numcell">0.999</td><td class="numcell">$297,857.00</td></tr><tr><td class="numcell">149</td><td class="mono">Aisha Reyes</td><td class="numcell">859</td><td class="numcell">862</td><td class="numcell">0.997</td><td class="numcell">$311,591.00</td></tr><tr><td class="numcell">132</td><td class="mono">Zara Mensah</td><td class="numcell">840</td><td class="numcell">844</td><td class="numcell">0.995</td><td class="numcell">$270,492.00</td></tr><tr><td class="numcell">69</td><td class="mono">Tomas Kim</td><td class="numcell">807</td><td class="numcell">811</td><td class="numcell">0.995</td><td class="numcell">$332,988.00</td></tr><tr><td class="numcell">58</td><td class="mono">Elena Sokolov</td><td class="numcell">893</td><td class="numcell">901</td><td class="numcell">0.991</td><td class="numcell">$286,612.00</td></tr><tr><td class="numcell">36</td><td class="mono">Mateo Novak</td><td class="numcell">812</td><td class="numcell">822</td><td class="numcell">0.988</td><td class="numcell">$316,866.00</td></tr>
+    </tbody></table></div>
+    
+    </div>
+    
+    </div>
+  </div>
+</section>
+
+
+<section id="model">
+  <div class="wrap">
+    <div class="eyebrow">02 &middot; Data model</div>
+    <h2 class="section-title">Five tables, one claims-file shape</h2>
+    <p class="section-sub">Policies write coverage; claims land against a policy, an adjuster, and
+    (sometimes) a repair shop; approved claims pay out across one or more installments.</p>
+    <div class="model-grid">
+      
+    <div class="model-card">
+      <h4>policies <span class="cnt">50,000 rows</span></h4>
+      <ul><li><span class="colname">id</span><span class="coltype">INTEGER</span></li><li><span class="colname">holder_name<span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></span><span class="coltype">TEXT</span></li><li><span class="colname">kind</span><span class="coltype">TEXT</span></li><li><span class="colname">coverage_limit_usd</span><span class="coltype">REAL</span></li><li><span class="colname">start_date</span><span class="coltype">TEXT</span></li><li><span class="colname">end_date</span><span class="coltype">TEXT</span></li><li><span class="colname">premium_usd</span><span class="coltype">REAL</span></li><li><span class="colname">policyholder_national_id<span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></span><span class="coltype">TEXT</span></li><li><span class="colname">policyholder_email<span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></span><span class="coltype">TEXT</span></li><li><span class="colname">policyholder_address<span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></span><span class="coltype">TEXT</span></li><li><span class="colname">premium_bank_account<span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></span><span class="coltype">TEXT</span></li></ul>
+    </div>
+    
+    <div class="model-card">
+      <h4>adjusters <span class="cnt">150 rows</span></h4>
+      <ul><li><span class="colname">id</span><span class="coltype">INTEGER</span></li><li><span class="colname">name<span class="tag tag-internal" title="Internal — see Terms">Internal</span></span><span class="coltype">TEXT</span></li><li><span class="colname">hire_date</span><span class="coltype">TEXT</span></li><li><span class="colname">region</span><span class="coltype">TEXT</span></li><li><span class="colname">seniority</span><span class="coltype">TEXT</span></li></ul>
+    </div>
+    
+    <div class="model-card">
+      <h4>repair_shops <span class="cnt">600 rows</span></h4>
+      <ul><li><span class="colname">id</span><span class="coltype">INTEGER</span></li><li><span class="colname">name</span><span class="coltype">TEXT</span></li><li><span class="colname">city</span><span class="coltype">TEXT</span></li><li><span class="colname">phone<span class="tag tag-internal" title="Internal — see Terms">Internal</span></span><span class="coltype">TEXT</span></li></ul>
+    </div>
+    
+    <div class="model-card">
+      <h4>claims <span class="cnt">140,299 rows</span></h4>
+      <ul><li><span class="colname">id</span><span class="coltype">INTEGER</span></li><li><span class="colname">policy_id</span><span class="coltype">INTEGER</span></li><li><span class="colname">incident_date</span><span class="coltype">TEXT</span></li><li><span class="colname">filed_date</span><span class="coltype">TEXT</span></li><li><span class="colname">kind</span><span class="coltype">TEXT</span></li><li><span class="colname">amount_claimed</span><span class="coltype">REAL</span></li><li><span class="colname">amount_approved</span><span class="coltype">REAL</span></li><li><span class="colname">status</span><span class="coltype">TEXT</span></li><li><span class="colname">adjuster_id</span><span class="coltype">INTEGER</span></li><li><span class="colname">repair_shop_id</span><span class="coltype">INTEGER</span></li><li><span class="colname">claimant_phone<span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></span><span class="coltype">TEXT</span></li><li><span class="colname">injury_code<span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></span><span class="coltype">TEXT</span></li></ul>
+    </div>
+    
+    <div class="model-card">
+      <h4>claim_payments <span class="cnt">167,205 rows</span></h4>
+      <ul><li><span class="colname">id</span><span class="coltype">INTEGER</span></li><li><span class="colname">claim_id</span><span class="coltype">INTEGER</span></li><li><span class="colname">date</span><span class="coltype">TEXT</span></li><li><span class="colname">amount</span><span class="coltype">REAL</span></li></ul>
+    </div>
+    
+    </div>
+    <div class="fk-map">policies (50,000)
+  &#9492;&#9472; id &#8592;&#8212;&#8212; policy_id &#9472;&#9474;
+                                     &#9474;
+adjusters (150)                     &#9474;
+  &#9492;&#9472; id &#8592;&#8212;&#8212; adjuster_id &#9472;&#9524;
+                                     &#9474;
+repair_shops (600)                  &#9474;
+  &#9492;&#9472; id &#8592;&#8212;&#8212; repair_shop_id &#9472;&#9524;
+                                     &#9474;
+                              <span class="t">claims (140,299)</span>
+                                     &#9474;
+claim_payments (167,205)            &#9474;
+  &#9492;&#9472; claim_id &#8592;&#8212;&#8212; id &#9472;&#9524;
+</div>
+  </div>
+</section>
+
+
+<section id="sample">
+  <div class="wrap">
+    <div class="eyebrow">03 &middot; Sample rows</div>
+    <h2 class="section-title">First 15 rows, every table</h2>
+    <p class="section-sub">Raw output of <code class="mono">SELECT * ... LIMIT 15</code> against the live
+    database. Sensitive columns carry the same classification badge used in the Terms section below —
+    this data is fully synthetic, but the badges are how a real Cascadia Mutual column would be marked.</p>
+    
+    <div class="sample-block">
+      <h4>policies <span class="faint mono" style="font-size:0.78rem;">SELECT * FROM policies LIMIT 15</span></h4>
+      <div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>holder_name<span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></th><th>kind</th><th>coverage_limit_usd</th><th>start_date</th><th>end_date</th><th>premium_usd</th><th>policyholder_national_id<span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></th><th>policyholder_email<span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></th><th>policyholder_address<span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></th><th>premium_bank_account<span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></th></tr></thead><tbody>
+        <tr><td class="numcell">1</td><td class="mono">Iryna Mensah</td><td class="mono">auto</td><td class="numcell">147718.18</td><td class="mono">2023-09-17</td><td class="mono">2025-09-06</td><td class="numcell">7357.5</td><td class="mono">727-33-7189</td><td class="mono">iryna.mensah6511@example.com</td><td class="mono">6712 Harbor Dr, Everett, OR 97028</td><td class="mono">994247900816</td></tr><tr><td class="numcell">2</td><td class="mono">Ivan Wang</td><td class="mono">commercial</td><td class="numcell">5852642.62</td><td class="mono">2022-05-29</td><td class="mono">2024-05-18</td><td class="numcell">78215.25</td><td class="mono">859-66-3061</td><td class="mono">ivan.wang2820@example.com</td><td class="mono">4009 Meridian Ave, Vancouver, WA 99450</td><td class="mono">506124425023</td></tr><tr><td class="numcell">3</td><td class="mono">Iryna Fernandez</td><td class="mono">home</td><td class="numcell">651274.99</td><td class="mono">2022-02-02</td><td class="mono">2023-01-28</td><td class="numcell">2494.89</td><td class="mono">393-72-1145</td><td class="mono">iryna.fernandez8519@example.com</td><td class="mono">2918 Marine Dr, Gresham, OR 97697</td><td class="mono">276448773279</td></tr><tr><td class="numcell">4</td><td class="mono">Wei Petrov</td><td class="mono">home</td><td class="numcell">583795.58</td><td class="mono">2022-02-07</td><td class="mono">2024-01-28</td><td class="numcell">4894.04</td><td class="mono">506-63-1197</td><td class="mono">wei.petrov9761@example.com</td><td class="mono">3181 Marine Dr, Everett, OR 99160</td><td class="mono">409256215108</td></tr><tr><td class="numcell">5</td><td class="mono">Aisha Silva</td><td class="mono">home</td><td class="numcell">418390.53</td><td class="mono">2025-05-30</td><td class="mono">2026-05-25</td><td class="numcell">2318.62</td><td class="mono">614-16-5341</td><td class="mono">aisha.silva5798@example.com</td><td class="mono">6044 Meridian Ave, Olympia, OR 97198</td><td class="mono">998327055118</td></tr><tr><td class="numcell">6</td><td class="mono">Noor Nguyen</td><td class="mono">commercial</td><td class="numcell">3934792.55</td><td class="mono">2023-11-29</td><td class="mono">2024-11-23</td><td class="numcell">74891.08</td><td class="mono">787-34-2826</td><td class="mono">noor.nguyen9436@example.com</td><td class="mono">629 Cedar Ln, Redmond, OR 97189</td><td class="mono">764483995527</td></tr><tr><td class="numcell">7</td><td class="mono">Sofia Novak</td><td class="mono">home</td><td class="numcell">218557.39</td><td class="mono">2024-09-13</td><td class="mono">2027-08-29</td><td class="numcell">1953.84</td><td class="mono">264-29-6128</td><td class="mono">sofia.novak335@example.com</td><td class="mono">3495 Cascade Ave, Bellevue, OR 99363</td><td class="mono">121373797076</td></tr><tr><td class="numcell">8</td><td class="mono">Anna Volkov</td><td class="mono">home</td><td class="numcell">340653.47</td><td class="mono">2024-02-12</td><td class="mono">2026-02-01</td><td class="numcell">2948.9</td><td class="mono">874-94-2523</td><td class="mono">anna.volkov4612@example.com</td><td class="mono">5295 Willamette Blvd, Yakima, WA 97662</td><td class="mono">954361744508</td></tr><tr><td class="numcell">9</td><td class="mono">Mateo Fernandez</td><td class="mono">auto</td><td class="numcell">90597.73</td><td class="mono">2024-07-18</td><td class="mono">2027-07-03</td><td class="numcell">3583.83</td><td class="mono">526-88-7321</td><td class="mono">mateo.fernandez2868@example.com</td><td class="mono">711 Harbor Dr, Olympia, WA 98853</td><td class="mono">704724965673</td></tr><tr><td class="numcell">10</td><td class="mono">Diego Okoro</td><td class="mono">auto</td><td class="numcell">80900.06</td><td class="mono">2024-10-16</td><td class="mono">2025-10-11</td><td class="numcell">3792.9</td><td class="mono">524-65-2780</td><td class="mono">diego.okoro991@example.com</td><td class="mono">7289 Cascade Ave, Spokane, WA 98970</td><td class="mono">569701230288</td></tr><tr><td class="numcell">11</td><td class="mono">Fatima Andersson</td><td class="mono">commercial</td><td class="numcell">4669291.75</td><td class="mono">2024-03-04</td><td class="mono">2026-02-22</td><td class="numcell">35975.05</td><td class="mono">157-96-9294</td><td class="mono">fatima.andersson1432@example.com</td><td class="mono">2310 Cascade Ave, Salem, OR 97573</td><td class="mono">412050929688</td></tr><tr><td class="numcell">12</td><td class="mono">Marta Costa</td><td class="mono">home</td><td class="numcell">426315.99</td><td class="mono">2023-11-26</td><td class="mono">2026-11-10</td><td class="numcell">2974.62</td><td class="mono">681-70-8216</td><td class="mono">marta.costa7142@example.com</td><td class="mono">2424 Rainier St, Everett, WA 99152</td><td class="mono">702311626371</td></tr><tr><td class="numcell">13</td><td class="mono">Mary Mensah</td><td class="mono">home</td><td class="numcell">394364.2</td><td class="mono">2024-09-01</td><td class="mono">2025-08-27</td><td class="numcell">2181.91</td><td class="mono">611-19-3111</td><td class="mono">mary.mensah4753@example.com</td><td class="mono">8109 Cedar Ln, Gresham, OR 98010</td><td class="mono">165725385911</td></tr><tr><td class="numcell">14</td><td class="mono">Wei Mensah</td><td class="mono">auto</td><td class="numcell">126788.2</td><td class="mono">2024-10-12</td><td class="mono">2025-10-07</td><td class="numcell">2649.41</td><td class="mono">668-36-3714</td><td class="mono">wei.mensah7006@example.com</td><td class="mono">1178 Cedar Ln, Tacoma, WA 98337</td><td class="mono">730081287692</td></tr><tr><td class="numcell">15</td><td class="mono">Aisha Costa</td><td class="mono">auto</td><td class="numcell">101213.43</td><td class="mono">2025-05-16</td><td class="mono">2027-05-06</td><td class="numcell">4971.94</td><td class="mono">494-86-1535</td><td class="mono">aisha.costa4312@example.com</td><td class="mono">7830 Harbor Dr, Vancouver, OR 99464</td><td class="mono">678382896803</td></tr>
+      </tbody></table></div>
+    </div>
+    
+    <div class="sample-block">
+      <h4>adjusters <span class="faint mono" style="font-size:0.78rem;">SELECT * FROM adjusters LIMIT 15</span></h4>
+      <div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>name<span class="tag tag-internal" title="Internal — see Terms">Internal</span></th><th>hire_date</th><th>region</th><th>seniority</th></tr></thead><tbody>
+        <tr><td class="numcell">1</td><td class="mono">Diego Novak</td><td class="mono">2016-01-13</td><td class="mono">North</td><td class="mono">Principal</td></tr><tr><td class="numcell">2</td><td class="mono">Omar Garcia</td><td class="mono">2018-03-07</td><td class="mono">Metro</td><td class="mono">Adjuster</td></tr><tr><td class="numcell">3</td><td class="mono">Diego Kowalski</td><td class="mono">2020-09-05</td><td class="mono">Metro</td><td class="mono">Lead</td></tr><tr><td class="numcell">4</td><td class="mono">Aisha Kim</td><td class="mono">2020-02-24</td><td class="mono">North</td><td class="mono">Adjuster</td></tr><tr><td class="numcell">5</td><td class="mono">Mary Patel</td><td class="mono">2015-07-21</td><td class="mono">Coastal</td><td class="mono">Adjuster</td></tr><tr><td class="numcell">6</td><td class="mono">Raj Kim</td><td class="mono">2022-01-30</td><td class="mono">South</td><td class="mono">Junior</td></tr><tr><td class="numcell">7</td><td class="mono">Wei Sokolov</td><td class="mono">2020-08-04</td><td class="mono">Coastal</td><td class="mono">Junior</td></tr><tr><td class="numcell">8</td><td class="mono">Elena Kim</td><td class="mono">2019-06-16</td><td class="mono">Metro</td><td class="mono">Senior</td></tr><tr><td class="numcell">9</td><td class="mono">Iryna Haddad</td><td class="mono">2023-02-15</td><td class="mono">Coastal</td><td class="mono">Junior</td></tr><tr><td class="numcell">10</td><td class="mono">Elena Hassan</td><td class="mono">2023-05-17</td><td class="mono">Metro</td><td class="mono">Junior</td></tr><tr><td class="numcell">11</td><td class="mono">Aisha Okoro</td><td class="mono">2017-09-28</td><td class="mono">Interior</td><td class="mono">Lead</td></tr><tr><td class="numcell">12</td><td class="mono">Pavel Ivanova</td><td class="mono">2023-10-31</td><td class="mono">South</td><td class="mono">Junior</td></tr><tr><td class="numcell">13</td><td class="mono">Nadia Marchenko</td><td class="mono">2019-09-10</td><td class="mono">North</td><td class="mono">Adjuster</td></tr><tr><td class="numcell">14</td><td class="mono">Sofia Popova</td><td class="mono">2022-05-25</td><td class="mono">Coastal</td><td class="mono">Senior</td></tr><tr><td class="numcell">15</td><td class="mono">Sergei Wang</td><td class="mono">2021-08-19</td><td class="mono">North</td><td class="mono">Senior</td></tr>
+      </tbody></table></div>
+    </div>
+    
+    <div class="sample-block">
+      <h4>repair_shops <span class="faint mono" style="font-size:0.78rem;">SELECT * FROM repair_shops LIMIT 15</span></h4>
+      <div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>name</th><th>city</th><th>phone<span class="tag tag-internal" title="Internal — see Terms">Internal</span></th></tr></thead><tbody>
+        <tr><td class="numcell">1</td><td class="mono">Willamette Collision Center</td><td class="mono">Vancouver</td><td class="mono">+1-406-874-9043</td></tr><tr><td class="numcell">2</td><td class="mono">Coastal Body Works</td><td class="mono">Gresham</td><td class="mono">+1-733-613-1831</td></tr><tr><td class="numcell">3</td><td class="mono">Willamette Auto Body</td><td class="mono">Boise</td><td class="mono">+1-784-766-7346</td></tr><tr><td class="numcell">4</td><td class="mono">Willamette Collision Center</td><td class="mono">Bellevue</td><td class="mono">+1-597-669-4455</td></tr><tr><td class="numcell">5</td><td class="mono">Cedar Body Works</td><td class="mono">Portland</td><td class="mono">+1-715-740-1674</td></tr><tr><td class="numcell">6</td><td class="mono">Granite Motors</td><td class="mono">Olympia</td><td class="mono">+1-505-946-4188</td></tr><tr><td class="numcell">7</td><td class="mono">Rainier Auto Body</td><td class="mono">Gresham</td><td class="mono">+1-408-905-4089</td></tr><tr><td class="numcell">8</td><td class="mono">Falcon Auto Repair</td><td class="mono">Yakima</td><td class="mono">+1-712-747-9901</td></tr><tr><td class="numcell">9</td><td class="mono">Harbor Motors</td><td class="mono">Olympia</td><td class="mono">+1-511-796-8073</td></tr><tr><td class="numcell">10</td><td class="mono">Evergreen Body Works</td><td class="mono">Portland</td><td class="mono">+1-426-451-6040</td></tr><tr><td class="numcell">11</td><td class="mono">Rainier Body Works</td><td class="mono">Bend</td><td class="mono">+1-655-824-2064</td></tr><tr><td class="numcell">12</td><td class="mono">Granite Body Works</td><td class="mono">Gresham</td><td class="mono">+1-414-224-5889</td></tr><tr><td class="numcell">13</td><td class="mono">Summit Body Works</td><td class="mono">Tacoma</td><td class="mono">+1-594-885-8847</td></tr><tr><td class="numcell">14</td><td class="mono">Falcon Garage</td><td class="mono">Bellevue</td><td class="mono">+1-626-428-4075</td></tr><tr><td class="numcell">15</td><td class="mono">Union Collision Center</td><td class="mono">Spokane</td><td class="mono">+1-896-814-2215</td></tr>
+      </tbody></table></div>
+    </div>
+    
+    <div class="sample-block">
+      <h4>claims <span class="faint mono" style="font-size:0.78rem;">SELECT * FROM claims LIMIT 15</span></h4>
+      <div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>policy_id</th><th>incident_date</th><th>filed_date</th><th>kind</th><th>amount_claimed</th><th>amount_approved</th><th>status</th><th>adjuster_id</th><th>repair_shop_id</th><th>claimant_phone<span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></th><th>injury_code<span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></th></tr></thead><tbody>
+        <tr><td class="numcell">1</td><td class="numcell">9095</td><td class="mono">2026-04-13</td><td class="mono">2026-04-19</td><td class="mono">auto</td><td class="numcell">6368.79</td><td class="numcell">0.0</td><td class="mono">denied</td><td class="numcell">23</td><td class="numcell">361</td><td class="mono">+1-686-442-5619</td><td class="mono"></td></tr><tr><td class="numcell">2</td><td class="numcell">20113</td><td class="mono">2025-03-10</td><td class="mono">2025-03-11</td><td class="mono">auto</td><td class="numcell">68728.23</td><td class="numcell">68728.23</td><td class="mono">approved</td><td class="numcell">36</td><td class="">&amp;mdash;</td><td class="mono">+1-883-505-9604</td><td class="mono">S13.4XXA</td></tr><tr><td class="numcell">3</td><td class="numcell">16457</td><td class="mono">2024-03-22</td><td class="mono">2024-04-09</td><td class="mono">auto</td><td class="numcell">2800.33</td><td class="numcell">0.0</td><td class="mono">denied</td><td class="numcell">44</td><td class="numcell">221</td><td class="mono">+1-803-463-4359</td><td class="mono"></td></tr><tr><td class="numcell">4</td><td class="numcell">26293</td><td class="mono">2024-07-07</td><td class="mono">2024-07-27</td><td class="mono">auto</td><td class="numcell">25823.16</td><td class="">&amp;mdash;</td><td class="mono">open</td><td class="numcell">83</td><td class="">&amp;mdash;</td><td class="mono">+1-376-224-7225</td><td class="mono">S82.101A</td></tr><tr><td class="numcell">5</td><td class="numcell">9434</td><td class="mono">2024-05-23</td><td class="mono">2024-05-24</td><td class="mono">auto</td><td class="numcell">22890.61</td><td class="numcell">19949.7</td><td class="mono">approved</td><td class="numcell">28</td><td class="numcell">131</td><td class="mono">+1-346-957-4087</td><td class="mono">S13.4XXA</td></tr><tr><td class="numcell">6</td><td class="numcell">2826</td><td class="mono">2024-05-10</td><td class="mono">2024-05-26</td><td class="mono">auto</td><td class="numcell">11735.26</td><td class="numcell">9024.55</td><td class="mono">approved</td><td class="numcell">78</td><td class="numcell">497</td><td class="mono">+1-843-981-4581</td><td class="mono"></td></tr><tr><td class="numcell">7</td><td class="numcell">35653</td><td class="mono">2024-01-05</td><td class="mono">2024-01-06</td><td class="mono">home</td><td class="numcell">68592.98</td><td class="numcell">0.0</td><td class="mono">denied</td><td class="numcell">122</td><td class="">&amp;mdash;</td><td class="mono">+1-498-455-1865</td><td class="mono"></td></tr><tr><td class="numcell">8</td><td class="numcell">36882</td><td class="mono">2025-09-08</td><td class="mono">2025-09-25</td><td class="mono">home</td><td class="numcell">15434.96</td><td class="numcell">10002.58</td><td class="mono">approved</td><td class="numcell">25</td><td class="">&amp;mdash;</td><td class="mono">+1-348-517-7232</td><td class="mono"></td></tr><tr><td class="numcell">9</td><td class="numcell">41926</td><td class="mono">2025-08-10</td><td class="mono">2025-08-24</td><td class="mono">home</td><td class="numcell">75891.85</td><td class="numcell">62158.32</td><td class="mono">approved</td><td class="numcell">121</td><td class="">&amp;mdash;</td><td class="mono">+1-757-650-9530</td><td class="mono"></td></tr><tr><td class="numcell">10</td><td class="numcell">824</td><td class="mono">2022-10-14</td><td class="mono">2022-10-21</td><td class="mono">auto</td><td class="numcell">4019.74</td><td class="numcell">3116.47</td><td class="mono">approved</td><td class="numcell">87</td><td class="numcell">55</td><td class="mono">+1-740-317-8132</td><td class="mono"></td></tr><tr><td class="numcell">11</td><td class="numcell">15599</td><td class="mono">2025-01-30</td><td class="mono">2025-02-18</td><td class="mono">home</td><td class="numcell">19966.9</td><td class="numcell">16396.58</td><td class="mono">approved</td><td class="numcell">64</td><td class="">&amp;mdash;</td><td class="mono">+1-508-370-4804</td><td class="mono"></td></tr><tr><td class="numcell">12</td><td class="numcell">32732</td><td class="mono">2023-09-05</td><td class="mono">2023-09-16</td><td class="mono">home</td><td class="numcell">55269.72</td><td class="numcell">47404.67</td><td class="mono">approved</td><td class="numcell">70</td><td class="">&amp;mdash;</td><td class="mono">+1-841-436-8366</td><td class="mono"></td></tr><tr><td class="numcell">13</td><td class="numcell">36535</td><td class="mono">2025-08-10</td><td class="mono">2025-08-22</td><td class="mono">home</td><td class="numcell">106605.23</td><td class="numcell">81764.06</td><td class="mono">approved</td><td class="numcell">119</td><td class="">&amp;mdash;</td><td class="mono">+1-551-528-5561</td><td class="mono"></td></tr><tr><td class="numcell">14</td><td class="numcell">23889</td><td class="mono">2024-07-25</td><td class="mono">2024-08-04</td><td class="mono">auto</td><td class="numcell">6776.21</td><td class="numcell">0.0</td><td class="mono">denied</td><td class="numcell">136</td><td class="numcell">183</td><td class="mono">+1-507-772-4019</td><td class="mono">S72.001A</td></tr><tr><td class="numcell">15</td><td class="numcell">38869</td><td class="mono">2023-04-13</td><td class="mono">2023-04-13</td><td class="mono">commercial</td><td class="numcell">827284.2</td><td class="numcell">558634.72</td><td class="mono">approved</td><td class="numcell">5</td><td class="">&amp;mdash;</td><td class="mono">+1-263-314-9665</td><td class="mono">S42.001A</td></tr>
+      </tbody></table></div>
+    </div>
+    
+    <div class="sample-block">
+      <h4>claim_payments <span class="faint mono" style="font-size:0.78rem;">SELECT * FROM claim_payments LIMIT 15</span></h4>
+      <div class="tbl-scroll"><table class="data-table"><thead><tr><th>id</th><th>claim_id</th><th>date</th><th>amount</th></tr></thead><tbody>
+        <tr><td class="numcell">1</td><td class="numcell">2</td><td class="mono">2025-03-11</td><td class="numcell">27007.02</td></tr><tr><td class="numcell">2</td><td class="numcell">2</td><td class="mono">2025-04-10</td><td class="numcell">41721.21</td></tr><tr><td class="numcell">3</td><td class="numcell">5</td><td class="mono">2024-05-29</td><td class="numcell">19949.7</td></tr><tr><td class="numcell">4</td><td class="numcell">6</td><td class="mono">2024-06-04</td><td class="numcell">9024.55</td></tr><tr><td class="numcell">5</td><td class="numcell">8</td><td class="mono">2025-10-02</td><td class="numcell">50.29</td></tr><tr><td class="numcell">6</td><td class="numcell">8</td><td class="mono">2025-10-30</td><td class="numcell">4975.01</td></tr><tr><td class="numcell">7</td><td class="numcell">8</td><td class="mono">2025-11-29</td><td class="numcell">4977.28</td></tr><tr><td class="numcell">8</td><td class="numcell">9</td><td class="mono">2025-09-01</td><td class="numcell">38352.39</td></tr><tr><td class="numcell">9</td><td class="numcell">9</td><td class="mono">2025-09-26</td><td class="numcell">23805.93</td></tr><tr><td class="numcell">10</td><td class="numcell">10</td><td class="mono">2022-10-29</td><td class="numcell">3116.47</td></tr><tr><td class="numcell">11</td><td class="numcell">11</td><td class="mono">2025-02-22</td><td class="numcell">4626.57</td></tr><tr><td class="numcell">12</td><td class="numcell">11</td><td class="mono">2025-03-25</td><td class="numcell">11770.01</td></tr><tr><td class="numcell">13</td><td class="numcell">12</td><td class="mono">2023-09-20</td><td class="numcell">25672.59</td></tr><tr><td class="numcell">14</td><td class="numcell">12</td><td class="mono">2023-10-17</td><td class="numcell">7598.02</td></tr><tr><td class="numcell">15</td><td class="numcell">12</td><td class="mono">2023-11-17</td><td class="numcell">14134.06</td></tr>
+      </tbody></table></div>
+    </div>
+    
+  </div>
+</section>
+
+
+<section id="terms">
+  <div class="wrap">
+    <div class="eyebrow">04 &middot; Terms of Sensitive Data Use</div>
+    <h2 class="section-title">What must never cross the boundary</h2>
+    <p class="section-sub">Sensitive-field inventory, then the company's Terms of Sensitive Data Use in full,
+    exactly as authored in <code class="mono">insurer_terms.md</code>.</p>
+    <div class="wiring-note"><strong>Stage-0 wiring:</strong> these terms are auto-distilled into the masking
+    policy applied to every job run against Cascadia Mutual — a sandbox job with no explicit policy defaults
+    its policy sources to this exact document.</div>
+    <div class="terms-inventory">
+      <div class="tbl-scroll"><table class="data-table"><thead><tr><th>table.column</th><th>sensitivity class</th></tr></thead>
+      <tbody><tr><td class='mono'>policies.holder_name</td><td><span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></td></tr><tr><td class='mono'>policies.policyholder_national_id</td><td><span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></td></tr><tr><td class='mono'>policies.policyholder_email</td><td><span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></td></tr><tr><td class='mono'>policies.policyholder_address</td><td><span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></td></tr><tr><td class='mono'>policies.premium_bank_account</td><td><span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></td></tr><tr><td class='mono'>claims.claimant_phone</td><td><span class="tag tag-confidential" title="Confidential — see Terms">Confidential</span></td></tr><tr><td class='mono'>claims.injury_code</td><td><span class="tag tag-restricted" title="Restricted — see Terms">Restricted</span></td></tr><tr><td class='mono'>adjusters.name</td><td><span class="tag tag-internal" title="Internal — see Terms">Internal</span></td></tr><tr><td class='mono'>repair_shops.phone</td><td><span class="tag tag-internal" title="Internal — see Terms">Internal</span></td></tr></tbody></table></div>
+    </div>
+    <div class="terms-doc">
+      <h2>Cascadia Mutual — Terms of Sensitive Data Use</h2>
+<p>Cascadia Mutual is a policyholder-owned property and casualty carrier writing auto, home, and commercial lines across Washington and Oregon. As a mutual, our first duty runs to our members. This document states how policyholder and claimant information held in our claims and policy systems is classified and handled whenever any part of it is prepared for processing outside Cascadia Mutual infrastructure. It gives effect to our obligations under the state insurance codes (RCW Title 48 and the parallel Oregon Insurance Code), the NAIC Insurance Data Security Model Law, the Gramm-Leach-Bliley Act safeguards for nonpublic personal financial information, and the health-adjacent protections that attach to bodily-injury data in a claims file. <strong>Sensitive fields must never cross the external boundary in a form that identifies, or helps re-identify, a member or claimant.</strong></p>
+<h3>Data classification</h3>
+<ul>
+<li><strong>policies.holder_name</strong> — Policyholder identity. Nonpublic personal information (<strong>Confidential</strong>).</li>
+<li><strong>policies.policyholder_national_id</strong> — Member national identifier / SSN. Government identifier (<strong>Restricted</strong>).</li>
+<li><strong>policies.policyholder_email</strong> — Member contact email. Nonpublic personal information (<strong>Confidential</strong>).</li>
+<li><strong>policies.policyholder_address</strong> — Member residential address. Nonpublic personal information (<strong>Confidential</strong>).</li>
+<li><strong>policies.premium_bank_account</strong> — Premium-draft bank account number. Financial account data under GLBA (<strong>Restricted</strong>).</li>
+<li><strong>claims.claimant_phone</strong> — Claimant contact telephone. Nonpublic personal information (<strong>Confidential</strong>).</li>
+<li><strong>claims.injury_code</strong> — Bodily-injury diagnosis code on the claim. Health-adjacent data (<strong>Restricted</strong>).</li>
+<li><strong>adjusters.name</strong> — Adjuster identity. Internal personnel data (<strong>Internal</strong>).</li>
+<li><strong>repair_shops.phone</strong> — Repair-shop business contact. Business contact data (<strong>Internal</strong>).</li>
+</ul>
+<h3>Handling rules</h3>
+<ul>
+<li>Member national identifiers in <strong>policies.policyholder_national_id</strong> must never leave Cascadia Mutual infrastructure, in whole or in part, under any circumstance.</li>
+<li>Bank account numbers in <strong>policies.premium_bank_account</strong> must be masked to their last four digits before any external transmission; the full number is never exported.</li>
+<li>Bodily-injury codes in <strong>claims.injury_code</strong> are health-adjacent and may appear in external planning materials only in pseudonymized form, generalized to injury category rather than the specific diagnosis code.</li>
+<li>Claimant telephone numbers in <strong>claims.claimant_phone</strong> must be masked before external transmission; at most the area code may be retained for staged-ring pattern analysis.</li>
+<li>Policyholder email addresses in <strong>policies.policyholder_email</strong> may appear externally as the domain portion only, never the full mailbox.</li>
+<li>Policyholder residential addresses in <strong>policies.policyholder_address</strong> may be generalized to city and state for external planning; street lines must be dropped.</li>
+<li>Policyholder names in <strong>policies.holder_name</strong> and adjuster names in <strong>adjusters.name</strong> may appear in external planning briefs only in pseudonymized form.</li>
+<li>All records containing the fields above must remain resident on infrastructure located within the United States; no sensitive claims or policy data may be stored or processed in another jurisdiction.</li>
+<li>Claim files carrying <strong>claims.injury_code</strong> and <strong>claims.claimant_phone</strong> are retained no longer than seven years after claim closure, after which the sensitive fields are irreversibly purged.</li>
+<li>No combination of masked or generalized fields may be transmitted externally if, taken together, they would re-identify a member or claimant.</li>
+</ul>
+<p>This corpus is fully synthetic demo data; these terms exercise the platform&#x27;s policy-distillation boundary.</p>
+    </div>
+  </div>
+</section>
+
+
+<section id="charts">
+  <div class="wrap">
+    <div class="eyebrow">05 &middot; Charts</div>
+    <h2 class="section-title">Three shapes, computed live</h2>
+    <p class="section-sub">Every chart below is generated directly from the aggregate queries in this
+    dossier's build script — no illustrative or placeholder values.</p>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h4>Adjuster approval-rate distribution</h4>
+        <svg viewBox="0 0 640 300" width="100%" height="300" role="img" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace,SFMono-Regular,Menlo,monospace"><rect x="0" y="0" width="640" height="300" fill="#0a1a21"/><line x1="46" y1="260.0" x2="624" y2="260.0" stroke="#163542" stroke-width="1"/><text x="38" y="263.0" font-size="11" fill="#85a0aa" text-anchor="end">0</text><line x1="46" y1="141.1" x2="624" y2="141.1" stroke="#163542" stroke-width="1"/><text x="38" y="144.1" font-size="11" fill="#85a0aa" text-anchor="end">19</text><line x1="46" y1="16.0" x2="624" y2="16.0" stroke="#163542" stroke-width="1"/><text x="38" y="19.0" font-size="11" fill="#85a0aa" text-anchor="end">39</text><rect x="46.0" y="241.2" width="38.5" height="18.8" fill="#38a6d2" rx="2"/><text x="65.2" y="276" font-size="10.5" fill="#85a0aa" text-anchor="middle">0.72</text><rect x="87.5" y="178.7" width="38.5" height="81.3" fill="#38a6d2" rx="2"/><rect x="129.0" y="122.4" width="38.5" height="137.6" fill="#38a6d2" rx="2"/><text x="148.2" y="276" font-size="10.5" fill="#85a0aa" text-anchor="middle">0.76</text><rect x="170.5" y="78.6" width="38.5" height="181.4" fill="#38a6d2" rx="2"/><rect x="212.0" y="16.0" width="38.5" height="244.0" fill="#38a6d2" rx="2"/><text x="231.2" y="276" font-size="10.5" fill="#85a0aa" text-anchor="middle">0.80</text><rect x="253.5" y="134.9" width="38.5" height="125.1" fill="#38a6d2" rx="2"/><rect x="295.0" y="153.6" width="38.5" height="106.4" fill="#38a6d2" rx="2"/><text x="314.2" y="276" font-size="10.5" fill="#85a0aa" text-anchor="middle">0.84</text><rect x="336.5" y="253.7" width="38.5" height="6.3" fill="#38a6d2" rx="2"/><text x="397.2" y="276" font-size="10.5" fill="#85a0aa" text-anchor="middle">0.88</text><text x="480.2" y="276" font-size="10.5" fill="#85a0aa" text-anchor="middle">0.92</text><text x="563.2" y="276" font-size="10.5" fill="#85a0aa" text-anchor="middle">0.96</text><rect x="585.5" y="222.5" width="38.5" height="37.5" fill="#ff5f65" rx="2"/><text x="604.8" y="216.5" font-size="11" fill="#ff5f65" text-anchor="middle">6</text><line x1="46" y1="260" x2="624" y2="260" stroke="#163542" stroke-width="1.5"/><text x="46" y="294" font-size="10.5" fill="#567179">approval rate →</text><text x="624" y="28" font-size="10.5" fill="#85a0aa" text-anchor="end"># adjusters</text><rect x="434" y="16" width="10" height="10" fill="#38a6d2" rx="2"/><text x="450" y="25" font-size="11" fill="#85a0aa">peer adjusters (144)</text><rect x="434" y="32" width="10" height="10" fill="#ff5f65" rx="2"/><text x="450" y="41" font-size="11" fill="#85a0aa">flagged (6)</text></svg>
+        <p class="cap">150 adjusters, bucketed by approval rate. 144 peers cluster 73–87%; the 6 flagged
+        adjusters (scenario 04) sit isolated at 98.8–99.9% — the gap itself is the tell.</p>
+      </div>
+      <div class="chart-card">
+        <h4>Monthly claim volume, incidents by month</h4>
+        <svg viewBox="0 0 640 300" width="100%" height="300" role="img" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace,SFMono-Regular,Menlo,monospace"><rect x="0" y="0" width="640" height="300" fill="#0a1a21"/><line x1="46" y1="266.0" x2="624" y2="266.0" stroke="#163542" stroke-width="1"/><text x="38" y="269.0" font-size="11" fill="#85a0aa" text-anchor="end">0</text><line x1="46" y1="141.5" x2="624" y2="141.5" stroke="#163542" stroke-width="1"/><text x="38" y="144.5" font-size="11" fill="#85a0aa" text-anchor="end">2000</text><line x1="46" y1="17.0" x2="624" y2="17.0" stroke="#163542" stroke-width="1"/><text x="38" y="20.0" font-size="11" fill="#85a0aa" text-anchor="end">4000</text><path d="M 46.0 266.0 L 46.0 260.4 L 56.9 250.2 L 67.8 239.9 L 78.7 228.1 L 89.6 215.0 L 100.5 204.2 L 111.4 190.9 L 122.3 185.8 L 133.2 174.1 L 144.2 163.2 L 155.1 153.6 L 166.0 138.1 L 176.9 130.1 L 187.8 132.8 L 198.7 117.4 L 209.6 119.8 L 220.5 108.6 L 231.4 112.9 L 242.3 99.2 L 253.2 90.2 L 264.1 92.4 L 275.0 83.0 L 285.9 84.8 L 296.8 76.8 L 307.7 70.0 L 318.6 84.4 L 329.5 63.5 L 340.5 69.7 L 351.4 65.6 L 362.3 61.4 L 373.2 55.0 L 384.1 42.1 L 395.0 49.6 L 405.9 44.4 L 416.8 56.4 L 427.7 42.7 L 438.6 32.3 L 449.5 50.1 L 460.4 24.5 L 471.3 26.9 L 482.2 16.0 L 493.1 33.9 L 504.0 28.9 L 514.9 37.7 L 525.8 54.8 L 536.8 57.1 L 547.7 85.0 L 558.6 80.9 L 569.5 91.0 L 580.4 122.5 L 591.3 113.7 L 602.2 130.1 L 613.1 138.3 L 624.0 150.2 L 624.0 266.0 Z" fill="#38a6d2" opacity="0.12" stroke="none"/><path d="M 46.0 260.4 L 56.9 250.2 L 67.8 239.9 L 78.7 228.1 L 89.6 215.0 L 100.5 204.2 L 111.4 190.9 L 122.3 185.8 L 133.2 174.1 L 144.2 163.2 L 155.1 153.6 L 166.0 138.1 L 176.9 130.1 L 187.8 132.8 L 198.7 117.4 L 209.6 119.8 L 220.5 108.6 L 231.4 112.9 L 242.3 99.2 L 253.2 90.2 L 264.1 92.4 L 275.0 83.0 L 285.9 84.8 L 296.8 76.8 L 307.7 70.0 L 318.6 84.4 L 329.5 63.5 L 340.5 69.7 L 351.4 65.6 L 362.3 61.4 L 373.2 55.0 L 384.1 42.1 L 395.0 49.6 L 405.9 44.4 L 416.8 56.4 L 427.7 42.7 L 438.6 32.3 L 449.5 50.1 L 460.4 24.5 L 471.3 26.9 L 482.2 16.0 L 493.1 33.9 L 504.0 28.9 L 514.9 37.7 L 525.8 54.8 L 536.8 57.1 L 547.7 85.0 L 558.6 80.9 L 569.5 91.0 L 580.4 122.5 L 591.3 113.7 L 602.2 130.1 L 613.1 138.3 L 624.0 150.2" fill="none" stroke="#38a6d2" stroke-width="2"/><circle cx="307.7" cy="70.0" r="5" fill="none" stroke="#ff5f65" stroke-width="2"/><circle cx="318.6" cy="84.4" r="5" fill="none" stroke="#ff5f65" stroke-width="2"/><circle cx="351.4" cy="65.6" r="5" fill="none" stroke="#ff5f65" stroke-width="2"/><circle cx="362.3" cy="61.4" r="5" fill="none" stroke="#ff5f65" stroke-width="2"/><circle cx="395.0" cy="49.6" r="5" fill="none" stroke="#ff5f65" stroke-width="2"/><circle cx="471.3" cy="26.9" r="5" fill="none" stroke="#ff5f65" stroke-width="2"/><circle cx="504.0" cy="28.9" r="5" fill="none" stroke="#ff5f65" stroke-width="2"/><text x="46.0" y="282" font-size="10.5" fill="#85a0aa" text-anchor="middle">2022</text><text x="176.9" y="282" font-size="10.5" fill="#85a0aa" text-anchor="middle">2023</text><text x="307.7" y="282" font-size="10.5" fill="#85a0aa" text-anchor="middle">2024</text><text x="438.6" y="282" font-size="10.5" fill="#85a0aa" text-anchor="middle">2025</text><text x="569.5" y="282" font-size="10.5" fill="#85a0aa" text-anchor="middle">2026</text><line x1="46" y1="266" x2="624" y2="266" stroke="#163542" stroke-width="1.5"/><text x="624" y="28" font-size="10.5" fill="#85a0aa" text-anchor="end">claims / month</text><circle cx="56" cy="22" r="5" fill="none" stroke="#ff5f65" stroke-width="2"/><text x="68" y="26" font-size="11" fill="#85a0aa">month containing a staged-ring anchor (7 of 8 rings)</text></svg>
+        <p class="cap">140,299 claims by incident month, Jan 2022 – Jun 2026. Circled points mark the 7
+        distinct months containing a staged-accident ring's anchor window (scenario 02) — rings sit inside
+        ordinary volume, invisible on this view alone, which is why the shop+phone join in scenario 02 exists.</p>
+      </div>
+      <div class="chart-card">
+        <h4>Over-coverage breach magnitude</h4>
+        <svg viewBox="0 0 640 260" width="100%" height="260" role="img" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace,SFMono-Regular,Menlo,monospace"><rect x="0" y="0" width="640" height="260" fill="#0a1a21"/><line x1="46" y1="220.0" x2="624" y2="220.0" stroke="#163542" stroke-width="1"/><text x="38" y="223.0" font-size="11" fill="#85a0aa" text-anchor="end">0</text><line x1="46" y1="115.1" x2="624" y2="115.1" stroke="#163542" stroke-width="1"/><text x="38" y="118.1" font-size="11" fill="#85a0aa" text-anchor="end">18</text><line x1="46" y1="16.0" x2="624" y2="16.0" stroke="#163542" stroke-width="1"/><text x="38" y="19.0" font-size="11" fill="#85a0aa" text-anchor="end">35</text><rect x="46.0" y="220.0" width="67.0" height="0.0" fill="#38a6d2" rx="2"/><text x="79.5" y="236" font-size="10" fill="#85a0aa" text-anchor="middle">0–5%</text><rect x="119.0" y="51.0" width="67.0" height="169.0" fill="#38a6d2" rx="2"/><text x="152.5" y="45.0" font-size="11" fill="#85a0aa" text-anchor="middle">29</text><text x="152.5" y="236" font-size="10" fill="#85a0aa" text-anchor="middle">5–10%</text><rect x="192.0" y="91.8" width="67.0" height="128.2" fill="#38a6d2" rx="2"/><text x="225.5" y="85.8" font-size="11" fill="#85a0aa" text-anchor="middle">22</text><text x="225.5" y="236" font-size="10" fill="#85a0aa" text-anchor="middle">10–15%</text><rect x="265.0" y="51.0" width="67.0" height="169.0" fill="#38a6d2" rx="2"/><text x="298.5" y="45.0" font-size="11" fill="#85a0aa" text-anchor="middle">29</text><text x="298.5" y="236" font-size="10" fill="#85a0aa" text-anchor="middle">15–20%</text><rect x="338.0" y="27.7" width="67.0" height="192.3" fill="#38a6d2" rx="2"/><text x="371.5" y="21.7" font-size="11" fill="#85a0aa" text-anchor="middle">33</text><text x="371.5" y="236" font-size="10" fill="#85a0aa" text-anchor="middle">20–25%</text><rect x="411.0" y="62.6" width="67.0" height="157.4" fill="#38a6d2" rx="2"/><text x="444.5" y="56.6" font-size="11" fill="#85a0aa" text-anchor="middle">27</text><text x="444.5" y="236" font-size="10" fill="#85a0aa" text-anchor="middle">25–30%</text><rect x="484.0" y="74.3" width="67.0" height="145.7" fill="#38a6d2" rx="2"/><text x="517.5" y="68.3" font-size="11" fill="#85a0aa" text-anchor="middle">25</text><text x="517.5" y="236" font-size="10" fill="#85a0aa" text-anchor="middle">30–35%</text><rect x="557.0" y="16.0" width="67.0" height="204.0" fill="#38a6d2" rx="2"/><text x="590.5" y="10.0" font-size="11" fill="#85a0aa" text-anchor="middle">35</text><text x="590.5" y="236" font-size="10" fill="#85a0aa" text-anchor="middle">35–40%</text><line x1="46" y1="220" x2="624" y2="220" stroke="#163542" stroke-width="1.5"/><text x="46" y="254" font-size="10.5" fill="#567179">% paid over coverage limit →</text><text x="624" y="28" font-size="10.5" fill="#85a0aa" text-anchor="end"># claims (of 200)</text></svg>
+        <p class="cap">All 200 planted over-coverage claims (scenario 03), by how far total payments exceed the
+        policy's coverage limit. Spread evenly 5–40% over — no single threshold catches them all, which is
+        why the evidence query sums payments per claim rather than filtering on any one installment.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section id="scaling">
+  <div class="wrap">
+    <div class="eyebrow">06 &middot; Further use &amp; scaling</div>
+    <h2 class="section-title">Regenerating and growing this dataset</h2>
+    <div class="scaling-grid">
+      <div class="scaling-item">
+        <h4>Regenerate from scratch</h4>
+        <p><code>uv run --project backend python scripts/seed.py insurer</code> &mdash; rebuilds
+        <code>infra/seeds/out/insurer.db</code> and rewrites <code>infra/seeds/out/terms/insurer_terms.md</code>
+        in about a second. Running <code>python -m infra.seeds.insurer</code> directly also re-asserts every
+        planted floor (dup &ge;120, rings ==8, over-coverage &ge;200, adjusters ==6) before exiting.</p>
+      </div>
+      <div class="scaling-item">
+        <h4>Determinism guarantee</h4>
+        <p>The fraud-shape stream runs on a single fixed RNG (<code>rng(11)</code>). Policyholder PII
+        (<code>rng(12)</code>) and claim injury codes (<code>rng(13)</code>) are decorated on separate salts so
+        adding or reshaping sensitive columns never perturbs the planted-pattern stream &mdash; the DB regenerates
+        byte-for-byte identical across runs.</p>
+      </div>
+      <div class="scaling-item">
+        <h4>Row-count knobs</h4>
+        <ul>
+          <li><code>N_POL = 50_000</code> policies, <code>N_BASE = 140_000</code> base claims</li>
+          <li><code>dup_pairs = 120</code>, <code>n_rings = 8</code> (each ring samples 6–12 policies),
+          <code>over_n = 200</code>, <code>anomalous = r.sample(range(1,151), 6)</code></li>
+          <li>coverage bands per policy kind live in <code>_COVERAGE</code>; repair-shop pool is fixed at 600</li>
+        </ul>
+        <p>All in <code>infra/seeds/insurer.py</code>.</p>
+      </div>
+      <div class="scaling-item">
+        <h4>Adding columns safely</h4>
+        <p>Draw new columns on a fresh RNG salt (follow the <code>rng(12)</code>/<code>rng(13)</code> pattern)
+        so the plant rng stream <code>r</code> is never touched. After regenerating, rerun
+        <code>backend/tests/test_seeds_new.py</code> to confirm all four evidence floors are still green before
+        committing the change.</p>
+      </div>
+      <div class="scaling-item">
+        <h4>Prompts &rarr; sandbox UI</h4>
+        <p>The four prompts on the scenario cards above are verbatim from
+        <code>COMPANIES["insurer"]["prompts"]</code> in <code>backend/app/api/sandbox.py</code> &mdash; they are
+        exactly what a judge sees suggested in the sandbox UI when they select Cascadia Mutual.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer id="footer">
+  <div class="wrap">
+    <div class="paths">
+      DB &middot; infra/seeds/out/insurer.db<br/>
+      Generator &middot; infra/seeds/insurer.py<br/>
+      Terms &middot; infra/seeds/out/terms/insurer_terms.md<br/>
+      Sandbox prompts &middot; backend/app/api/sandbox.py (COMPANIES["insurer"])<br/>
+      Evidence queries &middot; backend/tests/test_seeds_new.py
+    </div>
+    <div class="synthetic">This corpus is fully synthetic demo data. No real policyholder, claimant, or
+    adjuster is represented.</div>
+  </div>
+</footer>
+
+</body>
+</html>

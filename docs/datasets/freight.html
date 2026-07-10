@@ -1,0 +1,628 @@
+<title>Northgate Freight — Dataset Dossier</title>
+<style>
+:root {
+  --paper: #060f14; --surface: #0a1a21; --surface-sunk: #071319; --surface-raised: #0d2029;
+  --hairline: #163542; --hairline-soft: #112834;
+  --text: #dcebf0; --text-muted: #85a0aa; --text-faint: #567179; --ink: #e9f4f8;
+  --accent: #38a6d2; --accent-strong: #85d3f0; --accent-mid: #216f92; --accent-pale: #0e2c3a;
+  --accent-wash: rgba(56,166,210,0.09);
+  --ok: #4bcb90; --ok-wash: rgba(75,203,144,0.1);
+  --warn: #e2a35e; --warn-wash: rgba(226,163,94,0.1);
+  --danger: #ff5f65; --danger-wash: rgba(255,95,101,0.1);
+  --font-sans: "Lenia Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "CS Arcel Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-pill: 999px;
+  --shadow-md: 0 6px 20px rgba(0,0,0,0.45), 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,0.55), 0 2px 10px rgba(0,0,0,0.35);
+  --maxw: 1180px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--paper); }
+body {
+  margin: 0; background: var(--paper); color: var(--text);
+  font-family: var(--font-sans); font-size: 16px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--accent-pale); color: var(--accent-strong); }
+a { color: var(--accent-strong); }
+h1,h2,h3 { font-weight: 600; letter-spacing: -0.01em; color: var(--ink); margin: 0 0 0.5em; }
+p { margin: 0 0 1em; max-width: 72ch; color: var(--text); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-muted); }
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+
+/* ---- nav ---- */
+.topnav {
+  position: sticky; top: 0; z-index: 20; background: rgba(6,15,20,0.88);
+  backdrop-filter: blur(10px); border-bottom: 1px solid var(--hairline);
+}
+.topnav__inner { display: flex; align-items: center; gap: 28px; height: 52px; max-width: var(--maxw);
+  margin: 0 auto; padding: 0 32px; overflow-x: auto; }
+.topnav__brand { font-family: var(--font-mono); font-size: 13px; color: var(--accent-strong);
+  white-space: nowrap; letter-spacing: 0.02em; }
+.topnav a { font-size: 13px; color: var(--text-muted); text-decoration: none; white-space: nowrap; }
+.topnav a:hover { color: var(--accent-strong); }
+
+/* ---- masthead ---- */
+#masthead { padding: 64px 0 40px; border-bottom: 1px solid var(--hairline); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono);
+  font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-strong);
+  background: var(--accent-pale); border: 1px solid var(--accent-mid); border-radius: var(--r-pill);
+  padding: 5px 12px; margin-bottom: 20px; }
+#masthead h1 { font-size: clamp(2.1rem, 4.2vw, 3.2rem); line-height: 1.05; margin-bottom: 14px; }
+.premise { font-size: 1.15rem; color: var(--text-muted); max-width: 62ch; margin-bottom: 36px; }
+.stat-row { display: flex; flex-wrap: wrap; gap: 0; border-top: 1px solid var(--hairline); }
+.stat { flex: 1 1 160px; padding: 20px 24px 0 0; border-right: 1px solid var(--hairline); }
+.stat:last-child { border-right: none; }
+.stat__num { font-family: var(--font-mono); font-size: 2rem; color: var(--ink); font-weight: 600; }
+.stat__label { font-size: 12.5px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em;
+  margin-top: 4px; }
+
+/* ---- sections ---- */
+section { padding: 72px 0; border-bottom: 1px solid var(--hairline); }
+section:last-of-type { border-bottom: none; }
+.section-eyebrow { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--accent); margin-bottom: 10px; }
+.section-head h2 { font-size: clamp(1.5rem, 2.6vw, 2rem); }
+.section-head { margin-bottom: 40px; }
+.section-intro { color: var(--text-muted); max-width: 68ch; }
+
+/* ---- scenario cards ---- */
+.scenario-grid { display: grid; grid-template-columns: 1fr; gap: 28px; }
+.scenario-card { position: relative; background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: var(--r-lg); padding: 32px 32px 28px; }
+.scenario-card__num { position: absolute; top: 28px; right: 32px; font-size: 13px; color: var(--text-faint); }
+.scenario-card h3 { font-size: 1.3rem; margin-bottom: 18px; padding-right: 60px; }
+.prompt-box { background: var(--accent-wash); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: 14px 18px; margin-bottom: 18px; }
+.prompt-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--accent-strong); margin-bottom: 6px; }
+.prompt-box p { margin: 0; color: var(--ink); font-size: 0.96rem; max-width: none; }
+.value-line { color: var(--text-muted); font-style: italic; }
+.plant-line { font-size: 0.94rem; }
+.plant-line strong { color: var(--ink); font-style: normal; }
+.sql-label, .results-head { font-family: var(--font-mono); font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-faint); margin: 20px 0 8px; display: flex; justify-content: space-between; }
+pre.sql { background: var(--surface-sunk); border: 1px solid var(--hairline-soft); border-radius: var(--r-sm);
+  padding: 14px 16px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; color: var(--accent-strong);
+  margin: 0; white-space: pre-wrap; word-break: break-word; }
+.scroll-x { overflow-x: auto; }
+.rowcount { color: var(--text-faint); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+/* ---- generic data tables ---- */
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.data-table, .col-table { min-width: 560px; }
+.data-table th, .data-table td, .col-table th, .col-table td {
+  padding: 8px 12px; border-bottom: 1px solid var(--hairline-soft); text-align: left; white-space: nowrap; }
+.data-table th, .col-table th { color: var(--text-faint); font-weight: 500; font-size: 11.5px;
+  text-transform: uppercase; letter-spacing: 0.03em; background: var(--surface-sunk); position: sticky; top: 0; }
+.data-table td, .col-table td { color: var(--text); font-family: var(--font-mono); font-size: 12.5px; }
+.data-table tbody tr:hover, .col-table tbody tr:hover { background: var(--surface-sunk); }
+.nullv { color: var(--text-faint); }
+.hdr-sens { color: var(--warn); font-size: 8px; vertical-align: middle; }
+
+/* ---- sensitivity badges ---- */
+.sens { display: inline-block; font-family: var(--font-mono); font-size: 10.5px; padding: 2px 8px;
+  border-radius: var(--r-pill); border: 1px solid var(--warn); color: var(--warn); background: var(--warn-wash);
+  white-space: nowrap; }
+.sens--regulated { border-color: var(--danger); color: var(--danger); background: var(--danger-wash); }
+.sens--confidential { border-color: var(--warn); }
+
+/* ---- data model ---- */
+.model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 48px; }
+.model-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-md); overflow: hidden; }
+.model-card__head { display: flex; align-items: baseline; justify-content: space-between; padding: 16px 20px;
+  border-bottom: 1px solid var(--hairline); }
+.model-card__head h3 { margin: 0; font-size: 1rem; color: var(--accent-strong); }
+.col-table { min-width: 0; }
+.col-table td, .col-table th { padding: 7px 20px; }
+.fk-wrap { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-md);
+  padding: 24px; }
+.fk-title { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 16px; }
+
+/* ---- sample section ---- */
+.sample-block { margin-bottom: 40px; }
+.sample-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.sample-head h3 { margin: 0; font-size: 1.05rem; color: var(--accent-strong); }
+
+/* ---- terms ---- */
+.terms-note { background: var(--accent-wash); border-left: 3px solid var(--accent); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 14px 18px; margin-bottom: 36px; font-size: 0.94rem; color: var(--ink); }
+.terms-note strong { color: var(--accent-strong); }
+.inventory-table { margin-bottom: 48px; }
+.terms-doc { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg);
+  padding: 40px 44px; }
+.terms-doc h2 { font-size: 1.5rem; margin-bottom: 18px; }
+.terms-doc h3 { font-size: 1.1rem; margin-top: 28px; color: var(--accent-strong); }
+.terms-doc ul { padding-left: 22px; margin: 0 0 16px; }
+.terms-doc li { margin-bottom: 8px; color: var(--text); font-size: 0.95rem; }
+.terms-doc p { font-size: 0.97rem; }
+.terms-doc strong { color: var(--ink); }
+
+/* ---- charts ---- */
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 28px; }
+.chart-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg);
+  padding: 24px 24px 18px; }
+.chart-card h3 { font-size: 1rem; margin-bottom: 4px; }
+.chart-caption { font-size: 0.88rem; color: var(--text-muted); margin: 12px 0 0; }
+
+/* ---- scaling ---- */
+.scale-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; margin-top: 8px; }
+.scale-item h3 { font-size: 1rem; color: var(--accent-strong); margin-bottom: 8px; }
+.scale-item p { font-size: 0.94rem; color: var(--text-muted); }
+code { font-family: var(--font-mono); background: var(--surface-sunk); border: 1px solid var(--hairline-soft);
+  border-radius: 4px; padding: 2px 6px; font-size: 0.88em; color: var(--accent-strong); }
+pre.cmd { background: var(--surface-sunk); border: 1px solid var(--hairline-soft); border-radius: var(--r-sm);
+  padding: 14px 16px; font-family: var(--font-mono); font-size: 13px; color: var(--accent-strong); overflow-x: auto; }
+
+/* ---- footer ---- */
+footer { padding: 48px 0 64px; }
+footer p { color: var(--text-faint); font-size: 0.85rem; }
+footer .paths { font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-muted); line-height: 1.9; }
+
+@media (max-width: 720px) {
+  .wrap { padding: 0 20px; }
+  .stat { flex: 1 1 45%; border-right: none; border-bottom: 1px solid var(--hairline); padding-bottom: 16px; }
+  .terms-doc { padding: 28px 24px; }
+}
+</style>
+
+<nav class="topnav">
+  <div class="topnav__inner">
+    <span class="topnav__brand">NORTHGATE FREIGHT &middot; DOSSIER</span>
+    <a href="#scenarios">Scenarios</a>
+    <a href="#model">Data model</a>
+    <a href="#sample">Sample data</a>
+    <a href="#terms">Terms</a>
+    <a href="#charts">Charts</a>
+    <a href="#scaling">Scaling</a>
+  </div>
+</nav>
+
+<header id="masthead">
+  <div class="wrap">
+    <span class="chip">EU Union Customs Code &middot; GDPR &middot; Export Control</span>
+    <h1>Northgate Freight</h1>
+    <p class="premise">A freight-forwarder / customs-broker procure-to-pay ledger &mdash; purchase orders,
+      shipments, invoices and customs declarations across a 250-carrier network &mdash; built so a judge
+      sandbox prompt can find four real, planted exception patterns in real time.</p>
+    <div class="stat-row">
+      <div class="stat"><div class="stat__num mono">429,850</div><div class="stat__label">total rows</div></div>
+      <div class="stat"><div class="stat__num mono">5</div><div class="stat__label">tables</div></div>
+      <div class="stat"><div class="stat__num mono">38.0 MB</div><div class="stat__label">db size on disk</div></div>
+      <div class="stat"><div class="stat__num mono">4</div><div class="stat__label">planted pattern types</div></div>
+    </div>
+  </div>
+</header>
+
+<section id="scenarios">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">01 &middot; Judge sandbox scenarios</div>
+      <h2>Four prompts, four planted patterns</h2>
+      <p class="section-intro">Each card is one suggested sandbox prompt (backend/app/api/sandbox.py,
+        company id <code>freight</code>), the evidence query a pipeline run resolves it to, and a live
+        sample of the actual hit rows returned by that query against this database right now.</p>
+    </div>
+    <div class="scenario-grid">
+      <article class="scenario-card" id="scn-three-way-match">
+      <div class="scenario-card__num mono">01</div>
+      <h3>3-way-match breaks</h3>
+      <div class="prompt-box">
+        <span class="prompt-label">sandbox prompt</span>
+        <p class="mono">&ldquo;Flag invoices billed more than 15% over their matching purchase order&rdquo;</p>
+      </div>
+      <p class="value-line">Catches overbilling and price creep before payment, protecting PO margin on every invoice run.</p>
+      <p class="plant-line"><strong>How it&rsquo;s planted &mdash;</strong> 400 invoices (of 80,000) are billed at 1.20x-1.80x their matching purchase order's amount &mdash; deliberately above the 15% breakpoint the prompt screens for. Every other invoice bills 0.85x-1.10x its PO, so there is a clean gap between the normal population and the planted breaks (see the ratio histogram in Charts).</p>
+      <div class="sql-label">evidence sql</div>
+      <div class="scroll-x"><pre class="sql">SELECT i.id AS invoice_id, i.po_id, i.amount_usd AS invoiced, p.amount_usd AS po_amount, ROUND(i.amount_usd / p.amount_usd, 2) AS ratio FROM invoices i JOIN purchase_orders p ON p.id = i.po_id WHERE i.amount_usd &gt; p.amount_usd * 1.15 ORDER BY ratio DESC</pre></div>
+      <div class="results-head">
+        <span>results</span><span class="rowcount">showing 15 of 400 hits (floor 400)</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table data-table--evidence">
+          <thead><tr><th>invoice_id</th><th>po_id</th><th>invoiced</th><th>po_amount</th><th>ratio</th></tr></thead>
+          <tbody><tr><td>79539</td><td>69986</td><td>787421.2</td><td>437508.96</td><td>1.8</td></tr><tr><td>79576</td><td>11549</td><td>339558.76</td><td>189075.32</td><td>1.8</td></tr><tr><td>79619</td><td>39843</td><td>201450.86</td><td>112347.34</td><td>1.79</td></tr><tr><td>79623</td><td>30045</td><td>361804.72</td><td>202322.2</td><td>1.79</td></tr><tr><td>79660</td><td>18140</td><td>438914.89</td><td>245253.77</td><td>1.79</td></tr><tr><td>79708</td><td>65632</td><td>298529.93</td><td>167163.65</td><td>1.79</td></tr><tr><td>79758</td><td>65323</td><td>839859.31</td><td>469423.48</td><td>1.79</td></tr><tr><td>79764</td><td>6354</td><td>108893.77</td><td>60754.77</td><td>1.79</td></tr><tr><td>79786</td><td>19182</td><td>418320.86</td><td>233706.64</td><td>1.79</td></tr><tr><td>79813</td><td>42825</td><td>567601.9</td><td>317518.84</td><td>1.79</td></tr><tr><td>79497</td><td>59489</td><td>762959.53</td><td>428300.95</td><td>1.78</td></tr><tr><td>79516</td><td>30881</td><td>627958.42</td><td>352464.13</td><td>1.78</td></tr><tr><td>79580</td><td>69542</td><td>718902.5</td><td>403300.61</td><td>1.78</td></tr><tr><td>79724</td><td>24131</td><td>53476.65</td><td>30003.01</td><td>1.78</td></tr><tr><td>79777</td><td>32545</td><td>274427.03</td><td>154112.58</td><td>1.78</td></tr></tbody>
+        </table>
+      </div>
+    </article>
+<article class="scenario-card" id="scn-ghost-shipment">
+      <div class="scenario-card__num mono">02</div>
+      <h3>Ghost shipments</h3>
+      <div class="prompt-box">
+        <span class="prompt-label">sandbox prompt</span>
+        <p class="mono">&ldquo;Find fully-paid invoices with no delivered shipment and no customs clearance&rdquo;</p>
+      </div>
+      <p class="value-line">Surfaces cash paid out for freight that was never actually moved &mdash; a fraud/leakage signal procure-to-pay controls exist to catch.</p>
+      <p class="plant-line"><strong>How it&rsquo;s planted &mdash;</strong> 150 invoices are marked paid but back nothing real: 100 point at a shipment that was never delivered and was never customs-cleared, and 50 point at a purchase order with no shipment row at all (shipment_id is NULL). Shipment ids for the ghost group are allocated contiguously after every legitimate shipment, so customs_declarations can reference every real id and can never accidentally touch a ghost &mdash; the missing customs trail is exactly what the plant keys on.</p>
+      <div class="sql-label">evidence sql</div>
+      <div class="scroll-x"><pre class="sql">SELECT i.id AS invoice_id, i.amount_usd, i.paid, i.shipment_id FROM invoices i LEFT JOIN shipments s ON s.id = i.shipment_id WHERE i.paid IS NOT NULL AND (i.shipment_id IS NULL OR (s.delivered_ts IS NULL AND NOT EXISTS (SELECT 1 FROM customs_declarations c WHERE c.shipment_id = s.id)))</pre></div>
+      <div class="results-head">
+        <span>results</span><span class="rowcount">showing 15 of 150 hits (floor 150)</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table data-table--evidence">
+          <thead><tr><th>invoice_id</th><th>amount_usd</th><th>paid</th><th>shipment_id</th></tr></thead>
+          <tbody><tr><td>79851</td><td>115925.51</td><td>2023-05-23</td><td>239501</td></tr><tr><td>79852</td><td>18894.01</td><td>2023-01-28</td><td>239502</td></tr><tr><td>79853</td><td>25966.98</td><td>2025-07-28</td><td>239503</td></tr><tr><td>79854</td><td>10978.29</td><td>2025-10-21</td><td>239504</td></tr><tr><td>79855</td><td>115188.66</td><td>2025-07-04</td><td>239505</td></tr><tr><td>79856</td><td>298933.38</td><td>2026-04-29</td><td>239506</td></tr><tr><td>79857</td><td>419701.8</td><td>2026-05-25</td><td>239507</td></tr><tr><td>79858</td><td>109912.86</td><td>2025-08-19</td><td>239508</td></tr><tr><td>79859</td><td>423431.49</td><td>2025-10-31</td><td>239509</td></tr><tr><td>79860</td><td>391971.11</td><td>2026-01-14</td><td>239510</td></tr><tr><td>79861</td><td>20243.47</td><td>2025-05-21</td><td>239511</td></tr><tr><td>79862</td><td>404799.9</td><td>2026-06-01</td><td>239512</td></tr><tr><td>79863</td><td>10804.68</td><td>2025-04-24</td><td>239513</td></tr><tr><td>79864</td><td>228794.41</td><td>2024-08-27</td><td>239514</td></tr><tr><td>79865</td><td>223974.43</td><td>2026-06-25</td><td>239515</td></tr></tbody>
+        </table>
+      </div>
+    </article>
+<article class="scenario-card" id="scn-denied-party">
+      <div class="scenario-card__num mono">03</div>
+      <h3>Denied-party consignees</h3>
+      <div class="prompt-box">
+        <span class="prompt-label">sandbox prompt</span>
+        <p class="mono">&ldquo;Screen customs declaration consignees against the sanctions-adjacent watchlist&rdquo;</p>
+      </div>
+      <p class="value-line">Stops an export-control or sanctions violation before goods clear customs under a screened name.</p>
+      <p class="plant-line"><strong>How it&rsquo;s planted &mdash;</strong> 30 of 40,000 customs declarations (1 in 5 for the last 30 ids) assign the consignee a name drawn from a fixed 6-name list of sanctions-adjacent transliteration variants (not real designated persons) &mdash; 5 declarations per name, cycling through the list in id order.</p>
+      <div class="sql-label">evidence sql</div>
+      <div class="scroll-x"><pre class="sql">SELECT id AS declaration_id, shipment_id, consignee_name, hs_code, declared_value_usd, country FROM customs_declarations WHERE consignee_name IN (&#x27;Viktor Sokolov&#x27;,&#x27;Ivan Petrov&#x27;,&#x27;Sergei Volkov&#x27;,&#x27;Nadia Popova&#x27;,&#x27;Andrei Marchenko&#x27;,&#x27;Pavel Ivanov&#x27;) ORDER BY declared_value_usd DESC</pre></div>
+      <div class="results-head">
+        <span>results</span><span class="rowcount">showing 15 of 30 hits (floor 30)</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table data-table--evidence">
+          <thead><tr><th>declaration_id</th><th>shipment_id</th><th>consignee_name</th><th>hs_code</th><th>declared_value_usd</th><th>country</th></tr></thead>
+          <tbody><tr><td>39989</td><td>164754</td><td>Viktor Sokolov</td><td>7108.13</td><td>475046.26</td><td>KZ</td></tr><tr><td>39971</td><td>122323</td><td>Viktor Sokolov</td><td>2709.00</td><td>435081.98</td><td>KZ</td></tr><tr><td>39988</td><td>23799</td><td>Pavel Ivanov</td><td>8542.31</td><td>432579.54</td><td>KZ</td></tr><tr><td>40000</td><td>138282</td><td>Pavel Ivanov</td><td>6109.10</td><td>404563.4</td><td>CN</td></tr><tr><td>39984</td><td>158448</td><td>Ivan Petrov</td><td>8517.12</td><td>399344.6</td><td>RU</td></tr><tr><td>39999</td><td>40677</td><td>Andrei Marchenko</td><td>0901.21</td><td>391876.08</td><td>UA</td></tr><tr><td>39982</td><td>60284</td><td>Pavel Ivanov</td><td>8517.12</td><td>367342.85</td><td>BR</td></tr><tr><td>39993</td><td>215539</td><td>Andrei Marchenko</td><td>7108.13</td><td>343598.3</td><td>KZ</td></tr><tr><td>39995</td><td>113239</td><td>Viktor Sokolov</td><td>2709.00</td><td>327272.1</td><td>DE</td></tr><tr><td>39978</td><td>186257</td><td>Ivan Petrov</td><td>6109.10</td><td>308857.74</td><td>FR</td></tr><tr><td>39981</td><td>156508</td><td>Andrei Marchenko</td><td>8703.23</td><td>270611.23</td><td>DE</td></tr><tr><td>39972</td><td>20691</td><td>Ivan Petrov</td><td>8542.31</td><td>235442.01</td><td>UA</td></tr><tr><td>39998</td><td>223105</td><td>Nadia Popova</td><td>7108.13</td><td>232380.26</td><td>NG</td></tr><tr><td>39980</td><td>220004</td><td>Nadia Popova</td><td>7108.13</td><td>220230.4</td><td>GB</td></tr><tr><td>39985</td><td>151653</td><td>Sergei Volkov</td><td>4011.10</td><td>212466.71</td><td>BR</td></tr></tbody>
+        </table>
+      </div>
+    </article>
+<article class="scenario-card" id="scn-lane-performance">
+      <div class="scenario-card__num mono">04</div>
+      <h3>Chronically late lanes</h3>
+      <div class="prompt-box">
+        <span class="prompt-label">sandbox prompt</span>
+        <p class="mono">&ldquo;Rank origin-to-destination lanes whose deliveries chronically run past ETA&rdquo;</p>
+      </div>
+      <p class="value-line">Gives ops a defensible shortlist of lanes to renegotiate or re-route before the next contract cycle.</p>
+      <p class="plant-line"><strong>How it&rsquo;s planted &mdash;</strong> 5 origin-destination pairs (each using a port that appears in no other lane, so the pair can never collide with ordinary traffic) get 300 shipments apiece, every one delivered 5-15 days past its ETA. The other 761 lanes with 50+ delivered shipments average between -0.4 and +0.4 days late &mdash; there is no lane in between.</p>
+      <div class="sql-label">evidence sql</div>
+      <div class="scroll-x"><pre class="sql">SELECT origin, destination, COUNT(*) AS shipments, ROUND(AVG(julianday(delivered_ts) - julianday(eta)), 1) AS avg_days_late FROM shipments WHERE delivered_ts IS NOT NULL GROUP BY origin, destination HAVING avg_days_late &gt;= 5 AND shipments &gt;= 50 ORDER BY avg_days_late DESC</pre></div>
+      <div class="results-head">
+        <span>results</span><span class="rowcount">showing 5 of 5 hits (floor 5)</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table data-table--evidence">
+          <thead><tr><th>origin</th><th>destination</th><th>shipments</th><th>avg_days_late</th></tr></thead>
+          <tbody><tr><td>Lagos</td><td>Southampton</td><td>300</td><td>10.2</td></tr><tr><td>Karachi</td><td>Le Havre</td><td>300</td><td>10.1</td></tr><tr><td>Mombasa</td><td>Bremen</td><td>300</td><td>10.0</td></tr><tr><td>Chittagong</td><td>Barcelona</td><td>300</td><td>9.7</td></tr><tr><td>Manila</td><td>Oakland</td><td>300</td><td>9.7</td></tr></tbody>
+        </table>
+      </div>
+    </article>
+    </div>
+  </div>
+</section>
+
+<section id="model">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">02 &middot; Data model</div>
+      <h2>Five tables, one procure-to-pay-to-clearance chain</h2>
+      <p class="section-intro">Every table below is queried live from <code>infra/seeds/out/freight.db</code>;
+        row counts and column types are exact, not estimated.</p>
+    </div>
+    <div class="model-grid">
+      <div class="model-card">
+      <div class="model-card__head">
+        <h3 class="mono">carriers</h3>
+        <span class="rowcount">250 rows</span>
+      </div>
+      <table class="col-table">
+        <thead><tr><th>column</th><th>type</th><th>sensitivity</th></tr></thead>
+        <tbody><tr><td class="mono">id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">name</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">mode</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">home_country</td><td class="mono muted">TEXT</td><td></td></tr></tbody>
+      </table>
+    </div>
+<div class="model-card">
+      <div class="model-card__head">
+        <h3 class="mono">purchase_orders</h3>
+        <span class="rowcount">70,000 rows</span>
+      </div>
+      <table class="col-table">
+        <thead><tr><th>column</th><th>type</th><th>sensitivity</th></tr></thead>
+        <tbody><tr><td class="mono">id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">buyer</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">supplier</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">shipper_contact</td><td class="mono muted">TEXT</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">shipper_email</td><td class="mono muted">TEXT</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">shipper_phone</td><td class="mono muted">TEXT</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">remit_iban</td><td class="mono muted">TEXT</td><td><span class="sens sens--confidential" title="confidential financial">confidential financial</span></td></tr><tr><td class="mono">amount_usd</td><td class="mono muted">REAL</td><td></td></tr><tr><td class="mono">currency</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">created</td><td class="mono muted">TEXT</td><td></td></tr></tbody>
+      </table>
+    </div>
+<div class="model-card">
+      <div class="model-card__head">
+        <h3 class="mono">shipments</h3>
+        <span class="rowcount">239,600 rows</span>
+      </div>
+      <table class="col-table">
+        <thead><tr><th>column</th><th>type</th><th>sensitivity</th></tr></thead>
+        <tbody><tr><td class="mono">id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">po_id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">carrier_id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">origin</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">destination</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">ship_ts</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">eta</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">delivered_ts</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">consignee_name</td><td class="mono muted">TEXT</td><td><span class="sens sens--restricted" title="restricted">restricted</span></td></tr><tr><td class="mono">weight_kg</td><td class="mono muted">REAL</td><td></td></tr></tbody>
+      </table>
+    </div>
+<div class="model-card">
+      <div class="model-card__head">
+        <h3 class="mono">invoices</h3>
+        <span class="rowcount">80,000 rows</span>
+      </div>
+      <table class="col-table">
+        <thead><tr><th>column</th><th>type</th><th>sensitivity</th></tr></thead>
+        <tbody><tr><td class="mono">id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">po_id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">shipment_id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">amount_usd</td><td class="mono muted">REAL</td><td></td></tr><tr><td class="mono">issued</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">paid</td><td class="mono muted">TEXT</td><td></td></tr></tbody>
+      </table>
+    </div>
+<div class="model-card">
+      <div class="model-card__head">
+        <h3 class="mono">customs_declarations</h3>
+        <span class="rowcount">40,000 rows</span>
+      </div>
+      <table class="col-table">
+        <thead><tr><th>column</th><th>type</th><th>sensitivity</th></tr></thead>
+        <tbody><tr><td class="mono">id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">shipment_id</td><td class="mono muted">INTEGER</td><td></td></tr><tr><td class="mono">consignee_name</td><td class="mono muted">TEXT</td><td><span class="sens sens--restricted" title="restricted">restricted</span></td></tr><tr><td class="mono">consignee_eori</td><td class="mono muted">TEXT</td><td><span class="sens sens--regulated" title="regulated identifier">regulated identifier</span></td></tr><tr><td class="mono">consignee_tax_id</td><td class="mono muted">TEXT</td><td><span class="sens sens--regulated" title="regulated identifier">regulated identifier</span></td></tr><tr><td class="mono">consignee_email</td><td class="mono muted">TEXT</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">consignee_phone</td><td class="mono muted">TEXT</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">hs_code</td><td class="mono muted">TEXT</td><td></td></tr><tr><td class="mono">declared_value_usd</td><td class="mono muted">REAL</td><td></td></tr><tr><td class="mono">country</td><td class="mono muted">TEXT</td><td></td></tr></tbody>
+      </table>
+    </div>
+    </div>
+    <div class="fk-wrap">
+      <div class="fk-title">Foreign-key map &mdash; shipments is the hub: it draws from carriers and
+        purchase_orders, and both invoices and customs_declarations reference it back
+        (<span class="mono">&dagger;</span> invoices.shipment_id is nullable &mdash; the 50 no-shipment ghost invoices leave it null).</div>
+      <svg viewBox="0 0 760 366" style="width:100%;height:auto;display:block" role="img" aria-label="foreign key relationship diagram"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent-mid)"/></marker></defs><g>
+          <rect x="40" y="26" width="200" height="58" rx="8" fill="var(--surface-raised)"
+                stroke="var(--hairline)" stroke-width="1.2"/>
+          <text x="140.0" y="51.0" text-anchor="middle" font-size="13" font-weight="600"
+                fill="var(--text)" font-family="var(--font-mono)">purchase_orders</text>
+          <text x="140.0" y="69.0" text-anchor="middle" font-size="11"
+                fill="var(--text-faint)" font-family="var(--font-mono)">70,000 rows · PK id</text>
+        </g><g>
+          <rect x="520" y="26" width="200" height="58" rx="8" fill="var(--surface-raised)"
+                stroke="var(--hairline)" stroke-width="1.2"/>
+          <text x="620.0" y="51.0" text-anchor="middle" font-size="13" font-weight="600"
+                fill="var(--text)" font-family="var(--font-mono)">carriers</text>
+          <text x="620.0" y="69.0" text-anchor="middle" font-size="11"
+                fill="var(--text-faint)" font-family="var(--font-mono)">250 rows · PK id</text>
+        </g><g>
+          <rect x="280" y="150" width="200" height="74" rx="8" fill="var(--surface-raised)"
+                stroke="var(--hairline)" stroke-width="1.2"/>
+          <text x="380.0" y="183.0" text-anchor="middle" font-size="13" font-weight="600"
+                fill="var(--text)" font-family="var(--font-mono)">shipments</text>
+          <text x="380.0" y="201.0" text-anchor="middle" font-size="11"
+                fill="var(--text-faint)" font-family="var(--font-mono)">239,600 rows · PK id</text>
+        </g><g>
+          <rect x="40" y="276" width="200" height="58" rx="8" fill="var(--surface-raised)"
+                stroke="var(--hairline)" stroke-width="1.2"/>
+          <text x="140.0" y="301.0" text-anchor="middle" font-size="13" font-weight="600"
+                fill="var(--text)" font-family="var(--font-mono)">invoices</text>
+          <text x="140.0" y="319.0" text-anchor="middle" font-size="11"
+                fill="var(--text-faint)" font-family="var(--font-mono)">80,000 rows · PK id</text>
+        </g><g>
+          <rect x="520" y="276" width="200" height="58" rx="8" fill="var(--surface-raised)"
+                stroke="var(--hairline)" stroke-width="1.2"/>
+          <text x="620.0" y="301.0" text-anchor="middle" font-size="13" font-weight="600"
+                fill="var(--text)" font-family="var(--font-mono)">customs_declarations</text>
+          <text x="620.0" y="319.0" text-anchor="middle" font-size="11"
+                fill="var(--text-faint)" font-family="var(--font-mono)">40,000 rows · PK id</text>
+        </g><line x1="310" y1="150" x2="165" y2="84" stroke="var(--accent-mid)"
+              stroke-width="1.3" marker-end="url(#arrow)"/>
+          <rect x="191.5" y="107.0" width="92" height="16" fill="var(--paper)" opacity="0.9"/>
+          <text x="237.5" y="119.0" text-anchor="middle" font-size="10.5" fill="var(--text-muted)"
+                font-family="var(--font-mono)">po_id</text><line x1="450" y1="150" x2="605" y2="84" stroke="var(--accent-mid)"
+              stroke-width="1.3" marker-end="url(#arrow)"/>
+          <rect x="481.5" y="107.0" width="92" height="16" fill="var(--paper)" opacity="0.9"/>
+          <text x="527.5" y="119.0" text-anchor="middle" font-size="10.5" fill="var(--text-muted)"
+                font-family="var(--font-mono)">carrier_id</text><line x1="120" y1="276" x2="120" y2="84" stroke="var(--accent-mid)"
+              stroke-width="1.3" marker-end="url(#arrow)"/>
+          <rect x="74.0" y="170.0" width="92" height="16" fill="var(--paper)" opacity="0.9"/>
+          <text x="120.0" y="182.0" text-anchor="middle" font-size="10.5" fill="var(--text-muted)"
+                font-family="var(--font-mono)">po_id</text><line x1="200" y1="276" x2="320" y2="224" stroke="var(--accent-mid)"
+              stroke-width="1.3" marker-end="url(#arrow)"/>
+          <rect x="214.0" y="240.0" width="92" height="16" fill="var(--paper)" opacity="0.9"/>
+          <text x="260.0" y="252.0" text-anchor="middle" font-size="10.5" fill="var(--text-muted)"
+                font-family="var(--font-mono)">shipment_id†</text><line x1="560" y1="276" x2="450" y2="224" stroke="var(--accent-mid)"
+              stroke-width="1.3" marker-end="url(#arrow)"/>
+          <rect x="459.0" y="240.0" width="92" height="16" fill="var(--paper)" opacity="0.9"/>
+          <text x="505.0" y="252.0" text-anchor="middle" font-size="10.5" fill="var(--text-muted)"
+                font-family="var(--font-mono)">shipment_id</text></svg>
+    </div>
+  </div>
+</section>
+
+<section id="sample">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">03 &middot; Sample data</div>
+      <h2>First 15 rows, every table</h2>
+      <p class="section-intro"><span class="hdr-sens">&#9679;</span> marks a column named in the Terms
+        of Sensitive Data Use (section 05) &mdash; hover a marked header for its sensitivity class.</p>
+    </div>
+    <div class="sample-block">
+      <div class="sample-head">
+        <h3 class="mono">carriers</h3><span class="rowcount">250 rows total · showing 15</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table">
+          <thead><tr><th>id</th><th>name</th><th>mode</th><th>home_country</th></tr></thead>
+          <tbody><tr><td>1</td><td>Sable Freight</td><td>sea</td><td>BR</td></tr><tr><td>2</td><td>Orbit Lines</td><td>road</td><td>GB</td></tr><tr><td>3</td><td>Aurora Shipping</td><td>road</td><td>RU</td></tr><tr><td>4</td><td>Summit Lines</td><td>sea</td><td>CN</td></tr><tr><td>5</td><td>Crown Cargo</td><td>air</td><td>DE</td></tr><tr><td>6</td><td>Orbit Cargo</td><td>road</td><td>KZ</td></tr><tr><td>7</td><td>Sable Transport</td><td>sea</td><td>IN</td></tr><tr><td>8</td><td>Sable Shipping</td><td>sea</td><td>NG</td></tr><tr><td>9</td><td>Aurora Lines</td><td>road</td><td>TR</td></tr><tr><td>10</td><td>Onyx Lines</td><td>sea</td><td>IN</td></tr><tr><td>11</td><td>Harbor Transport</td><td>air</td><td>TR</td></tr><tr><td>12</td><td>Crown Cargo</td><td>road</td><td>IN</td></tr><tr><td>13</td><td>Summit Cargo</td><td>sea</td><td>RU</td></tr><tr><td>14</td><td>Sable Cargo</td><td>road</td><td>NG</td></tr><tr><td>15</td><td>Orbit Freight</td><td>air</td><td>NG</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+<div class="sample-block">
+      <div class="sample-head">
+        <h3 class="mono">purchase_orders</h3><span class="rowcount">70,000 rows total · showing 15</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table">
+          <thead><tr><th>id</th><th>buyer</th><th>supplier</th><th>shipper_contact <span class="hdr-sens" title="personal data">●</span></th><th>shipper_email <span class="hdr-sens" title="personal data">●</span></th><th>shipper_phone <span class="hdr-sens" title="personal data">●</span></th><th>remit_iban <span class="hdr-sens" title="confidential financial">●</span></th><th>amount_usd</th><th>currency</th><th>created</th></tr></thead>
+          <tbody><tr><td>1</td><td>Granite Systems</td><td>Crown Imports</td><td>Liam Kim</td><td>liam.kim@trade.example</td><td>+1-415-555-0102</td><td>TR65JLQZ48212168843026</td><td>185068.07</td><td>AED</td><td>2024-07-12</td></tr><tr><td>2</td><td>Kestrel Industries</td><td>Lumen Systems</td><td>James Novak</td><td>james.novak@cargonet.example</td><td>+1-415-555-0154</td><td>BR77IZXY21617477083791</td><td>416387.36</td><td>CNY</td><td>2024-06-26</td></tr><tr><td>3</td><td>Onyx Manufacturing</td><td>Pioneer Imports</td><td>Leila Muller</td><td>leila.muller@freightmail.example</td><td>+1-206-555-0102</td><td>MX12TRDM38619592966831</td><td>230949.08</td><td>USD</td><td>2022-03-15</td></tr><tr><td>4</td><td>Summit Wholesale</td><td>Harbor Systems</td><td>Chen Novak</td><td>chen.novak@cargonet.example</td><td>+1-646-555-0130</td><td>UA66RQLE47145336831704</td><td>284480.38</td><td>USD</td><td>2022-04-15</td></tr><tr><td>5</td><td>Harbor Global</td><td>Aurora Wholesale</td><td>Pavel Rossi</td><td>pavel.rossi@freightmail.example</td><td>+1-646-555-0167</td><td>FR23DHWW96534306481364</td><td>134967.92</td><td>JPY</td><td>2026-01-20</td></tr><tr><td>6</td><td>Kestrel Industries</td><td>Pioneer Distribution</td><td>Sergei Patel</td><td>sergei.patel@trade.example</td><td>+1-206-555-0114</td><td>DE47MYHH53200559955126</td><td>10643.86</td><td>JPY</td><td>2026-04-16</td></tr><tr><td>7</td><td>Vertex Distribution</td><td>Cobalt Systems</td><td>Raj Patel</td><td>raj.patel@freightmail.example</td><td>+1-713-555-0182</td><td>GB82JZXQ15649401396650</td><td>92349.89</td><td>AED</td><td>2024-03-08</td></tr><tr><td>8</td><td>Cobalt Wholesale</td><td>Sable Wholesale</td><td>Raj Al-Rashid</td><td>raj.al-rashid@shipco.example</td><td>+1-206-555-0151</td><td>GB89YMFI99629888966155</td><td>176499.02</td><td>JPY</td><td>2023-11-19</td></tr><tr><td>9</td><td>Pioneer Distribution</td><td>Crown Manufacturing</td><td>Mary Ivanova</td><td>mary.ivanova@freightmail.example</td><td>+1-212-555-0162</td><td>IN85VKLV84605248401653</td><td>370097.5</td><td>AED</td><td>2023-01-16</td></tr><tr><td>10</td><td>Cobalt Manufacturing</td><td>Aurora Industries</td><td>Tomas Petrov</td><td>tomas.petrov@freightmail.example</td><td>+1-415-555-0198</td><td>US75RMZP20769356097349</td><td>86500.95</td><td>JPY</td><td>2023-09-21</td></tr><tr><td>11</td><td>Onyx Systems</td><td>Granite Industries</td><td>Mary Novak</td><td>mary.novak@shipco.example</td><td>+1-305-555-0119</td><td>KZ44KNHJ51335582796211</td><td>394062.33</td><td>CNY</td><td>2026-05-15</td></tr><tr><td>12</td><td>Aurora Global</td><td>Crown Manufacturing</td><td>Leila Costa</td><td>leila.costa@cargonet.example</td><td>+1-305-555-0133</td><td>AE28GLHS92012571266708</td><td>276439.98</td><td>GBP</td><td>2025-06-29</td></tr><tr><td>13</td><td>Onyx Industries</td><td>Summit Manufacturing</td><td>Marta Kowalski</td><td>marta.kowalski@cargonet.example</td><td>+1-646-555-0151</td><td>US11AGGX73093933154938</td><td>306559.75</td><td>AED</td><td>2022-03-19</td></tr><tr><td>14</td><td>Summit Global</td><td>Vertex Imports</td><td>Aisha Andersson</td><td>aisha.andersson@trade.example</td><td>+1-305-555-0128</td><td>BR37SXUK99398606528767</td><td>395037.52</td><td>AED</td><td>2024-04-29</td></tr><tr><td>15</td><td>Lumen Global</td><td>Granite Industries</td><td>Liam Costa</td><td>liam.costa@cargonet.example</td><td>+1-305-555-0130</td><td>BR69AGLR99846706487809</td><td>156365.49</td><td>CNY</td><td>2025-10-16</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+<div class="sample-block">
+      <div class="sample-head">
+        <h3 class="mono">shipments</h3><span class="rowcount">239,600 rows total · showing 15</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table">
+          <thead><tr><th>id</th><th>po_id</th><th>carrier_id</th><th>origin</th><th>destination</th><th>ship_ts</th><th>eta</th><th>delivered_ts</th><th>consignee_name <span class="hdr-sens" title="restricted">●</span></th><th>weight_kg</th></tr></thead>
+          <tbody><tr><td>1</td><td>25438</td><td>135</td><td>Rotterdam</td><td>Long Beach</td><td>2022-05-18</td><td>2022-05-26</td><td>2022-05-26</td><td>Crown Imports</td><td>22793.4</td></tr><tr><td>2</td><td>55211</td><td>109</td><td>Gdansk</td><td>Shenzhen</td><td>2022-10-03</td><td>2022-10-20</td><td><span class="nullv">—</span></td><td>Cobalt Wholesale</td><td>19640.8</td></tr><tr><td>3</td><td>55998</td><td>163</td><td>Genoa</td><td>Felixstowe</td><td>2022-02-17</td><td>2022-03-11</td><td>2022-03-09</td><td>Vertex Wholesale</td><td>16564.5</td></tr><tr><td>4</td><td>8112</td><td>186</td><td>Felixstowe</td><td>Santos</td><td>2024-05-26</td><td>2024-06-11</td><td>2024-06-12</td><td>Onyx Global</td><td>15398.6</td></tr><tr><td>5</td><td>9453</td><td>24</td><td>Veracruz</td><td>Long Beach</td><td>2024-10-02</td><td>2024-10-07</td><td>2024-10-08</td><td>Nexa Trading</td><td>23087.9</td></tr><tr><td>6</td><td>14669</td><td>223</td><td>Piraeus</td><td>Jebel Ali</td><td>2024-07-18</td><td>2024-08-03</td><td><span class="nullv">—</span></td><td>Harbor Group</td><td>12545.9</td></tr><tr><td>7</td><td>29218</td><td>146</td><td>Los Angeles</td><td>Callao</td><td>2022-05-25</td><td>2022-06-03</td><td>2022-06-06</td><td>Meridian Trading</td><td>9432.9</td></tr><tr><td>8</td><td>11799</td><td>203</td><td>Veracruz</td><td>Jebel Ali</td><td>2022-05-04</td><td>2022-05-19</td><td>2022-05-18</td><td>Crown Holdings</td><td>447.0</td></tr><tr><td>9</td><td>14430</td><td>238</td><td>Houston</td><td>Busan</td><td>2026-02-22</td><td>2026-02-25</td><td>2026-02-23</td><td>Summit Trading</td><td>2001.0</td></tr><tr><td>10</td><td>32974</td><td>59</td><td>Qingdao</td><td>Hamburg</td><td>2024-02-24</td><td>2024-03-18</td><td>2024-03-17</td><td>Lumen Imports</td><td>24342.1</td></tr><tr><td>11</td><td>41209</td><td>177</td><td>Valencia</td><td>Mumbai</td><td>2024-05-01</td><td>2024-06-14</td><td>2024-06-16</td><td>Kestrel Distribution</td><td>17344.2</td></tr><tr><td>12</td><td>7918</td><td>26</td><td>Shanghai</td><td>Felixstowe</td><td>2023-08-13</td><td>2023-09-24</td><td><span class="nullv">—</span></td><td>Atlas Global</td><td>3100.8</td></tr><tr><td>13</td><td>39111</td><td>164</td><td>Felixstowe</td><td>Valencia</td><td>2023-08-26</td><td>2023-09-26</td><td>2023-09-25</td><td>Kestrel Group</td><td>1726.4</td></tr><tr><td>14</td><td>21073</td><td>195</td><td>Los Angeles</td><td>Busan</td><td>2023-10-23</td><td>2023-12-06</td><td>2023-12-06</td><td>Atlas Trading</td><td>10465.1</td></tr><tr><td>15</td><td>35954</td><td>166</td><td>Veracruz</td><td>Colombo</td><td>2024-11-05</td><td>2024-12-14</td><td>2024-12-13</td><td>Aurora Distribution</td><td>17400.5</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+<div class="sample-block">
+      <div class="sample-head">
+        <h3 class="mono">invoices</h3><span class="rowcount">80,000 rows total · showing 15</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table">
+          <thead><tr><th>id</th><th>po_id</th><th>shipment_id</th><th>amount_usd</th><th>issued</th><th>paid</th></tr></thead>
+          <tbody><tr><td>1</td><td>45930</td><td>231030</td><td>318364.45</td><td>2024-12-14</td><td>2025-05-16</td></tr><tr><td>2</td><td>36579</td><td>74782</td><td>436751.9</td><td>2023-04-10</td><td>2024-12-13</td></tr><tr><td>3</td><td>64422</td><td>62982</td><td>235670.9</td><td>2022-06-06</td><td>2024-01-10</td></tr><tr><td>4</td><td>1089</td><td>48100</td><td>248810.4</td><td>2022-12-05</td><td>2023-10-05</td></tr><tr><td>5</td><td>67966</td><td>120960</td><td>260730.32</td><td>2026-02-05</td><td>2026-06-05</td></tr><tr><td>6</td><td>40281</td><td>94679</td><td>137375.69</td><td>2026-05-20</td><td>2026-06-05</td></tr><tr><td>7</td><td>33860</td><td>189936</td><td>57648.79</td><td>2022-08-11</td><td>2026-01-04</td></tr><tr><td>8</td><td>36229</td><td>209512</td><td>481205.69</td><td>2026-03-24</td><td>2026-06-23</td></tr><tr><td>9</td><td>51562</td><td>219959</td><td>88703.79</td><td>2022-04-16</td><td><span class="nullv">—</span></td></tr><tr><td>10</td><td>7358</td><td>80184</td><td>5364.25</td><td>2022-07-17</td><td>2024-05-13</td></tr><tr><td>11</td><td>27759</td><td>176374</td><td>173586.37</td><td>2024-03-18</td><td><span class="nullv">—</span></td></tr><tr><td>12</td><td>42674</td><td>170807</td><td>315985.54</td><td>2024-11-04</td><td><span class="nullv">—</span></td></tr><tr><td>13</td><td>64792</td><td>69725</td><td>451107.83</td><td>2024-09-06</td><td>2025-06-18</td></tr><tr><td>14</td><td>53989</td><td>117526</td><td>148531.42</td><td>2025-12-09</td><td>2026-04-11</td></tr><tr><td>15</td><td>48564</td><td>127503</td><td>443575.78</td><td>2024-06-08</td><td>2025-10-14</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+<div class="sample-block">
+      <div class="sample-head">
+        <h3 class="mono">customs_declarations</h3><span class="rowcount">40,000 rows total · showing 15</span>
+      </div>
+      <div class="scroll-x">
+        <table class="data-table">
+          <thead><tr><th>id</th><th>shipment_id</th><th>consignee_name <span class="hdr-sens" title="restricted">●</span></th><th>consignee_eori <span class="hdr-sens" title="regulated identifier">●</span></th><th>consignee_tax_id <span class="hdr-sens" title="regulated identifier">●</span></th><th>consignee_email <span class="hdr-sens" title="personal data">●</span></th><th>consignee_phone <span class="hdr-sens" title="personal data">●</span></th><th>hs_code</th><th>declared_value_usd</th><th>country</th></tr></thead>
+          <tbody><tr><td>1</td><td>169087</td><td>Crown Holdings</td><td>GB509443457691</td><td>GB529590516</td><td>ops@crownholdings.example</td><td>+1-713-555-0198</td><td>4011.10</td><td>63802.53</td><td>GB</td></tr><tr><td>2</td><td>51487</td><td>Onyx Wholesale</td><td>NG546338095019</td><td>NG931033203</td><td>trade@onyxwholesale.example</td><td>+1-305-555-0148</td><td>7108.13</td><td>30589.56</td><td>NG</td></tr><tr><td>3</td><td>47211</td><td>Harbor Holdings</td><td>KZ782227697732</td><td>KZ659233852</td><td>customs@harborholdings.example</td><td>+1-646-555-0143</td><td>4011.10</td><td>229634.4</td><td>KZ</td></tr><tr><td>4</td><td>6272</td><td>Lumen Global</td><td>BR828907730320</td><td>BR235905227</td><td>trade@lumenglobal.example</td><td>+1-206-555-0126</td><td>2709.00</td><td>274107.59</td><td>BR</td></tr><tr><td>5</td><td>67511</td><td>Vertex Group</td><td>MX434378977328</td><td>MX830758129</td><td>ops@vertexgroup.example</td><td>+1-212-555-0112</td><td>7108.13</td><td>248450.87</td><td>MX</td></tr><tr><td>6</td><td>126596</td><td>Cobalt Manufacturing</td><td>US559601366087</td><td>US188919877</td><td>ops@cobaltmanufacturing.example</td><td>+1-206-555-0177</td><td>8542.31</td><td>445092.62</td><td>US</td></tr><tr><td>7</td><td>4412</td><td>Atlas Holdings</td><td>CN790682586555</td><td>CN399175437</td><td>clearing@atlasholdings.example</td><td>+1-312-555-0190</td><td>4011.10</td><td>176078.4</td><td>CN</td></tr><tr><td>8</td><td>116461</td><td>Crown Manufacturing</td><td>IN837926440914</td><td>IN570951885</td><td>customs@crownmanufacturing.example</td><td>+1-415-555-0184</td><td>8703.23</td><td>359473.23</td><td>IN</td></tr><tr><td>9</td><td>162527</td><td>Atlas Trading</td><td>AE271098516793</td><td>AE994173150</td><td>trade@atlastrading.example</td><td>+1-713-555-0199</td><td>7108.13</td><td>142275.39</td><td>AE</td></tr><tr><td>10</td><td>135664</td><td>Sable Trading</td><td>NG942441542005</td><td>NG687278957</td><td>trade@sabletrading.example</td><td>+1-206-555-0168</td><td>8471.30</td><td>124187.06</td><td>NG</td></tr><tr><td>11</td><td>109614</td><td>Cobalt Manufacturing</td><td>MX189423797816</td><td>MX796625225</td><td>ops@cobaltmanufacturing.example</td><td>+1-312-555-0198</td><td>0901.21</td><td>459291.35</td><td>MX</td></tr><tr><td>12</td><td>2582</td><td>Atlas Distribution</td><td>DE529428607748</td><td>DE768376654</td><td>customs@atlasdistribution.example</td><td>+1-415-555-0135</td><td>2709.00</td><td>157416.98</td><td>DE</td></tr><tr><td>13</td><td>156096</td><td>Vertex Trading</td><td>TR574426598242</td><td>TR454386035</td><td>ops@vertextrading.example</td><td>+1-312-555-0140</td><td>6109.10</td><td>279787.97</td><td>TR</td></tr><tr><td>14</td><td>96760</td><td>Onyx Holdings</td><td>FR517966238789</td><td>FR288772233</td><td>trade@onyxholdings.example</td><td>+1-305-555-0108</td><td>1806.31</td><td>146963.02</td><td>FR</td></tr><tr><td>15</td><td>72134</td><td>Crown Wholesale</td><td>TR567253311971</td><td>TR524979928</td><td>trade@crownwholesale.example</td><td>+1-206-555-0178</td><td>0901.21</td><td>44294.13</td><td>TR</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="terms">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">04 &middot; Terms of Sensitive Data Use</div>
+      <h2>Sensitive-field inventory &amp; the governing terms</h2>
+    </div>
+    <div class="terms-note"><strong>Stage-0 wiring &mdash;</strong> these terms are auto-distilled into
+      the masking policy that stage 0 (intake &amp; sanitization) applies to every job run against this
+      company: the fields inventoried below are the exact rule set that gets masked or withheld before
+      any record crosses the boundary into external planning.</div>
+    <div class="scroll-x inventory-table">
+      <table class="data-table">
+        <thead><tr><th>field</th><th>sensitivity class</th></tr></thead>
+        <tbody><tr><td class="mono">purchase_orders.shipper_contact</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">purchase_orders.shipper_email</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">purchase_orders.shipper_phone</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">purchase_orders.remit_iban</td><td><span class="sens sens--confidential" title="confidential financial">confidential financial</span></td></tr><tr><td class="mono">shipments.consignee_name</td><td><span class="sens sens--restricted" title="restricted">restricted</span></td></tr><tr><td class="mono">customs_declarations.consignee_name</td><td><span class="sens sens--restricted" title="restricted">restricted</span></td></tr><tr><td class="mono">customs_declarations.consignee_eori</td><td><span class="sens sens--regulated" title="regulated identifier">regulated identifier</span></td></tr><tr><td class="mono">customs_declarations.consignee_tax_id</td><td><span class="sens sens--regulated" title="regulated identifier">regulated identifier</span></td></tr><tr><td class="mono">customs_declarations.consignee_email</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr><tr><td class="mono">customs_declarations.consignee_phone</td><td><span class="sens sens--personal" title="personal data">personal data</span></td></tr></tbody>
+      </table>
+    </div>
+    <div class="terms-doc">
+      <h2>Northgate Freight — Terms of Sensitive Data Use</h2>
+<p><strong>Northgate Freight Ltd.</strong> operates as a licensed freight forwarder and customs broker. In the course of arranging carriage and clearing goods, we hold commercially sensitive and personal data belonging to shippers, consignees and their authorised representatives. This document governs how that data is classified, masked, transmitted and retained, and in particular what may cross Northgate&#x27;s infrastructure boundary into any external planning, analytics or model-assisted workflow. It is issued under our obligations as a registered economic operator under the Union Customs Code and under applicable data-protection and export-control law.</p>
+<h3>Purpose</h3>
+<p>These terms exist so that trade-compliance analysis, exception review and lane reporting can be performed on our shipment records without exposing the identifying details of the parties to a transaction. The controlling principle is data minimisation: a party&#x27;s identity, fiscal identifiers and contact details are handled on a strict need-to-know basis and are masked or withheld before any record leaves company-controlled systems.</p>
+<h3>Data classification</h3>
+<p>The following fields carry elevated sensitivity and are subject to the handling rules below.</p>
+<ul>
+<li><strong>customs_declarations.consignee_name</strong> — party identity on the customs entry; restricted.</li>
+<li><strong>customs_declarations.consignee_eori</strong> — customs registration identifier (EORI); restricted, regulated identifier.</li>
+<li><strong>customs_declarations.consignee_tax_id</strong> — national VAT / tax registration; restricted, regulated identifier.</li>
+<li><strong>customs_declarations.consignee_email</strong> — consignee contact; personal data.</li>
+<li><strong>customs_declarations.consignee_phone</strong> — consignee contact; personal data.</li>
+<li><strong>shipments.consignee_name</strong> — party identity on the movement record; restricted.</li>
+<li><strong>purchase_orders.shipper_contact</strong> — named individual acting for the shipper; personal data.</li>
+<li><strong>purchase_orders.shipper_email</strong> — shipper contact; personal data.</li>
+<li><strong>purchase_orders.shipper_phone</strong> — shipper contact; personal data.</li>
+<li><strong>purchase_orders.remit_iban</strong> — supplier settlement account number; confidential financial data.</li>
+</ul>
+<h3>Handling rules</h3>
+<ul>
+<li>Customs and fiscal identifiers in <strong>customs_declarations.consignee_eori</strong> and <strong>customs_declarations.consignee_tax_id</strong> are regulated identifiers and must never leave Northgate infrastructure; they may not appear in any external planning brief.</li>
+<li>Party names in <strong>customs_declarations.consignee_name</strong> and <strong>shipments.consignee_name</strong> may appear in external planning materials only in pseudonymised form; the underlying name must be withheld or replaced with a stable reference token.</li>
+<li>Settlement account numbers in <strong>purchase_orders.remit_iban</strong> must be masked to the last four characters before any external transmission; the full account number is never disclosed outside the finance function.</li>
+<li>Contact details in <strong>customs_declarations.consignee_email</strong>, <strong>customs_declarations.consignee_phone</strong>, <strong>purchase_orders.shipper_email</strong> and <strong>purchase_orders.shipper_phone</strong> are personal data and must be redacted from any dataset shared with an external processor unless a lawful basis and a data-processing agreement are in place.</li>
+<li>Named shipper representatives in <strong>purchase_orders.shipper_contact</strong> must be minimised: external planning references a role or reference token, never the individual&#x27;s name.</li>
+<li>Denied-party and sanctions screening against <strong>customs_declarations.consignee_name</strong> must be carried out inside Northgate&#x27;s environment; consignee identity may be sent to an external screening provider only under contract and only for that purpose.</li>
+<li>The personal and fiscal data described above must be processed and stored within the EU/EEA; onward transfer to a third country requires an approved transfer mechanism.</li>
+<li>Records carrying the identifiers and contact details above are retained no longer than required for customs and audit obligations and are then deleted or irreversibly anonymised.</li>
+<li>Any external analytics or model-assisted review must operate only on records from which the restricted identifiers have been removed or masked in accordance with the rules above.</li>
+</ul>
+<h3>Note</h3>
+<p>This corpus is fully synthetic demo data; these terms exercise the platform&#x27;s policy-distillation boundary.</p>
+    </div>
+  </div>
+</section>
+
+<section id="charts">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">05 &middot; Charts</div>
+      <h2>Four distributions, four scenarios</h2>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>3-way-match ratio distribution</h3>
+        <svg viewBox="0 0 740 300" style="width:100%;height:auto;display:block" role="img" aria-label="invoiced amount ÷ PO amount (0.05-wide buckets) bar chart" font-family="var(--font-mono)"><line x1="56" y1="242.0" x2="724" y2="242.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="245.0" text-anchor="end" font-size="11" fill="var(--text-faint)">0</text><line x1="56" y1="187.0" x2="724" y2="187.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="190.0" text-anchor="end" font-size="11" fill="var(--text-faint)">4,640</text><line x1="56" y1="132.0" x2="724" y2="132.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="135.0" text-anchor="end" font-size="11" fill="var(--text-faint)">9,281</text><line x1="56" y1="77.0" x2="724" y2="77.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="80.0" text-anchor="end" font-size="11" fill="var(--text-faint)">13,922</text><line x1="56" y1="22.0" x2="724" y2="22.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="25.0" text-anchor="end" font-size="11" fill="var(--text-faint)">18,563</text><line x1="56" y1="242.0" x2="724" y2="242.0" stroke="var(--text-faint)" stroke-width="1" /><line x1="266.9" y1="22" x2="266.9" y2="242" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3" /><text x="272.9" y="35" font-size="11" fill="var(--warn)">15% threshold</text><rect x="62.7" y="52.3" width="21.8" height="189.66" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="97.8" y="52.5" width="21.8" height="189.50" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="133.0" y="54.8" width="21.8" height="187.23" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="168.2" y="53.2" width="21.8" height="188.85" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="203.3" y="53.9" width="21.8" height="188.13" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="238.5" y="242.0" width="21.8" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="273.6" y="242.0" width="21.8" height="0.00" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><rect x="308.8" y="241.6" width="21.8" height="0.41" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="319.7" y="235.6" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">35</text><rect x="343.9" y="241.7" width="21.8" height="0.34" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="354.8" y="235.7" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">29</text><rect x="379.1" y="241.6" width="21.8" height="0.41" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="390.0" y="235.6" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">35</text><rect x="414.3" y="241.7" width="21.8" height="0.34" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="425.2" y="235.7" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">29</text><rect x="449.4" y="241.5" width="21.8" height="0.46" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="460.3" y="235.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">39</text><rect x="484.6" y="241.5" width="21.8" height="0.45" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="495.5" y="235.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">38</text><rect x="519.7" y="241.6" width="21.8" height="0.36" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="530.6" y="235.6" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">30</text><rect x="554.9" y="241.7" width="21.8" height="0.28" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="565.8" y="235.7" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">24</text><rect x="590.0" y="241.5" width="21.8" height="0.46" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="600.9" y="235.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">39</text><rect x="625.2" y="241.6" width="21.8" height="0.39" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="636.1" y="235.6" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">33</text><rect x="660.4" y="241.5" width="21.8" height="0.45" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="671.3" y="235.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">38</text><rect x="695.5" y="241.6" width="21.8" height="0.37" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="706.4" y="235.6" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">31</text><text x="73.6" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 73.6 258.0)">0.85</text><text x="143.9" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 143.9 258.0)">0.95</text><text x="214.2" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 214.2 258.0)">1.05</text><text x="284.5" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 284.5 258.0)">1.15</text><text x="354.8" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 354.8 258.0)">1.25</text><text x="425.2" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 425.2 258.0)">1.35</text><text x="495.5" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 495.5 258.0)">1.45</text><text x="565.8" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 565.8 258.0)">1.55</text><text x="636.1" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 636.1 258.0)">1.65</text><text x="706.4" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 706.4 258.0)">1.75</text><text x="56" y="294" font-size="11" fill="var(--text-faint)" font-family="var(--font-sans)">invoiced amount ÷ PO amount (0.05-wide buckets)</text><text x="14" y="14" font-size="11" fill="var(--text-faint)" font-family="var(--font-sans)">invoices</text></svg>
+        <p class="chart-caption">Two invoice populations, cleanly separated at the 15% breakpoint: 79,600
+          invoices bill 0.85x-1.10x their PO; the 400 planted breaks bill 1.20x-1.80x, with nothing in between.</p>
+      </div>
+      <div class="chart-card">
+        <h3>Ghost-pattern invoices over time</h3>
+        <svg viewBox="0 0 740 300" style="width:100%;height:auto;display:block" role="img" aria-label="invoice paid month, 2022-12 to 2026-06 (last 18 months marked) bar chart" font-family="var(--font-mono)"><line x1="56" y1="242.0" x2="724" y2="242.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="245.0" text-anchor="end" font-size="11" fill="var(--text-faint)">0</text><line x1="56" y1="187.0" x2="724" y2="187.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="190.0" text-anchor="end" font-size="11" fill="var(--text-faint)">3</text><line x1="56" y1="132.0" x2="724" y2="132.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="135.0" text-anchor="end" font-size="11" fill="var(--text-faint)">7</text><line x1="56" y1="77.0" x2="724" y2="77.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="80.0" text-anchor="end" font-size="11" fill="var(--text-faint)">11</text><line x1="56" y1="22.0" x2="724" y2="22.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="25.0" text-anchor="end" font-size="11" fill="var(--text-faint)">15</text><line x1="56" y1="242.0" x2="724" y2="242.0" stroke="var(--text-faint)" stroke-width="1" /><rect x="59.0" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="74.5" y="212.8" width="9.6" height="29.18" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="90.0" y="242.0" width="9.6" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="105.6" y="242.0" width="9.6" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="121.1" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="136.6" y="198.2" width="9.6" height="43.77" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="152.2" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="167.7" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="183.2" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="198.8" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="214.3" y="198.2" width="9.6" height="43.77" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="229.8" y="242.0" width="9.6" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="245.4" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="260.9" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="276.4" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="292.0" y="198.2" width="9.6" height="43.77" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="307.5" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="323.0" y="242.0" width="9.6" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="338.6" y="242.0" width="9.6" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="354.1" y="212.8" width="9.6" height="29.18" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="369.6" y="169.1" width="9.6" height="72.94" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="385.2" y="198.2" width="9.6" height="43.77" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="400.7" y="242.0" width="9.6" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="416.3" y="227.4" width="9.6" height="14.59" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="431.8" y="169.1" width="9.6" height="72.94" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="447.3" y="183.6" width="9.6" height="58.36" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="452.1" y="177.6" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">4</text><rect x="462.9" y="212.8" width="9.6" height="29.18" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="467.7" y="206.8" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">2</text><rect x="478.4" y="212.8" width="9.6" height="29.18" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="483.2" y="206.8" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">2</text><rect x="493.9" y="154.5" width="9.6" height="87.53" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="498.7" y="148.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">6</text><rect x="509.5" y="139.9" width="9.6" height="102.12" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="514.3" y="133.9" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">7</text><rect x="525.0" y="169.1" width="9.6" height="72.94" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="529.8" y="163.1" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">5</text><rect x="540.5" y="154.5" width="9.6" height="87.53" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="545.3" y="148.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">6</text><rect x="556.1" y="154.5" width="9.6" height="87.53" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="560.9" y="148.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">6</text><rect x="571.6" y="154.5" width="9.6" height="87.53" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="576.4" y="148.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">6</text><rect x="587.1" y="96.1" width="9.6" height="145.89" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="592.0" y="90.1" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">10</text><rect x="602.7" y="169.1" width="9.6" height="72.94" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="607.5" y="163.1" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">5</text><rect x="618.2" y="212.8" width="9.6" height="29.18" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="623.0" y="206.8" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">2</text><rect x="633.7" y="139.9" width="9.6" height="102.12" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="638.6" y="133.9" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">7</text><rect x="649.3" y="110.7" width="9.6" height="131.30" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="654.1" y="104.7" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">9</text><rect x="664.8" y="139.9" width="9.6" height="102.12" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="669.6" y="133.9" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">7</text><rect x="680.3" y="125.3" width="9.6" height="116.71" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="685.2" y="119.3" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">8</text><rect x="695.9" y="125.3" width="9.6" height="116.71" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="700.7" y="119.3" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">8</text><rect x="711.4" y="52.3" width="9.6" height="189.66" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="716.2" y="46.3" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">13</text><text x="63.8" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 63.8 258.0)">2022-12</text><text x="157.0" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 157.0 258.0)">2023-06</text><text x="250.2" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 250.2 258.0)">2023-12</text><text x="343.4" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 343.4 258.0)">2024-06</text><text x="436.6" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 436.6 258.0)">2024-12</text><text x="529.8" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 529.8 258.0)">2025-06</text><text x="623.0" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 623.0 258.0)">2025-12</text><text x="716.2" y="258.0" text-anchor="end" font-size="11" fill="var(--text-muted)" transform="rotate(-42 716.2 258.0)">2026-06</text><text x="56" y="294" font-size="11" fill="var(--text-faint)" font-family="var(--font-sans)">invoice paid month, 2022-12 to 2026-06 (last 18 months marked)</text><text x="14" y="14" font-size="11" fill="var(--text-faint)" font-family="var(--font-sans)">ghost-pattern
+invoices</text></svg>
+        <p class="chart-caption">Monthly count of fully-paid invoices with no delivery and no customs trail
+          &mdash; the 150 planted ghosts skew sharply into the last 18 months (highlighted).</p>
+      </div>
+      <div class="chart-card">
+        <h3>Denied-party consignee exposure</h3>
+        <svg viewBox="0 0 740 300" style="width:100%;height:auto;display:block" role="img" aria-label="sanctions-adjacent consignee name (5 declarations each, 30 total) bar chart" font-family="var(--font-mono)"><line x1="56" y1="260.0" x2="724" y2="260.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="263.0" text-anchor="end" font-size="11" fill="var(--text-faint)">$0</text><line x1="56" y1="200.5" x2="724" y2="200.5" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="203.5" text-anchor="end" font-size="11" fill="var(--text-faint)">$88,784</text><line x1="56" y1="141.0" x2="724" y2="141.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="144.0" text-anchor="end" font-size="11" fill="var(--text-faint)">$177,569</text><line x1="56" y1="81.5" x2="724" y2="81.5" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="84.5" text-anchor="end" font-size="11" fill="var(--text-faint)">$266,353</text><line x1="56" y1="22.0" x2="724" y2="22.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="25.0" text-anchor="end" font-size="11" fill="var(--text-faint)">$355,138</text><line x1="56" y1="260.0" x2="724" y2="260.0" stroke="var(--text-faint)" stroke-width="1" /><rect x="77.2" y="54.8" width="69.0" height="205.17" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="111.7" y="48.8" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">$306,154</text><rect x="188.5" y="58.5" width="69.0" height="201.53" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="223.0" y="52.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">$300,718</text><rect x="299.8" y="101.2" width="69.0" height="158.78" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="334.3" y="95.2" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">$236,935</text><rect x="411.2" y="115.2" width="69.0" height="144.76" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="445.7" y="109.2" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">$216,002</text><rect x="522.5" y="146.8" width="69.0" height="113.25" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="557.0" y="140.8" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">$168,982</text><rect x="633.8" y="165.5" width="69.0" height="94.50" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="668.3" y="159.5" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">$141,009</text><text x="111.7" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">Pavel Ivanov</text><text x="223.0" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">Viktor Sokolov</text><text x="334.3" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">Andrei Marchenko</text><text x="445.7" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">Ivan Petrov</text><text x="557.0" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">Nadia Popova</text><text x="668.3" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">Sergei Volkov</text><text x="56" y="294" font-size="11" fill="var(--text-faint)" font-family="var(--font-sans)">sanctions-adjacent consignee name (5 declarations each, 30 total)</text><text x="14" y="14" font-size="11" fill="var(--text-faint)" font-family="var(--font-sans)">avg declared
+value (USD)</text></svg>
+        <p class="chart-caption">All 6 sanctions-adjacent names appear exactly 5 times each among 40,000
+          customs declarations; average declared value per hit ranges $141k-$306k.</p>
+      </div>
+      <div class="chart-card">
+        <h3>Lane delay distribution, ETA vs. delivered</h3>
+        <svg viewBox="0 0 740 300" style="width:100%;height:auto;display:block" role="img" aria-label="avg days late vs. ETA (1-day bins, lanes with ≥ 50 delivered shipments) bar chart" font-family="var(--font-mono)"><line x1="56" y1="260.0" x2="724" y2="260.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="263.0" text-anchor="end" font-size="11" fill="var(--text-faint)">0</text><line x1="56" y1="200.5" x2="724" y2="200.5" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="203.5" text-anchor="end" font-size="11" fill="var(--text-faint)">114</text><line x1="56" y1="141.0" x2="724" y2="141.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="144.0" text-anchor="end" font-size="11" fill="var(--text-faint)">229</text><line x1="56" y1="81.5" x2="724" y2="81.5" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="84.5" text-anchor="end" font-size="11" fill="var(--text-faint)">344</text><line x1="56" y1="22.0" x2="724" y2="22.0" stroke="var(--hairline)" stroke-width="1" /><text x="48" y="25.0" text-anchor="end" font-size="11" fill="var(--text-faint)">459</text><line x1="56" y1="260.0" x2="724" y2="260.0" stroke="var(--text-faint)" stroke-width="1" /><rect x="66.6" y="73.5" width="34.5" height="186.52" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="122.2" y="54.8" width="34.5" height="205.17" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="177.9" y="260.0" width="34.5" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="233.6" y="260.0" width="34.5" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="289.2" y="260.0" width="34.5" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="344.9" y="260.0" width="34.5" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="400.6" y="260.0" width="34.5" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="456.2" y="260.0" width="34.5" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="511.9" y="260.0" width="34.5" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="567.6" y="260.0" width="34.5" height="0.00" fill="var(--hairline-soft)" stroke="var(--hairline)" stroke-width="1" rx="1.5" /><rect x="623.2" y="259.0" width="34.5" height="1.04" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="640.5" y="253.0" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">2</text><rect x="678.9" y="258.4" width="34.5" height="1.55" fill="var(--accent)" stroke="var(--accent-strong)" stroke-width="1" rx="1.5" /><text x="696.2" y="252.4" text-anchor="middle" font-size="11" fill="var(--accent-strong)" font-weight="600">3</text><text x="83.8" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">-1</text><text x="139.5" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">0</text><text x="195.2" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">1</text><text x="250.8" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">2</text><text x="306.5" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">3</text><text x="362.2" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">4</text><text x="417.8" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">5</text><text x="473.5" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">6</text><text x="529.2" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">7</text><text x="584.8" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">8</text><text x="640.5" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">9</text><text x="696.2" y="276.0" text-anchor="middle" font-size="11" fill="var(--text-muted)">10</text><text x="56" y="294" font-size="11" fill="var(--text-faint)" font-family="var(--font-sans)">avg days late vs. ETA (1-day bins, lanes with ≥ 50 delivered shipments)</text><text x="14" y="14" font-size="11" fill="var(--text-faint)" font-family="var(--font-sans)">lanes</text></svg>
+        <p class="chart-caption">761 lanes with 50+ delivered shipments cluster within &plusmn;0.4 days of
+          ETA on average; the 5 planted chronically-late lanes sit alone at 9.7-10.2 days late, no lane in between.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="scaling">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">06 &middot; Further use &amp; scaling</div>
+      <h2>Regenerating and growing this dataset</h2>
+    </div>
+    <pre class="cmd">uv run --project backend python scripts/seed.py freight</pre>
+    <div class="scale-grid">
+      <div class="scale-item">
+        <h3>Determinism</h3>
+        <p>A single seeded <code>random.Random</code> stream (<code>rng(13)</code> in
+          <code>infra/seeds/_gen.py</code>) drives every draw in a fixed generation order, so
+          regenerating from scratch reproduces byte-identical row counts and planted-pattern hits
+          every time &mdash; the "no hand-tuned state" rehearsal gate (spec 09 &sect;7).</p>
+      </div>
+      <div class="scale-item">
+        <h3>Row-count knobs</h3>
+        <p>All in <code>infra/seeds/freight.py</code>: <code>N_PO</code> (70,000 purchase orders),
+          <code>N_NORMAL</code> (238,000 base shipments), the 300-per-lane loop for the 5
+          <code>_LATE_LANES</code>, the 100/50 split for ghost shipments, and the 400-row
+          three-way-match-break loop over invoices.</p>
+      </div>
+      <div class="scale-item">
+        <h3>Adding columns safely</h3>
+        <p>Draw new fields only from the local <code>r</code> stream (never <code>random</code> global
+          state or wall-clock time) so a regenerate stays byte-for-byte reproducible. After any change,
+          rerun <code>backend/tests/test_seeds_new.py::test_planted_patterns_fire</code> to confirm every
+          evidence-query floor (400 / 150 / 30 / 5) still holds.</p>
+      </div>
+      <div class="scale-item">
+        <h3>Prompts &rarr; sandbox UI</h3>
+        <p>The 4 prompts in <code>backend/app/api/sandbox.py</code>'s <code>COMPANIES</code> entry for
+          <code>freight</code> populate the suggested-prompt list in <code>/sandbox</code>; picking one
+          (or typing a freeform prompt) posts to <code>/sandbox/runs</code> and opens a live pipeline
+          run against this exact database.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer id="footer">
+  <div class="wrap">
+    <p class="paths">
+      db &middot; infra/seeds/out/freight.db (39,866,368 bytes)<br/>
+      generator &middot; infra/seeds/freight.py<br/>
+      terms &middot; infra/seeds/out/terms/freight_terms.md<br/>
+      evidence &middot; backend/tests/test_seeds_new.py (EVIDENCE["freight"])
+    </p>
+    <p>This corpus is fully synthetic demo data. No real shippers, consignees, carriers or persons are
+      represented; names, identifiers and contact details are generated from a seeded random stream.</p>
+  </div>
+</footer>

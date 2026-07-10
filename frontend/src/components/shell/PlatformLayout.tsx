@@ -38,11 +38,11 @@ export function PlatformLayout() {
   };
 
   return (
-    <div className={styles.app} data-sovereign={sovereign ? "true" : "false"}>
+    <div className={styles.app} data-temp="inside" data-sovereign={sovereign ? "true" : "false"}>
       <header className={styles.bar}>
         <div className={styles.left}>
           <Link to="/" className={styles.brand} aria-label="Nxcleus home">
-            <Logo size={19} tone={sovereign ? "invert" : "default"} />
+            <Logo size={19} tone="invert" />
           </Link>
           <nav className={styles.nav}>
             {NAV.map((n) => (

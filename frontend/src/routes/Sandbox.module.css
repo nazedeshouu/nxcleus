@@ -21,21 +21,26 @@
   font-weight: 600;
 }
 
-/* company picker */
+/* company picker — scales from 3 to 8 companies */
 .companies {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
   margin-bottom: 30px;
 }
 @media (max-width: 800px) {
+  .companies {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 520px) {
   .companies {
     grid-template-columns: 1fr;
   }
 }
 .company {
   text-align: left;
-  padding: 18px 20px;
+  padding: 16px 18px;
   border: 1px solid var(--hairline);
   border-radius: var(--r-lg);
   background: var(--surface);
@@ -66,14 +71,25 @@
   height: 19px;
 }
 .companyName {
-  font-size: var(--fs-h3);
+  font-size: 1.05rem;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 .companyDesc {
   margin-top: 4px;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.companyStats {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--text-faint);
 }
 
 /* main split */
@@ -202,6 +218,93 @@
   color: var(--text-faint);
 }
 
+/* data / terms segmented control */
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-sunk);
+  border-radius: var(--r-pill);
+}
+.segBtn {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  padding: 5px 14px;
+  border-radius: var(--r-pill);
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.segBtn:hover {
+  color: var(--text-muted);
+}
+.segBtn.on {
+  background: var(--surface-raised);
+  color: var(--accent-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+/* terms document */
+.termsScroll {
+  max-height: 460px;
+  overflow-y: auto;
+  padding: 24px clamp(20px, 3vw, 30px) 28px;
+}
+.terms {
+  max-width: 64ch;
+}
+.mdH1 {
+  font-size: var(--fs-h3);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.mdH2 {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-strong);
+  margin: 26px 0 11px;
+}
+.mdP {
+  font-size: var(--fs-sm);
+  line-height: 1.68;
+  color: var(--text-muted);
+  margin-bottom: 13px;
+}
+.mdList {
+  list-style: none;
+  margin: 0 0 15px;
+  padding: 0;
+}
+.mdList li {
+  position: relative;
+  padding-left: 18px;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: 9px;
+}
+.mdList li::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 0.72em;
+  width: 7px;
+  height: 1px;
+  background: var(--accent-mid);
+}
+.terms strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* ask panel */
 .ask {
   padding: 18px;
@@ -261,7 +364,7 @@
   padding: 13px 18px;
   border-radius: var(--r-pill);
   background: var(--accent);
-  color: #fff;
+  color: var(--paper);
   border: none;
   font-size: var(--fs-body);
   font-weight: 600;

@@ -58,8 +58,18 @@ async def start_run(process_id: str, body: dict) -> dict:
     if not process:
         raise _err(404, "process not found")
     version = body.get("version") or process["current_version"]
+    # corpus binding (hardening): explicit body {"corpus": {"company": ...}} wins, else the
+    # process's stored binding; optional {"sample": {"mode": "first"|"random", "n": N}} and
+    # {"deliverable": {...}} ride along on params_json
+    company = (body.get("corpus") or {}).get("company") or process.get("corpus_company")
+    params = {k: v for k, v in (("corpus", {"company": company} if company else None),
+                                ("sample", body.get("sample")),
+                                ("deliverable", body.get("deliverable"))) if v}
     run_id = await dao.create_run(process_id=process_id, version=version, kind=body.get("kind", "batch"),
-                                  input_ref=str(body.get("input_ref", "")))
+                                  input_ref=str(body.get("input_ref", "") or
+                                                (f"company:{company}" if company else "")))
+    if params:
+        await dao.update_run(run_id, params=params)
     engine.submit_run(run_id)
     return {"run": await dao.get_run(run_id)}
 
@@ -79,10 +89,38 @@ async def instantiate(process_id: str, body: dict) -> dict:
     process = await dao.get_process(process_id)
     if not process:
         raise _err(404, "process not found")
-    # re-enter at stage 4 with the certified plan as-is + new connector bindings (04 §5)
+    version = await dao.get_version(process_id, process["current_version"])
+    plan_row = await dao.get_plan(version["plan_id"]) if version and version.get("plan_id") else None
+    if not plan_row:
+        raise _err(409, "process has no certified plan to instantiate from")
+
+    # re-enter at stage 4 with the certified plan as-is + new connector bindings —
+    # NO stage-1 planner call (04 §5)
     job_id = await dao.create_job(title=f"Instantiate: {process['name']}",
                                   request=f"Re-instantiate {process['slug']}", origin="reinstantiate",
                                   mode=process["mode"], parent_process_id=process_id)
+    source_job = await dao.get_job(process.get("created_from_job") or "")
+    spec = {"request": f"Re-instantiate {process['slug']}",
+            "connectors": body.get("connectors", [])}
+    src_spec = (source_job or {}).get("spec") or {}
+    if isinstance(src_spec, dict) and src_spec.get("company"):
+        spec["company"] = src_spec["company"]   # process-mode corpus binding carries over
+    plan_id = await dao.create_plan(job_id=job_id, version=1, status="certified",
+                                    body=plan_row["body"])
+    await dao.update_job(job_id, spec=spec, goal=process.get("goal") or "")
+    await dao.set_checkpoint(f"job:{job_id}", "certified_plan_id", plan_id)
+    # certified tests + oracle vectors travel with the package (04 §2) — QA reruns them as-is
+    if version.get("package_path"):
+        import json as _json
+        for key, rel in (("tests", "tests/integration.json"), ("vectors", "tests/vectors.json")):
+            f = Path(version["package_path"]) / rel
+            if f.exists():
+                try:
+                    await dao.set_checkpoint(f"job:{job_id}", key, _json.loads(f.read_text()))
+                except (ValueError, OSError):
+                    pass  # package file unreadable -> QA falls back to plan-derived checks
+
     await emit(f"job:{job_id}", E.JOB_CREATED, {"origin": "reinstantiate", "parent_process": process_id})
+    await engine.set_stage(job_id, "building")
     engine.submit_job(job_id)
     return {"job_id": job_id, "connectors": body.get("connectors", [])}

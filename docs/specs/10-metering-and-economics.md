@@ -69,3 +69,7 @@ Per process: `{build_cost_usd, refine_costs[], runs: [{run_id, ts, units, cost_u
 
 - **Per-token prices confirmed (§3), placeholders removed.** `infra/rates.yaml` now carries real prices from the live sheets: Anthropic `claude-fable-5` $10/$50 and `claude-opus-4-8` (planner refusal fallback) $5/$25 per 1M tok; Fireworks serverless `glm-5p2` $1.40/$4.40 and `deepseek-v4-pro` $1.74/$3.48 per 1M tok. Rate keys are the `infra/models.yaml` keys (`glm-52-hosted`, `deepseek-v4-pro`, `claude-fable-5`) so `token_rate(backend, model)` resolves the metered `model` (the registry key) directly. The money slide can cite real per-token costs.
 - **Live quote→invoice reconciliation** observed on the auto-mode KYC run: EXTERNAL (planner) is the dominant cost line, Fireworks fallback calls price in cents; a full stages-0→2 pass metered under $0.50.
+
+### 2026-07-10 hardening wave
+
+Registered-process runs now meter for real on scope `run:<id>` (the simulated drive_run is gone), so per-run cost lines and `cost_per_unit` on the money slide come from actual dispatches. A prompt-trace layer (model_traces table, `trace_prompts` setting, default on) records every dispatch's full messages/response with tokens, cost, and latency — LOCAL-only debugging; rows never leave the box.

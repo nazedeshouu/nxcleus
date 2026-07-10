@@ -56,6 +56,37 @@ other. Emit `modules`, typed `interfaces`, and a `dag`. Every module declares it
 POINTS — the exact interface ids it `consumes` and `provides` — so parallel agents cannot \
 drift apart. The `dag` deps must let the engine partition tasks into topological waves."""
 
+_SQL_STEPS = """\
+MATCH THE STEP KIND TO THE DETECTION SHAPE (process mode) — three kinds, each irreplaceable:
+  - kind:"sql" — joins, aggregates, and window patterns over STRUCTURED columns: matched \
+pairs, duplicate clusters, sums vs limits, grouped balances, time-window bursts. Emit \
+{id, kind:"sql", per_unit:false, sql:"SELECT ...", label} against the provided db schema — a \
+single read-only SELECT (CTEs allowed; no writes, no PRAGMA). Its result rows REPLACE the \
+unit set: each row becomes one candidate for the steps that follow; select every column the \
+downstream judge needs (both sides of a pair, the sum and the limit, the burst window).
+  - per-unit JUDGMENT steps — wherever the signal is SEMANTIC, in free-text fields (columns \
+like *_narrative, notes, memo, description): meaning must be read, not keyword-matched — a \
+paraphrase carries the same signal as the phrasing you would grep for, so SQL LIKE-patterns \
+are blind here by construction. Route each row/candidate through a judgment step whose \
+prompt_spec names the MEANING to look for.
+  - kind:"analysis" — multi-hop or statistical logic no single query expresses: chain/layer \
+tracing, circular-flow detection, concert-party accumulation, fuzzy matching, cross-record \
+consistency, distribution outliers. Emit {id, kind:"analysis", per_unit:false, purpose, \
+label}: the platform commissions a small deterministic tool from your `purpose` (it receives \
+{"rows": [...]} and returns {"findings": [...]}); findings replace the unit set like sql rows \
+do. The `purpose` must be CONCRETE and testable — name the inputs, the logic, and what a \
+finding row contains.
+A topology may end on a candidate step when the query/tool itself is the finding; include a \
+`flagged` column (0/1) when only some rows are findings. Most real detections COMPOSE kinds: \
+sql or analysis finds candidates, then judgment reads each candidate's narrative evidence."""
+
+_WORKSPACE = """\
+Your build workers are FOLDER-ISOLATED: each module's agent writes only its own workspace \
+folder and cannot see a sibling's files; the certified interface specs are the one shared, \
+read-only surface. Any file two modules both need MUST therefore be a declared interface, \
+never shared scratch. Workers may also commission small deterministic tools (createTool) \
+when a step needs computed evidence — in process mode express that as an `analysis` step."""
+
 _DISCIPLINE = f"""\
 Non-negotiable requirements for every plan:
   - ASSUMPTIONS: sanitization blurred real values behind placeholders (like «TABLE_A»). For \
@@ -89,6 +120,10 @@ brief's STRUCTURE, which is complete and faithful.
 
 {_ARCHETYPES}
 
+{_SQL_STEPS}
+
+{_WORKSPACE}
+
 {_DISCIPLINE}"""
 
 
@@ -108,6 +143,8 @@ Company schema (the only tables/fields available):
 Design a process-mode topology (independent parallelism): a per-unit extraction/scoring step \
 over the relevant units, plus an aggregate step producing a dashboard payload. Reference only \
 tables and fields present in the schema above.
+
+{_SQL_STEPS}
 
 If the request cannot be satisfied from this company's data — it asks for a data source that \
 is not here, or falls outside process-mode analysis — do NOT invent data. Return a minimal \
@@ -160,6 +197,8 @@ PLAN_SCHEMA: dict[str, Any] = {
             "steps": {"type": "array", "items": {"type": "object", "additionalProperties": True,
                 "properties": {"id": {"type": "string"}, "seat": {"type": ["string", "null"]},
                                "per_unit": {"type": "boolean"}, "kind": {"type": ["string", "null"]},
+                               "sql": {"type": ["string", "null"]}, "label": {"type": "string"},
+                               "purpose": {"type": ["string", "null"]},
                                "prompt_spec": {"type": "string"}, "output_schema": {"type": "object"},
                                "task_flags": {"type": "array", "items": {"type": "string"}}},
                 "required": ["id"]}}}},

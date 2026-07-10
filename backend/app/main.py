@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import (
     admin,
@@ -21,6 +22,7 @@ from app.api import (
     proxy,
     runs,
     sandbox,
+    traces,
 )
 from app.boundary import egress
 from app.boundary.errors import BoundaryViolation, BudgetExceeded, SovereignViolation
@@ -33,6 +35,10 @@ from app.orchestrator.engine import engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not settings.admin_token and settings.model_mode != "mock":
+        import sys
+        print("[auth] WARNING: ADMIN_TOKEN is empty in non-mock mode — every demo/admin write "
+              "endpoint is OPEN. Set a real token before judging.", file=sys.stderr)
     await db.connect()
     await db.apply_schema()
     await engine.start()
@@ -58,8 +64,18 @@ def create_app() -> FastAPI:
                        allow_headers=["*"], expose_headers=["*"])
 
     for r in (jobs.router, processes.router, runs.router, fleet.router, sandbox.router,
-              admin.router, economics.router, connections.router, proxy.router):
+              admin.router, economics.router, connections.router, proxy.router, traces.router):
         app.include_router(r, prefix="/api")
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http_err(_: Request, exc: StarletteHTTPException):
+        # spec 06 §1 envelope is top-level {"error": {...}} — FastAPI's default wraps detail as
+        # {"detail": ...}, which every client error path would misparse
+        detail = exc.detail
+        content = detail if isinstance(detail, dict) and "error" in detail \
+            else {"error": {"code": exc.status_code, "message": str(detail)}}
+        return JSONResponse(status_code=exc.status_code, content=content,
+                            headers=getattr(exc, "headers", None))
 
     @app.exception_handler(BoundaryViolation)
     async def _boundary(_: Request, exc: BoundaryViolation):

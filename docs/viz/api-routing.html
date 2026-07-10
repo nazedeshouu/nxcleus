@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nxcleus — API, Events &amp; Routing</title>
+<style>
+/* ============================================================ tokens
+   Sealed-midnight palette lifted from frontend/src/styles/tokens.css
+   ([data-temp="inside"]) so this page reads native to the platform. */
+:root{
+  --paper:#060f14; --surface:#0a1a21; --surface-2:#0d2029; --sunk:#071319;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --muted:#85a0aa; --faint:#567179;
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-wash:rgba(56,166,210,.09);
+  --local:#4cb4dc; --amd:#e2a35e; --custom:#8fa0cd; --external:#92a4ae;
+  --ok:#4bcb90; --warn:#e2a35e; --danger:#ff5f65; --sov:#3fd8c4;
+  --local-w:rgba(76,180,220,.12); --amd-w:rgba(226,163,94,.12);
+  --custom-w:rgba(143,160,205,.12); --external-w:rgba(146,164,174,.1);
+  --ok-w:rgba(75,203,144,.11); --danger-w:rgba(255,95,101,.1); --warn-w:rgba(226,163,94,.11);
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --maxw:1100px; --sbw:250px;
+  --r:12px; --r-sm:8px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--sans); font-size:15px; line-height:1.62;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* faint depth wash — no shadow soup, just a single radial lift */
+body::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(1100px 620px at 78% -8%, rgba(56,166,210,.10), transparent 60%),
+    radial-gradient(900px 700px at 6% 108%, rgba(63,216,196,.05), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd{font-family:var(--mono)}
+
+/* ============================================================ layout */
+.wrap{display:grid; grid-template-columns:var(--sbw) minmax(0,1fr); gap:0; max-width:1420px; margin:0 auto}
+nav.toc{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:38px 22px 60px 30px; border-right:1px solid var(--hairline-soft);
+  font-size:13px;
+}
+nav.toc .brand{font-weight:640; letter-spacing:-.01em; font-size:15px; color:var(--text); margin-bottom:2px}
+nav.toc .brandsub{color:var(--faint); font-size:11px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:26px}
+nav.toc ol{list-style:none; margin:0; padding:0; counter-reset:s}
+nav.toc li{counter-increment:s; margin:1px 0}
+nav.toc a{display:flex; gap:9px; color:var(--muted); padding:5px 9px; border-radius:7px; align-items:baseline; line-height:1.3}
+nav.toc a::before{content:counter(s,decimal-leading-zero); color:var(--faint); font-family:var(--mono); font-size:10.5px; flex:0 0 auto}
+nav.toc a:hover{background:var(--accent-wash); color:var(--text); text-decoration:none}
+nav.toc a.sub{padding-left:28px; font-size:12px}
+nav.toc a.sub::before{content:""}
+
+main{max-width:var(--maxw); padding:56px clamp(20px,4vw,60px) 140px; margin:0}
+
+/* ============================================================ type */
+.over{font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); font-weight:500}
+h1{font-size:clamp(2.3rem,4.6vw,3.5rem); line-height:1.04; letter-spacing:-.03em; font-weight:680; margin:.5rem 0 0}
+h2{font-size:clamp(1.5rem,2.6vw,2rem); letter-spacing:-.022em; font-weight:640; margin:0 0 6px; line-height:1.12}
+h3{font-size:1.12rem; letter-spacing:-.01em; font-weight:620; margin:34px 0 12px}
+h4{font-size:.82rem; letter-spacing:.02em; font-weight:600; color:var(--muted); margin:22px 0 10px; text-transform:none}
+p{color:var(--text); max-width:74ch}
+.lead{font-size:1.16rem; line-height:1.55; color:var(--muted); max-width:70ch; margin:20px 0 0}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+section{padding-top:64px; margin-top:24px; border-top:1px solid var(--hairline-soft)}
+section:first-of-type{border-top:0}
+section > .over{display:block; margin-bottom:14px}
+.sectlede{color:var(--muted); max-width:76ch; margin:10px 0 4px}
+
+/* hero */
+.hero{border-top:0; padding-top:14px}
+.hero .meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:30px}
+.tag{font-family:var(--mono); font-size:11.5px; color:var(--muted); border:1px solid var(--hairline);
+  padding:5px 11px; border-radius:999px; background:var(--surface)}
+.tag b{color:var(--accent-strong); font-weight:600}
+
+/* stat row */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1px; background:var(--hairline-soft);
+  border:1px solid var(--hairline-soft); border-radius:var(--r); overflow:hidden; margin:34px 0 4px}
+.stat{background:var(--surface); padding:18px 20px}
+.stat .n{font-size:1.8rem; font-weight:660; letter-spacing:-.03em; font-family:var(--mono); color:var(--accent-strong)}
+.stat .l{font-size:11.5px; color:var(--muted); letter-spacing:.03em; margin-top:3px}
+
+/* ============================================================ method badges */
+.m{font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.05em; padding:3px 7px;
+  border-radius:5px; display:inline-block; line-height:1; vertical-align:middle}
+.m.get{color:#9fe0f5; background:rgba(56,166,210,.14); border:1px solid rgba(56,166,210,.32)}
+.m.post{color:#8fe6bd; background:rgba(75,203,144,.13); border:1px solid rgba(75,203,144,.32)}
+.m.put{color:#f2c88c; background:rgba(226,163,94,.13); border:1px solid rgba(226,163,94,.32)}
+.m.delete{color:#ff9aa0; background:rgba(255,95,101,.12); border:1px solid rgba(255,95,101,.32)}
+.m.sse{color:#8fd6ea; background:rgba(56,166,210,.08); border:1px dashed rgba(56,166,210,.42)}
+
+/* ============================================================ endpoint cards */
+.router{margin:30px 0}
+.router-h{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:2px}
+.router-h .name{font-family:var(--mono); font-size:15px; font-weight:600; color:var(--text)}
+.router-h .file{font-family:var(--mono); font-size:11.5px; color:var(--faint)}
+.router-h .auth{margin-left:auto; font-size:11px}
+.pill{font-family:var(--mono); font-size:10.5px; padding:3px 9px; border-radius:999px; border:1px solid var(--hairline); color:var(--muted); background:var(--surface); white-space:nowrap}
+.pill.demo{color:#f2c88c; border-color:rgba(226,163,94,.3)}
+.pill.admin{color:#ff9aa0; border-color:rgba(255,95,101,.3)}
+.pill.open{color:#8fe6bd; border-color:rgba(75,203,144,.3)}
+.pill.cookie{color:#b9c6ea; border-color:rgba(143,160,205,.35)}
+.pill.token{color:#9fe0f5; border-color:rgba(56,166,210,.35)}
+
+.ep{border:1px solid var(--hairline-soft); background:linear-gradient(180deg,var(--surface),var(--sunk));
+  border-radius:var(--r); padding:15px 18px; margin:9px 0}
+.ep-top{display:flex; gap:11px; align-items:center; flex-wrap:wrap}
+.ep-path{font-family:var(--mono); font-size:13.5px; color:var(--text); font-weight:520}
+.ep-path .seg{color:var(--accent-strong)}
+.ep-fn{font-family:var(--mono); font-size:11.5px; color:var(--faint); margin-left:auto}
+.ep-purpose{color:var(--muted); font-size:13.5px; margin:9px 0 0}
+.ep-grid{display:grid; grid-template-columns:auto 1fr; gap:3px 14px; margin-top:11px; font-size:12.5px; align-items:baseline}
+.ep-grid dt{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); padding-top:2px}
+.ep-grid dd{margin:0; color:var(--text)}
+.ep-grid dd code{color:var(--accent-strong); font-size:12px}
+.flags{display:inline-flex; gap:5px; flex-wrap:wrap}
+.badge2{font-family:var(--mono); font-size:10px; padding:2px 6px; border-radius:4px; background:var(--surface-2); border:1px solid var(--hairline); color:var(--muted)}
+
+/* ============================================================ tables */
+.tablewrap{overflow-x:auto; border:1px solid var(--hairline-soft); border-radius:var(--r); margin:18px 0}
+table{border-collapse:collapse; width:100%; font-size:12.5px; min-width:660px}
+th,td{text-align:left; padding:9px 14px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+th{font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:600; background:var(--sunk); position:sticky; top:0}
+tr:last-child td{border-bottom:0}
+td code, .code{font-family:var(--mono); font-size:11.5px; color:var(--accent-strong)}
+tbody tr:hover{background:rgba(56,166,210,.04)}
+.evtype{font-family:var(--mono); font-size:11.5px; color:var(--text); white-space:nowrap}
+.scope{font-family:var(--mono); font-size:11px; color:var(--custom)}
+
+/* ============================================================ code blocks */
+.snip{border:1px solid var(--hairline); border-radius:var(--r); background:var(--sunk); margin:14px 0; overflow:hidden}
+.snip .cap{font-family:var(--mono); font-size:11px; color:var(--faint); padding:8px 15px; border-bottom:1px solid var(--hairline-soft); background:rgba(56,166,210,.03)}
+.snip .cap b{color:var(--muted); font-weight:600}
+.snip pre{margin:0; padding:14px 16px; overflow-x:auto; font-family:var(--mono); font-size:12px; line-height:1.65; color:#c4d6dd}
+.snip pre .k{color:var(--accent-strong)} .snip pre .s{color:#8fe6bd} .snip pre .c{color:var(--faint)} .snip pre .n{color:var(--amd)}
+
+/* ============================================================ flow diagrams */
+.flow{display:flex; flex-direction:column; align-items:stretch; gap:0; margin:22px 0; max-width:760px}
+.node{border:1px solid var(--hairline); border-radius:10px; background:linear-gradient(180deg,var(--surface-2),var(--surface));
+  padding:13px 16px; position:relative}
+.node .role{font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:3px}
+.node .title{font-weight:600; font-size:14px}
+.node .sub{color:var(--muted); font-size:12px; margin-top:3px}
+.node .src{font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-top:6px}
+.node.accent{border-color:rgba(56,166,210,.4); box-shadow:0 0 0 1px rgba(56,166,210,.12), 0 0 22px rgba(56,166,210,.08)}
+.node.warnn{border-color:rgba(226,163,94,.4)}
+.node.danger{border-color:rgba(255,95,101,.35)}
+.node.ok{border-color:rgba(75,203,144,.38)}
+.arrow{display:flex; align-items:center; justify-content:center; gap:10px; height:38px; color:var(--faint)}
+.arrow::before{content:""; width:1px; height:100%; background:linear-gradient(var(--hairline),var(--accent-mid))}
+.arrow .lbl{position:absolute; transform:translateX(90px); font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--paper); padding:2px 8px; border:1px solid var(--hairline-soft); border-radius:6px; white-space:nowrap}
+.arrowrow{position:relative; display:flex; justify-content:center}
+
+/* branch (decision) */
+.branch{border:1px dashed rgba(56,166,210,.35); border-radius:10px; padding:4px; margin:0}
+.branch .opt{display:grid; grid-template-columns:150px 1fr; gap:12px; padding:9px 12px; align-items:baseline; border-bottom:1px solid var(--hairline-soft)}
+.branch .opt:last-child{border-bottom:0}
+.branch .cond{font-family:var(--mono); font-size:11.5px; color:var(--accent-strong)}
+.branch .out{font-size:12.5px; color:var(--text)}
+.branch .out .z{font-family:var(--mono); font-size:10.5px; padding:1px 6px; border-radius:4px; margin-right:5px}
+
+.z-local{background:var(--local-w); color:var(--local); border:1px solid rgba(76,180,220,.3)}
+.z-amd{background:var(--amd-w); color:var(--amd); border:1px solid rgba(226,163,94,.3)}
+.z-custom{background:var(--custom-w); color:var(--custom); border:1px solid rgba(143,160,205,.3)}
+.z-external{background:var(--external-w); color:var(--external); border:1px solid rgba(146,164,174,.3)}
+.z-block{background:var(--danger-w); color:var(--danger); border:1px solid rgba(255,95,101,.3)}
+
+/* callouts */
+.call{border-left:2px solid var(--accent); background:var(--accent-wash); border-radius:0 var(--r-sm) var(--r-sm) 0;
+  padding:13px 18px; margin:16px 0; font-size:13.5px}
+.call.warn{border-left-color:var(--warn); background:var(--warn-w)}
+.call.danger{border-left-color:var(--danger); background:var(--danger-w)}
+.call .h{font-weight:640; margin-bottom:3px; display:flex; align-items:center; gap:8px}
+.call .h .k{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:2px 7px; border-radius:5px; background:var(--surface-2); color:var(--muted); border:1px solid var(--hairline)}
+.call p{margin:4px 0 0; color:var(--text)}
+
+/* divergence */
+.div{border:1px solid var(--hairline-soft); border-radius:var(--r); overflow:hidden; margin:12px 0; background:var(--surface)}
+.div-h{display:flex; gap:10px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--hairline-soft); background:linear-gradient(180deg,var(--surface-2),transparent)}
+.div-h .sev{font-family:var(--mono); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; padding:2px 7px; border-radius:5px}
+.sev.info{background:var(--accent-wash); color:var(--accent-strong); border:1px solid rgba(56,166,210,.3)}
+.sev.gap{background:var(--warn-w); color:var(--warn); border:1px solid rgba(226,163,94,.3)}
+.sev.mismatch{background:var(--danger-w); color:var(--danger); border:1px solid rgba(255,95,101,.3)}
+.div-h .t{font-weight:600; font-size:13.5px}
+.div-b{padding:12px 16px; font-size:13px; color:var(--muted)}
+.div-b code{color:var(--accent-strong); font-size:12px}
+.cols{display:grid; grid-template-columns:1fr 1fr; gap:0; margin-top:10px; border:1px solid var(--hairline-soft); border-radius:8px; overflow:hidden}
+.cols > div{padding:9px 13px}
+.cols > div:first-child{border-right:1px solid var(--hairline-soft)}
+.cols .lab{font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin-bottom:4px}
+.cols .spec .lab{color:var(--external)} .cols .code2 .lab{color:var(--accent)}
+.cols code{color:var(--text); font-size:11.5px}
+
+footer{margin-top:80px; padding-top:26px; border-top:1px solid var(--hairline-soft); color:var(--faint); font-size:12px}
+
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  nav.toc{display:none}
+  main{padding:40px 20px 100px}
+  .cols{grid-template-columns:1fr}
+  .cols > div:first-child{border-right:0; border-bottom:1px solid var(--hairline-soft)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============================================================ TOC -->
+<nav class="toc">
+  <div class="brand">Nxcleus</div>
+  <div class="brandsub">API · Events · Routing</div>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#auth">Auth model</a></li>
+    <li><a href="#rest">REST catalog</a></li>
+    <li><a href="#rest" class="sub">jobs · pipeline</a></li>
+    <li><a href="#rest-proc" class="sub">processes · operate</a></li>
+    <li><a href="#rest-runs" class="sub">runs · tickets</a></li>
+    <li><a href="#rest-fleet" class="sub">fleet · egress</a></li>
+    <li><a href="#rest-sandbox" class="sub">sandbox</a></li>
+    <li><a href="#rest-config" class="sub">config · BYOK</a></li>
+    <li><a href="#rest-proxy" class="sub">proxy · admin</a></li>
+    <li><a href="#sse">SSE event system</a></li>
+    <li><a href="#catalog" class="sub">event catalog</a></li>
+    <li><a href="#frontseam" class="sub">frontend seam</a></li>
+    <li><a href="#life">Lifecycle diagrams</a></li>
+    <li><a href="#routing">Model-call routing</a></li>
+    <li><a href="#proxytok">Proxy-token scheme</a></li>
+    <li><a href="#diverge">Spec vs Code</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============================================================ HERO -->
+<section class="hero" id="top">
+  <span class="over">Control-plane reference · specs 06</span>
+  <h1>Nxcleus — API,<br>Events &amp; Routing</h1>
+  <p class="lead">The complete request surface of the Nxcleus control plane: a FastAPI app whose
+  orchestrator runs as asyncio tasks in one process, a single-writer SQLite event log that
+  fans out over Server-Sent Events, and one router where every model dispatch is boundary-checked
+  in code. Everything below is read straight from the source — the spec is secondary, and where
+  code diverges it is called out.</p>
+  <div class="meta">
+    <span class="tag"><b>9</b> routers + 3 app routes</span>
+    <span class="tag"><b>40+</b> REST endpoints</span>
+    <span class="tag"><b>4</b> SSE channels</span>
+    <span class="tag"><b>90+</b> event types</span>
+    <span class="tag"><b>1</b> dispatch chokepoint</span>
+    <span class="tag">FastAPI · SQLite · React/EventSource</span>
+  </div>
+</section>
+
+<!-- ============================================================ OVERVIEW -->
+<section id="overview">
+  <span class="over">01 · The shape of it</span>
+  <h2>One process, one writer, one boundary</h2>
+  <p class="sectlede">The whole control plane is assembled in
+  <code class="code">create_app()</code> (<code>backend/app/main.py</code>). Nine routers mount under
+  <code class="code">/api</code>; the orchestrator engine and a fleet poll-loop start inside the
+  lifespan and run as asyncio tasks — no IPC, no worker pool. UI state for any job is a fold of its
+  events; the SQLite rows are the materialized current state.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="n">/api</div><div class="l">single prefix, all routers</div></div>
+    <div class="stat"><div class="n">CORS *</div><div class="l">allow_origins wildcard</div></div>
+    <div class="stat"><div class="n">1</div><div class="l">SQLite writer (append-only events)</div></div>
+    <div class="stat"><div class="n">10 s</div><div class="l">SSE heartbeat comment</div></div>
+    <div class="stat"><div class="n">≤10/s</div><div class="l">token-delta coalescing</div></div>
+  </div>
+
+  <h4>App-level routes (defined directly on the app, not in a router)</h4>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Method · path</th><th>Handler</th><th>Returns</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><span class="m get">GET</span> <code>/api/health</code></td><td><code>health</code></td>
+        <td><code>{status, app, model_mode}</code></td><td>liveness + which mode the router is in</td></tr>
+      <tr><td><span class="m get">GET</span> <code>/api/config/public</code></td><td><code>config_public</code></td>
+        <td><code>{sovereign, fallback_serving, profile, demo, …safe_summary()}</code></td>
+        <td>feature flags + non-secret state; <code>demo=true</code> when no ADMIN_TOKEN is set</td></tr>
+      <tr><td><span class="m get">GET</span> <code>/api/replay/{scope:path}</code></td><td><code>replay_scope</code></td>
+        <td><code>{scope, events[]}</code></td><td><code>?from_seq</code> — full event history for a scope, no streaming</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="snip">
+    <div class="cap"><b>main.py</b> · create_app() ~L56 — global exception envelope + router mount</div>
+<pre><span class="c"># every router mounts under one prefix; errors are reshaped to spec 06 §1 {"error":{...}}</span>
+<span class="k">for</span> r <span class="k">in</span> (jobs.router, processes.router, runs.router, fleet.router, sandbox.router,
+          admin.router, economics.router, connections.router, proxy.router):
+    app.include_router(r, prefix=<span class="s">"/api"</span>)
+
+<span class="n">@app.exception_handler</span>(StarletteHTTPException)   <span class="c"># unwrap FastAPI's {"detail":…}</span>
+<span class="n">@app.exception_handler</span>(BoundaryViolation)         <span class="c"># 422 boundary_violation</span>
+<span class="n">@app.exception_handler</span>(SovereignViolation)        <span class="c"># 422 sovereign_violation</span>
+<span class="n">@app.exception_handler</span>(BudgetExceeded)             <span class="c"># 429 budget_exceeded</span></pre>
+  </div>
+  <p class="muted">Three domain exceptions raised deep in the model router surface at the HTTP edge as
+  typed error envelopes — a boundary or budget refusal from any dispatch becomes a clean 422/429 for
+  the caller, wherever in the pipeline it fired.</p>
+</section>
+
+<!-- ============================================================ AUTH -->
+<section id="auth">
+  <span class="over">02 · Who may write</span>
+  <h2>A deliberately hackathon-grade auth model</h2>
+  <p class="sectlede">All reads and all SSE streams are public. Writes split four ways, defined in
+  <code>backend/app/api/deps.py</code>. The pivot is one env var: <code class="code">ADMIN_TOKEN</code>.
+  When it is empty (dev / open demo) every demo and admin write is <em>open</em>; the lifespan prints a
+  loud warning in non-mock mode so an unguarded demo can't sneak past unnoticed.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Tier</th><th>Dependency</th><th>Credential</th><th>Guards</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill open">public read</span></td><td>— none —</td><td>none</td>
+        <td>all <code>GET</code>s, all SSE streams, <code>/replay</code></td></tr>
+      <tr><td><span class="pill demo">demo write</span></td><td><code>require_demo_token</code></td>
+        <td><code>X-Demo-Token == ADMIN_TOKEN</code></td>
+        <td>job create/mutate, quote approve, runs, refine, instantiate, connections, seat binds, sovereign toggle</td></tr>
+      <tr><td><span class="pill admin">admin / node</span></td><td><code>require_admin_token</code></td>
+        <td><code>X-Admin-Token == ADMIN_TOKEN</code></td>
+        <td>node self-register, node drain, sovereign set</td></tr>
+      <tr><td><span class="pill cookie">sandbox</span></td><td><code>sandbox_session</code></td>
+        <td><code>sandbox_session</code> cookie (auto-set, httponly)</td>
+        <td>judge-sandbox runs — anonymous, rate-limited 3/hr per session</td></tr>
+      <tr><td><span class="pill token">process</span></td><td><code>verify_token()</code></td>
+        <td><code>X-Process-Token</code> (HMAC)</td>
+        <td>the model-proxy — deployed process code's only egress (see §<a href="#proxytok">7</a>)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call warn">
+    <div class="h"><span class="k">Note</span> Empty token = open</div>
+    <p><code>require_demo_token</code> and <code>require_admin_token</code> both short-circuit to
+    <em>allow</em> when <code>settings.admin_token</code> is falsy. The same token backs both the demo and
+    admin tiers — there is no separate admin secret. The frontend attaches <code>X-Demo-Token</code> from
+    <code>localStorage</code> on any request flagged <code>demo:true</code> (<code>api/client.ts → req()</code>).</p>
+  </div>
+</section>
+
+<!-- ============================================================ REST -->
+<section id="rest">
+  <span class="over">03 · REST catalog</span>
+  <h2>Every endpoint, by router</h2>
+  <p class="sectlede">Grouped as they mount. Method badge, path, handler function, request shape,
+  response shape, and purpose — all read from <code>backend/app/api/*.py</code>. Bodies are untyped
+  <code class="code">dict</code>s parsed by hand (no Pydantic request models); write endpoints carry
+  their auth pill; <code>202 Accepted</code> marks the async-pipeline entry points.</p>
+
+  <!-- jobs -->
+  <div class="router">
+    <div class="router-h">
+      <span class="name">jobs.router</span><span class="file">api/jobs.py</span>
+      <span class="auth"><span class="pill">tag: jobs</span></span>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 0">The build-pipeline surface: create a job,
+    feed it intake messages / policy, confirm the spec, approve the quote, then subscribe to its event stream.</p>
+
+    <div class="ep">
+      <div class="ep-top"><span class="m post">POST</span><span class="ep-path">/jobs</span>
+        <span class="badge2">202</span><span class="pill demo" style="font-size:9.5px">demo</span>
+        <span class="ep-fn">create_job()</span></div>
+      <div class="ep-purpose">Create a job and submit it to the orchestrator engine. Emits <code class="code">job.created</code>.</div>
+      <dl class="ep-grid">
+        <dt>body</dt><dd><code>{request*, title?, policy_text?, sovereign?}</code></dd>
+        <dt>resp</dt><dd><code>{job}</code> — the full job row</dd>
+      </dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m get">GET</span><span class="ep-path">/jobs</span><span class="ep-fn">list_jobs()</span></div>
+      <div class="ep-purpose">List jobs, optionally filtered.</div>
+      <dl class="ep-grid"><dt>query</dt><dd><code>origin?, status?</code></dd><dt>resp</dt><dd><code>{jobs[]}</code></dd></dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m get">GET</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span></span><span class="ep-fn">get_job()</span></div>
+      <div class="ep-purpose">One job with its distilled policy + certified goal. <code>404</code> if absent.</div>
+      <dl class="ep-grid"><dt>resp</dt><dd><code>{job, policy_summary, goal}</code></dd></dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m post">POST</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span>/messages</span>
+        <span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">post_message()</span></div>
+      <div class="ep-purpose">Append a customer intake turn; emits <code class="code">intake.message</code>.</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{content}</code></dd><dt>resp</dt><dd><code>{message_id}</code></dd></dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m post">POST</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span>/policy</span>
+        <span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">add_policy()</span></div>
+      <div class="ep-purpose">Register a governing policy. Accepts <code>application/json</code>
+      <code>{text}</code> <em>or</em> <code>multipart/form-data</code> with a
+      <code>kind=voice</code> audio <code>file</code> — voice is transcribed via local Whisper, then
+      the <b>trust</b> seat distills rules. Emits <code class="code">intake.policy_registered</code>.</div>
+      <dl class="ep-grid"><dt>resp</dt><dd><code>{policy_summary}</code> — distilled rules</dd></dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m post">POST</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span>/confirm-spec</span>
+        <span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">confirm_spec()</span></div>
+      <div class="ep-purpose">Advance intake→planning. <code>409</code> unless status is <code>intake</code>.</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{mode?}</code></dd><dt>resp</dt><dd><code>{job}</code></dd></dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m get">GET</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span>/plan</span><span class="ep-fn">get_plan()</span></div>
+      <div class="ep-purpose">Current plan body + certifier amendments + open consults.</div>
+      <dl class="ep-grid"><dt>resp</dt><dd><code>{plan, amendments[], consults[]}</code></dd></dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m get">GET</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span>/quote</span><span class="ep-fn">get_quote()</span></div>
+      <div class="ep-purpose">The issued cost quote. <code>404</code> until stage 3.</div>
+      <dl class="ep-grid"><dt>resp</dt><dd><code>{quote}</code></dd></dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m post">POST</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span>/approve-quote</span>
+        <span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">approve_quote()</span></div>
+      <div class="ep-purpose">Approve → advance to <code>building</code>. <code>409</code> unless <code>quoted</code>. Emits <code class="code">quote.approved</code>.</div>
+      <dl class="ep-grid"><dt>resp</dt><dd><code>{job}</code></dd></dl>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m post">POST</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span>/abort</span>
+        <span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">abort_job()</span></div>
+      <div class="ep-purpose">Force status <code>aborted</code>; emits <code class="code">job.aborted</code>.</div>
+    </div>
+    <div class="ep">
+      <div class="ep-top"><span class="m sse">SSE</span><span class="ep-path">/jobs/<span class="seg">{job_id}</span>/events</span><span class="ep-fn">job_events()</span></div>
+      <div class="ep-purpose">The Build view's stream. Replay-then-tail on scope <code class="scope">job:{job_id}</code> via <code>sse_response()</code>.</div>
+      <dl class="ep-grid"><dt>query</dt><dd><code>from_seq=0</code> (also honours <code>Last-Event-ID</code>)</dd></dl>
+    </div>
+  </div>
+
+  <!-- processes -->
+  <div class="router" id="rest-proc">
+    <div class="router-h"><span class="name">processes.router</span><span class="file">api/processes.py</span><span class="auth"><span class="pill">tag: processes</span></span></div>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 0">The operate phase: a delivered process, its versions, package artifacts, batch runs, refinement, and re-instantiation.</p>
+
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/processes</span><span class="ep-fn">list_processes()</span></div>
+      <div class="ep-purpose">All registered processes.</div><dl class="ep-grid"><dt>resp</dt><dd><code>{processes[]}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/processes/<span class="seg">{process_id}</span></span><span class="ep-fn">get_process()</span></div>
+      <div class="ep-purpose">Process + its versions, runs, and process-scoped tickets in one shot.</div>
+      <dl class="ep-grid"><dt>resp</dt><dd><code>{process, versions[], runs[], tickets[]}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/processes/<span class="seg">{process_id}</span>/versions/<span class="seg">{version}</span>/diff</span><span class="ep-fn">version_diff()</span></div>
+      <div class="ep-purpose">The refine-time diff (triage, regions, modules rebuilt, tests added).</div><dl class="ep-grid"><dt>resp</dt><dd><code>{diff}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/processes/<span class="seg">{id}</span>/package/<span class="seg">{version}</span>/<span class="seg">{path}</span></span><span class="ep-fn">package_file()</span></div>
+      <div class="ep-purpose">Serve a file out of the immutable package dir — plan, manifest, invoice, qa report, tests — as a <code>FileResponse</code>. Path-scoped to the version's <code>package_path</code>.</div></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/processes/<span class="seg">{id}</span>/runs</span><span class="badge2">202</span><span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">start_run()</span></div>
+      <div class="ep-purpose">Start a batch run of the current (or pinned) version; hands the run to the engine.</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{version?, kind?, input_ref?}</code></dd><dt>resp</dt><dd><code>{run}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/processes/<span class="seg">{id}</span>/refine</span><span class="badge2">202</span><span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">refine()</span></div>
+      <div class="ep-purpose">Open a refinement job against a live process (triage → amend or re-plan).</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{request}</code></dd><dt>resp</dt><dd><code>{job_id}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/processes/<span class="seg">{id}</span>/instantiate</span><span class="badge2">202</span><span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">instantiate()</span></div>
+      <div class="ep-purpose">Re-enter the pipeline at <b>stage 4</b> with the certified plan as-is + new connector bindings — <em>no</em> stage-1 planner call. Certified tests + oracle vectors travel with the package. <code>409</code> if no certified plan.</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{connectors[]}</code></dd><dt>resp</dt><dd><code>{job_id, connectors}</code></dd></dl></div>
+  </div>
+
+  <!-- runs -->
+  <div class="router" id="rest-runs">
+    <div class="router-h"><span class="name">runs.router</span><span class="file">api/runs.py</span><span class="auth"><span class="pill">tag: runs</span></span></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/runs/<span class="seg">{run_id}</span></span><span class="ep-fn">get_run()</span></div>
+      <div class="ep-purpose">One run with stats + cost. <code>404</code> if absent.</div><dl class="ep-grid"><dt>resp</dt><dd><code>{run}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/runs/<span class="seg">{run_id}</span>/units</span><span class="ep-fn">get_units()</span></div>
+      <div class="ep-purpose">Paged per-unit results (the review queue).</div>
+      <dl class="ep-grid"><dt>query</dt><dd><code>status?, page=0, page_size=100</code></dd><dt>resp</dt><dd><code>{units[]}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m sse">SSE</span><span class="ep-path">/runs/<span class="seg">{run_id}</span>/events</span><span class="ep-fn">run_events()</span></div>
+      <div class="ep-purpose">Run stream on scope <code class="scope">run:{run_id}</code> — <code>run.*</code>, spotchecks, <code>review.decided</code>.</div></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/units/<span class="seg">{unit_id}</span>/review</span><span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">review_unit()</span></div>
+      <div class="ep-purpose">Human verdict on a flagged unit. Emits <code class="code">review.decided</code> to the <b>run</b> scope (a system-scope emit would never reach the queue's stream).</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{verdict, note?}</code></dd><dt>resp</dt><dd><code>{ok, unit_id, verdict}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/tickets</span><span class="ep-fn">list_tickets()</span></div>
+      <div class="ep-purpose">Cross-cutting ticket list (inspector / oracle / warranty findings).</div>
+      <dl class="ep-grid"><dt>query</dt><dd><code>scope?, status?, source?</code></dd><dt>resp</dt><dd><code>{tickets[]}</code></dd></dl></div>
+  </div>
+
+  <!-- fleet -->
+  <div class="router" id="rest-fleet">
+    <div class="router-h"><span class="name">fleet.router</span><span class="file">api/fleet.py</span><span class="auth"><span class="pill">tag: fleet</span></span></div>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 0">The AMD-usage surfaces and the network monitor.</p>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/fleet</span><span class="ep-fn">get_fleet()</span></div>
+      <div class="ep-purpose">Registered nodes + readiness.</div><dl class="ep-grid"><dt>resp</dt><dd><code>{nodes[]}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m sse">SSE</span><span class="ep-path">/fleet/telemetry</span><span class="ep-fn">fleet_telemetry()</span></div>
+      <div class="ep-purpose">Per-GPU telemetry on the fixed scope <code class="scope">fleet</code> — one <code class="code">telemetry.gpu</code> event per GPU per poll.</div></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/egress</span><span class="ep-fn">egress()</span></div>
+      <div class="ep-purpose">The egress ledger — every recorded network crossing.</div>
+      <dl class="ep-grid"><dt>query</dt><dd><code>scope?, zone?</code></dd><dt>resp</dt><dd><code>{egress[]}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m sse">SSE</span><span class="ep-path">/egress/stream</span><span class="ep-fn">egress_stream()</span></div>
+      <div class="ep-purpose">The only <b>type-prefix</b> stream: subscribes to every <code class="code">egress.*</code> event across all scopes (<code>type_prefix="egress."</code>), not a single scope.</div></div>
+  </div>
+
+  <!-- sandbox -->
+  <div class="router" id="rest-sandbox">
+    <div class="router-h"><span class="name">sandbox.router</span><span class="file">api/sandbox.py</span><span class="auth"><span class="pill cookie">cookie-gated writes</span></span></div>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 0">Three synthetic companies (Meridian Bank, Aurora Clinic, Hale &amp; Ostrom) with suggested prompts; a run enters a FIFO queue and streams the standard Build view.</p>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/sandbox/companies</span><span class="ep-fn">companies()</span></div>
+      <div class="ep-purpose">The three companies + their prompt suggestions (hard-coded).</div></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/sandbox/companies/<span class="seg">{id}</span>/tables</span><span class="ep-fn">company_tables()</span></div>
+      <div class="ep-purpose">Table names from the read-only seed DB. <code>{tables:[], seeded:false}</code> until seeded.</div></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/sandbox/companies/<span class="seg">{id}</span>/tables/<span class="seg">{table}</span></span><span class="ep-fn">browse_table()</span></div>
+      <div class="ep-purpose">Paged rows from a seed table. Table name is <code>.isidentifier()</code>-validated before interpolation.</div>
+      <dl class="ep-grid"><dt>query</dt><dd><code>page=0, page_size=50</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/sandbox/runs</span><span class="badge2">202</span><span class="pill cookie" style="font-size:9.5px">session</span><span class="ep-fn">sandbox_run()</span></div>
+      <div class="ep-purpose">Enqueue a run. Rate-limited to <b>3 runs/hour</b> per anonymous session (rolling window on the session row); <code>429</code> when spent. A per-scope budget cap is registered on the job.</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{company, prompt}</code></dd><dt>resp</dt><dd><code>{job_id, queue_position}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/sandbox/queue</span><span class="ep-fn">sandbox_queue_state()</span></div>
+      <div class="ep-purpose">Pending jobs + max-concurrent.</div></div>
+  </div>
+
+  <!-- config -->
+  <div class="router" id="rest-config">
+    <div class="router-h"><span class="name">connections.router</span><span class="file">api/connections.py</span><span class="auth"><span class="pill">tag: config</span></span></div>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 0">BYOK connections, custom models, seat rebinding, and the merged model registry. API keys are write-only: stored encrypted, surfaced masked, never serialized into events/logs/packages.</p>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/models</span><span class="ep-fn">list_models()</span></div>
+      <div class="ep-purpose">Merged registry: builtin <code>models.yaml</code> + runtime custom models, plus per-seat bindings and overrides.</div>
+      <dl class="ep-grid"><dt>resp</dt><dd><code>{models[], seats{}, overrides[]}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/connections</span><span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">create_connection()</span></div>
+      <div class="ep-purpose">Register a BYOK endpoint. Key is encrypted to a ref; response returns it <b>masked</b>. Emits <code class="code">config.connection_added</code> (host only, never the key).</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{name, base_url, api_key, data_class_ceiling?, counts_as_local?}</code></dd><dt>resp</dt><dd><code>{connection{…, api_key:"mask"}}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/connections</span><span class="ep-fn">list_connections()</span></div>
+      <div class="ep-purpose">Connections with keys rendered as <code>••••</code>.</div></div>
+    <div class="ep"><div class="ep-top"><span class="m delete">DELETE</span><span class="ep-path">/connections/<span class="seg">{id}</span></span><span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">delete_connection()</span></div>
+      <div class="ep-purpose">Remove a connection.</div></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/connections/<span class="seg">{id}</span>/models</span><span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">add_model()</span></div>
+      <div class="ep-purpose">Add a custom model to a connection. Emits <code class="code">config.model_registered</code>.</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{provider_model_id, display_name, flags[], context_len}</code></dd><dt>resp</dt><dd><code>{model_id}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m put">PUT</span><span class="ep-path">/seats/<span class="seg">{seat}</span>/binding</span><span class="pill demo" style="font-size:9.5px">demo</span><span class="ep-fn">bind_seat()</span></div>
+      <div class="ep-purpose">Rebind a seat to a model. Enforces the data-class eligibility gate: a <b>RAW</b> seat needs a LOCAL or RAW-attested connection — <code>409</code> otherwise. Emits <code class="code">config.seat_bound</code>.</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{model_key, scope?}</code></dd><dt>resp</dt><dd><code>{seat, model_key, scope}</code></dd></dl></div>
+  </div>
+
+  <!-- proxy + admin + economics -->
+  <div class="router" id="rest-proxy">
+    <div class="router-h"><span class="name">proxy.router</span><span class="file">api/proxy.py</span><span class="auth"><span class="pill token">X-Process-Token</span></span></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/proxy/complete</span><span class="pill token" style="font-size:9.5px">HMAC</span><span class="ep-fn">proxy_complete()</span></div>
+      <div class="ep-purpose">The <b>only</b> network egress a deployed process container has. Verifies the HMAC token, checks the seat is in the token's allowlist <em>and</em> the manifest BoM (defense in depth), then dispatches through the same router as internal calls. Meter scope = the process. <code>401</code> bad token, <code>403</code> seat not allowed.</div>
+      <dl class="ep-grid"><dt>header</dt><dd><code>X-Process-Token</code></dd><dt>body</dt><dd><code>{seat, messages[], schema?}</code></dd><dt>resp</dt><dd><code>{text, parsed, usage}</code></dd></dl></div>
+  </div>
+  <div class="router">
+    <div class="router-h"><span class="name">admin.router</span><span class="file">api/admin.py</span><span class="auth"><span class="pill admin">X-Admin-Token</span></span></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/admin/sovereign</span><span class="pill admin" style="font-size:9.5px">admin</span><span class="ep-fn">set_sovereign()</span></div>
+      <div class="ep-purpose">Flip global Sovereign Mode (mutates <code>settings</code> live). Emits a <code class="code">system.notice</code>.</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{enabled}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/admin/nodes/register</span><span class="pill admin" style="font-size:9.5px">admin</span><span class="ep-fn">register_node()</span></div>
+      <div class="ep-purpose">A fleet node self-registers (name, ip, gpus, seats).</div>
+      <dl class="ep-grid"><dt>body</dt><dd><code>{name, ip, gpus[], seats?}</code></dd><dt>resp</dt><dd><code>{node_id}</code></dd></dl></div>
+    <div class="ep"><div class="ep-top"><span class="m post">POST</span><span class="ep-path">/admin/nodes/<span class="seg">{node_id}</span>/drain</span><span class="pill admin" style="font-size:9.5px">admin</span><span class="ep-fn">drain_node()</span></div>
+      <div class="ep-purpose">Drain a node out of rotation.</div></div>
+  </div>
+  <div class="router">
+    <div class="router-h"><span class="name">economics.router</span><span class="file">api/economics.py</span><span class="auth"><span class="pill">tag: economics</span></span></div>
+    <div class="ep"><div class="ep-top"><span class="m get">GET</span><span class="ep-path">/economics/summary</span><span class="ep-fn">economics_summary()</span></div>
+      <div class="ep-purpose">The money slide: per process, build cost (capex) vs. per-run cost trend (flat opex). Recomputes the build invoice from the source job's scope.</div>
+      <dl class="ep-grid"><dt>resp</dt><dd><code>{processes:[{build_cost_usd, build_frontier_calls, runs[], trend}]}</code></dd></dl></div>
+  </div>
+</section>
+
+<!-- ============================================================ SSE -->
+<section id="sse">
+  <span class="over">04 · The event system</span>
+  <h2>One append-only log, four ways to read it</h2>
+  <p class="sectlede"><code>backend/app/events.py</code> is the whole bus. <code class="code">emit(scope, type, payload)</code>
+  writes one row into the <code>events</code> table (<code>RETURNING seq</code> — the global sequence
+  number doubles as the SSE <code>id:</code>) and fans out to every live subscriber whose
+  <code>scope</code> or <code>type_prefix</code> matches. There is exactly one writer.</p>
+
+  <div class="snip">
+    <div class="cap"><b>api/sse.py</b> · _format_event() ~L17 — the wire envelope</div>
+<pre><span class="c"># NAMED event: `event: &lt;type&gt;` — so the browser needs addEventListener PER type</span>
+<span class="k">return</span> f<span class="s">"id: {event['seq']}\n"</span> \
+       f<span class="s">"event: {event['type']}\n"</span> \
+       f<span class="s">"data: {json.dumps({seq, ts, scope, type, payload})}\n\n"</span></pre>
+  </div>
+
+  <h4>The four subscription shapes</h4>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Channel</th><th>Endpoint</th><th>Subscribe by</th><th>Carries</th></tr></thead>
+    <tbody>
+      <tr><td><span class="scope">job:{id}</span></td><td><code>/jobs/{id}/events</code></td><td>scope match</td><td>the entire stage-0→7 pipeline for one job (also sandbox + refine jobs)</td></tr>
+      <tr><td><span class="scope">run:{id}</span></td><td><code>/runs/{id}/events</code></td><td>scope match</td><td><code>run.*</code>, spotchecks, warranty tickets, <code>review.decided</code></td></tr>
+      <tr><td><span class="scope">fleet</span></td><td><code>/fleet/telemetry</code></td><td>scope match</td><td><code>telemetry.gpu</code> (per-GPU), <code>fleet.node_ready/down</code></td></tr>
+      <tr><td><span class="scope">egress.*</span></td><td><code>/egress/stream</code></td><td><b>type prefix</b></td><td>every egress crossing across all scopes — the network monitor</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call">
+    <div class="h"><span class="k">Mechanics</span> Replay-then-tail, heartbeat, resume</div>
+    <p><b>Replay-then-tail:</b> <code>sse_response()</code> subscribes <em>before</em> replaying so no event
+    slips through the gap, sends the backlog from <code>from_seq</code>, emits a <code>: connected</code>
+    comment, then tails.  <b>Heartbeat:</b> a <code>: heartbeat</code> comment every
+    <code>sse_heartbeat_s</code> (10 s) when idle — invisible to <code>EventSource</code>, so a completed
+    job's stream just stays "open".  <b>Resume:</b> <code>Last-Event-ID</code> (the last <code>seq</code>)
+    takes precedence over <code>?from_seq</code>; browser reconnects resume automatically.
+    <b>Backpressure:</b> a full subscriber queue (1000) drops the event — the client catches up on reconnect via <code>from_seq</code>.
+    <b>Coalescing:</b> <code>plan.delta</code> and <code>task.output_delta</code> are token-level; they are buffered per
+    <code>(scope, type, key)</code> and flushed at most <code>sse_throttle_per_s</code> (10/s), so tokens stream without flooding the log.</p>
+  </div>
+
+  <!-- ---- event catalog ---- -->
+  <h3 id="catalog">Event catalog — every type in <code>E</code></h3>
+  <p class="muted">The typed catalog class <code>E</code> in <code>events.py</code>. Scope shown is where the
+  type is actually emitted from in the code. Coalesced delta types are marked <span class="badge2">Δ</span>.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Event type</th><th>Scope</th><th>Emitted by</th><th>Key payload</th></tr></thead>
+    <tbody>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">JOB LIFECYCLE</td></tr>
+      <tr><td class="evtype">job.created</td><td class="scope">job:{id}</td><td>jobs.py, sandbox/queue.py, processes.py</td><td><code>title, sovereign, origin?, company?</code></td></tr>
+      <tr><td class="evtype">job.stage_changed</td><td class="scope">job:{id}</td><td>orchestrator/engine.py</td><td><code>status, stage</code></td></tr>
+      <tr><td class="evtype">job.blocked</td><td class="scope">job:{id}</td><td>engine / stages</td><td><code>reason, stage</code></td></tr>
+      <tr><td class="evtype">job.done</td><td class="scope">job:{id}</td><td>engine</td><td><code>status, stage</code></td></tr>
+      <tr><td class="evtype">job.aborted</td><td class="scope">job:{id}</td><td>jobs.py</td><td><code>reason?</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">STAGE 0 · INTAKE / BOUNDARY</td></tr>
+      <tr><td class="evtype">intake.message</td><td class="scope">job:{id}</td><td>jobs.py</td><td><code>role, content</code></td></tr>
+      <tr><td class="evtype">intake.spec_updated</td><td class="scope">job:{id}</td><td>boundary/intake.py</td><td><code>spec{summary, acceptance[]}</code></td></tr>
+      <tr><td class="evtype">intake.classified</td><td class="scope">job:{id}</td><td>boundary/intake.py</td><td><code>mode, rationale</code></td></tr>
+      <tr><td class="evtype">intake.policy_registered</td><td class="scope">job:{id}</td><td>jobs.py, intake.py</td><td><code>sources[], rule_count, split{}</code></td></tr>
+      <tr><td class="evtype">intake.context_mapped</td><td class="scope">job:{id}</td><td>intake.py</td><td><code>files, symbols, tables, masked_identifiers</code></td></tr>
+      <tr><td class="evtype">boundary.sanitized</td><td class="scope">job:{id}</td><td>boundary/intake.py</td><td><code>findings[], never_leaves[], brief_tokens</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">STAGE 1 · PLANNING</td></tr>
+      <tr><td class="evtype">plan.started</td><td class="scope">job:{id}</td><td>planning/stage1.py</td><td><code>planner_model, zone</code></td></tr>
+      <tr><td class="evtype">plan.delta <span class="badge2">Δ</span></td><td class="scope">job:{id}</td><td>stage1.py</td><td><code>delta / text</code> (coalesced)</td></tr>
+      <tr><td class="evtype">plan.completed</td><td class="scope">job:{id}</td><td>stage1.py</td><td><code>summary, topology, modules, bom[]</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">STAGE 2 · CERTIFICATION</td></tr>
+      <tr><td class="evtype">certify.check_started</td><td class="scope">job:{id}</td><td>certify/stage2.py</td><td><code>check</code></td></tr>
+      <tr><td class="evtype">certify.finding</td><td class="scope">job:{id}</td><td>stage2.py</td><td><code>check, finding, severity</code></td></tr>
+      <tr><td class="evtype">certify.amendment</td><td class="scope">job:{id}</td><td>stage2.py</td><td><code>id, summary, hash, prev_hash, region</code></td></tr>
+      <tr><td class="evtype">certify.consult_opened</td><td class="scope">job:{id}</td><td>stage2.py (seat handshake)</td><td><code>id, scope, round, sanitization_receipt{}</code></td></tr>
+      <tr><td class="evtype">certify.consult_resolved</td><td class="scope">job:{id}</td><td>stage2.py</td><td><code>id, round, resolution</code></td></tr>
+      <tr><td class="evtype">certify.goal_set</td><td class="scope">job:{id}</td><td>stage2.py</td><td><code>goal</code></td></tr>
+      <tr><td class="evtype">certify.certified</td><td class="scope">job:{id}</td><td>stage2.py</td><td><code>tests, vectors, identifiers_rehydrated, deferred_consults</code></td></tr>
+      <tr><td class="evtype">certify.blocked</td><td class="scope">job:{id}</td><td>stage2.py</td><td><code>reason</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">STAGE 3 · QUOTE</td></tr>
+      <tr><td class="evtype">quote.issued</td><td class="scope">job:{id}</td><td>orchestrator/quote</td><td><code>lines[], total_est_usd[low,high]</code></td></tr>
+      <tr><td class="evtype">quote.approved</td><td class="scope">job:{id}</td><td>jobs.py</td><td><code>{}</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">FLEET · PROVISIONING</td></tr>
+      <tr><td class="evtype">fleet.profile_requested</td><td class="scope">job:{id}</td><td>fleet/stage4.py</td><td><code>profile, nodes, seats[]</code></td></tr>
+      <tr><td class="evtype">fleet.node_ready</td><td class="scope">fleet</td><td>fleet/manager.py</td><td><code>node, ip, gpus, seats[]</code></td></tr>
+      <tr><td class="evtype">fleet.node_down</td><td class="scope">fleet</td><td>fleet/manager.py</td><td><code>node, reason</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">STAGE 4 · BUILD / CONDUCTOR</td></tr>
+      <tr><td class="evtype">task.started</td><td class="scope">job:{id}</td><td>fleet/stage4.py</td><td><code>module, seat, backend, zone, wave, why</code></td></tr>
+      <tr><td class="evtype">task.output_delta <span class="badge2">Δ</span></td><td class="scope">job:{id}</td><td>stage4.py</td><td><code>module, delta</code> (coalesced)</td></tr>
+      <tr><td class="evtype">task.tests</td><td class="scope">job:{id}</td><td>stage4.py</td><td><code>module, passed, failed</code></td></tr>
+      <tr><td class="evtype">task.completed / task.failed</td><td class="scope">job:{id}</td><td>stage4.py</td><td><code>module, ok, loc?, reason?</code></td></tr>
+      <tr><td class="evtype">conductor.wave_started</td><td class="scope">job:{id}</td><td>conduct/conductor.py</td><td><code>wave, of, modules[]</code></td></tr>
+      <tr><td class="evtype">conductor.review</td><td class="scope">job:{id}</td><td>conductor.py</td><td><code>wave, verdict, goal_drift, note</code></td></tr>
+      <tr><td class="evtype">conductor.amendment</td><td class="scope">job:{id}</td><td>conductor.py</td><td><code>id, summary, hash, prev_hash</code></td></tr>
+      <tr><td class="evtype">conductor.green_flag</td><td class="scope">job:{id}</td><td>conductor.py</td><td><code>wave</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">STAGE 5 · CONSOLIDATE · STAGE 6 · QA</td></tr>
+      <tr><td class="evtype">consolidate.started / test_run / completed</td><td class="scope">job:{id}</td><td>runtime/staging + consolidate</td><td><code>modules, passed, failed, total</code></td></tr>
+      <tr><td class="evtype">qa.inspector_started</td><td class="scope">job:{id}</td><td>qa/stage6.py</td><td><code>agents, staging, live</code></td></tr>
+      <tr><td class="evtype">qa.probe</td><td class="scope">job:{id}</td><td>stage6.py</td><td><code>scenario, probe / found</code></td></tr>
+      <tr><td class="evtype">qa.finding</td><td class="scope">job:{id}</td><td>stage6.py</td><td><code>scenario, result, detail</code></td></tr>
+      <tr><td class="evtype">qa.goal_check</td><td class="scope">job:{id}</td><td>stage6.py</td><td><code>verdict, gaps[]</code></td></tr>
+      <tr><td class="evtype">qa.oracle_check</td><td class="scope">job:{id}</td><td>stage6.py (oracle seat)</td><td><code>vector, verdict, model</code></td></tr>
+      <tr><td class="evtype">qa.passed</td><td class="scope">job:{id}</td><td>stage6.py</td><td><code>scenarios, probes, tickets_resolved</code></td></tr>
+      <tr><td class="evtype">ticket.opened / in_fix / verified / human_review</td><td class="scope">job:{id}</td><td>qa + tickets</td><td><code>id, title, severity, source, scope</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">STAGE 7 · DELIVER · OPERATE</td></tr>
+      <tr><td class="evtype">deliver.registered</td><td class="scope">job:{id}</td><td>delivery/stage7.py</td><td><code>process_id, slug, version, mode</code></td></tr>
+      <tr><td class="evtype">run.started / progress / unit_completed</td><td class="scope">run:{id}</td><td>runtime/operate.py</td><td><code>run_id, units, done, total, result</code></td></tr>
+      <tr><td class="evtype">run.spotcheck</td><td class="scope">run:{id}</td><td>operate.py</td><td><code>unit, verdict</code></td></tr>
+      <tr><td class="evtype">run.completed</td><td class="scope">run:{id}</td><td>operate.py</td><td><code>units, flagged, cost_usd, gpu_seconds</code></td></tr>
+      <tr><td class="evtype">warranty.ticket</td><td class="scope">run:{id}</td><td>operate.py</td><td><code>unit, reason</code></td></tr>
+      <tr><td class="evtype">refine.triaged / version_created</td><td class="scope">job:{id}</td><td>refine/refine.py</td><td><code>verdict, note, version, diff_summary</code></td></tr>
+      <tr><td class="evtype">review.decided</td><td class="scope">run:{id}</td><td>runs.py</td><td><code>unit, verdict</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">ROUTER · METER · EGRESS · TELEMETRY</td></tr>
+      <tr><td class="evtype">model.call</td><td class="scope">any</td><td>models/router.py · _record_dispatch()</td><td><code>seat, backend, zone, model, tokens_in/out, cost_usd, badge</code></td></tr>
+      <tr><td class="evtype">meter.tick</td><td class="scope">any</td><td>router.py → meter.tick()</td><td><code>cost_usd, tokens, gpu_seconds</code></td></tr>
+      <tr><td class="evtype">egress.request</td><td class="scope">any</td><td>router.py · egress.record()</td><td><code>host, zone, seat, bytes</code></td></tr>
+      <tr><td class="evtype">egress.violation</td><td class="scope">any</td><td>router.py (blocked call)</td><td><code>host, zone, detail</code></td></tr>
+      <tr><td class="evtype">telemetry.gpu</td><td class="scope">fleet</td><td>fleet/manager.py (per GPU)</td><td><code>node, gpu, vram_used/total_gb, util, power_w, toks_per_s</code></td></tr>
+      <tr><td colspan="4" style="background:var(--sunk);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">SANDBOX · CONFIG · SYSTEM</td></tr>
+      <tr><td class="evtype">sandbox.queued / started</td><td class="scope">job:{id}</td><td>sandbox/queue.py</td><td><code>position, company, job_id</code></td></tr>
+      <tr><td class="evtype">config.connection_added</td><td class="scope">system</td><td>connections.py</td><td><code>name, host, ceiling</code></td></tr>
+      <tr><td class="evtype">config.model_registered</td><td class="scope">system</td><td>connections.py</td><td><code>model, flags[]</code></td></tr>
+      <tr><td class="evtype">config.seat_bound</td><td class="scope">system</td><td>connections.py</td><td><code>seat, model_key, scope</code></td></tr>
+      <tr><td class="evtype">system.notice</td><td class="scope">system / job:{id}</td><td>router.py, admin.py, many stages</td><td><code>text, level, badge?</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="call warn">
+    <div class="h"><span class="k">Seam</span> The <code>system</code> scope has no reader</div>
+    <p><code>config.*</code> and admin <code>system.notice</code> events are written to scope
+    <code class="scope">system</code>, but <b>no SSE endpoint subscribes to it</b> — every stream is
+    <code>job:</code>, <code>run:</code>, <code>fleet</code>, or the <code>egress.</code> prefix. Those
+    events land in the log (readable via <code>/replay/system</code>) but never reach a live UI stream.</p>
+  </div>
+
+  <!-- ---- frontend seam ---- -->
+  <h3 id="frontseam">The frontend seam — named events + a tolerant normalizer</h3>
+  <p class="muted">Because the backend sends <em>named</em> SSE events, plain <code>onmessage</code> never
+  fires. <code>frontend/src/api/sse.ts</code> registers the same <code>handleFrame</code> handler once per
+  known type, then hands each raw frame to <code>normalizeEvent()</code> (<code>api/adapt.ts</code>),
+  which conforms ~30 diverged backend shapes back to the typed <code>NxEvent</code> catalog the UI folds over.</p>
+  <div class="snip">
+    <div class="cap"><b>frontend/src/api/sse.ts</b> · openEventStream() ~L54 — one listener per type</div>
+<pre><span class="c">// Named events don't fire onmessage; register the handler per type.</span>
+es.onmessage = handleFrame;                          <span class="c">// unnamed fallback</span>
+<span class="k">for</span> (<span class="k">const</span> type <span class="k">of</span> KNOWN_EVENT_TYPES)
+  es.addEventListener(type, handleFrame <span class="k">as</span> EventListener);
+
+<span class="c">// handleFrame: parse -&gt; track lastSeq -&gt; normalizeEvent(raw) -&gt; onEvent</span>
+<span class="k">const</span> raw = JSON.parse(e.data);
+<span class="k">if</span> (<span class="k">typeof</span> raw.seq === <span class="s">"number"</span>) lastSeq = Math.max(lastSeq, raw.seq);
+<span class="k">const</span> ev = normalizeEvent(raw);   <span class="c">// backend payload -&gt; typed NxEvent; null =&gt; dropped</span>
+<span class="k">if</span> (ev) handlers.onEvent(ev);</pre>
+  </div>
+  <div class="snip">
+    <div class="cap"><b>frontend/src/api/adapt.ts</b> · normalizeEvent() ~L181 — tolerant per-field fallback</div>
+<pre><span class="k">case</span> <span class="s">"boundary.sanitized"</span>: {
+  <span class="c">// prefer a typed field if present, else DERIVE it from the backend's raw counts</span>
+  <span class="k">const</span> pii = num(p.pii_fields_masked) ?? 0;
+  <span class="k">const</span> findings = arr(p.findings).length ? p.findings
+    : [ pii &gt; 0 &amp;&amp; { rule_id: rules[0], label: <span class="s">"PII fields masked"</span>, count: pii } ]
+        .filter(Boolean);
+  <span class="k">return</span> env(raw, <span class="s">"boundary.sanitized"</span>, { findings, never_leaves, brief_tokens });
+}</pre>
+  </div>
+  <div class="call">
+    <div class="h"><span class="k">Why it matters</span> The adapter is the real contract</div>
+    <p>The normalizer's own header admits it: <em>"spec 06 §3 is the intended contract; the live backend
+    diverged across ~30 types, so we conform the frontend to reality here."</em> Every UI shape is defined by
+    what <code>normalizeEvent</code> emits, not by the spec — and any type it doesn't <code>case</code> on
+    returns <code>null</code> and is silently dropped before the fold. See the divergence list in §<a href="#diverge">8</a>.</p>
+  </div>
+</section>
+
+<!-- ============================================================ LIFECYCLE -->
+<section id="life">
+  <span class="over">05 · Request lifecycles</span>
+  <h2>Three paths through the plane</h2>
+
+  <h3>(a) Job submission → pipeline → Build view stream</h3>
+  <div class="flow">
+    <div class="node accent"><div class="role">HTTP · client.ts</div><div class="title">POST /api/jobs</div><div class="sub">X-Demo-Token · body {request, sovereign?}</div><div class="src">api/jobs.py → create_job()</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">dao.create_job + emit job.created</span></div></div>
+    <div class="node"><div class="title">engine.submit_job(job_id)</div><div class="sub">hands the job to the orchestrator's asyncio task — returns 202 immediately</div><div class="src">orchestrator/engine.py</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">stage 0 → 7, each ctx.emit(...)</span></div></div>
+    <div class="node"><div class="title">stages emit to scope job:{id}</div><div class="sub">intake · boundary · plan · certify · quote · build · consolidate · qa · deliver</div><div class="src">boundary/ · planning/ · certify/ · fleet/ · qa/ · delivery/</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">events.emit → bus.write → SQLite + fan-out</span></div></div>
+    <div class="node accent"><div class="role">SSE · sse.ts</div><div class="title">GET /api/jobs/{id}/events</div><div class="sub">replay from_seq → : connected → tail; addEventListener per type → normalizeEvent → fold → Build view</div><div class="src">api/sse.py → sse_response(scope=job:{id})</div></div>
+  </div>
+
+  <h3>(b) Deployed process call → HMAC proxy → staging runtime</h3>
+  <div class="flow">
+    <div class="node"><div class="role">generated code</div><div class="title">process container → POST /api/proxy/complete</div><div class="sub">header X-Process-Token · body {seat, messages, schema?}</div><div class="src">api/proxy.py → proxy_complete()</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">verify_token() — HMAC-SHA256, exp check</span></div></div>
+    <div class="node warnn"><div class="title">gate: token authentic? seat ∈ token.seats? seat ∈ manifest BoM?</div><div class="sub">401 bad/expired token · 403 seat not allowed — defense in depth (token allowlist AND manifest)</div><div class="src">boundary/proxy_token.py · _allowed_seats()</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">scope = process:{id}</span></div></div>
+    <div class="node accent"><div class="title">model_router.complete(seat, …)</div><div class="sub">same boundary + budget enforcement as internal calls; meter scope = the process</div><div class="src">models/router.py</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">{text, parsed, usage}</span></div></div>
+    <div class="node ok"><div class="title">response to the container</div><div class="sub">the process never holds a model key — the proxy dispatches on its behalf</div></div>
+  </div>
+  <p class="muted" style="font-size:12.5px">During stage-6 QA the same contract is served by an in-process
+  FastAPI shim on an ephemeral <code>127.0.0.1</code> port (<code>runtime/staging.py → deploy()</code>): the
+  inspector swarm probes real HTTP — <code>GET /health</code>, <code>GET /manifest</code>,
+  <code>POST /run_unit</code> — and <code>run_unit</code> can gate on an <code>x-proxy-token</code> header
+  scoped to the process (the wrong-tenant probe).</p>
+
+  <h3>(c) Sandbox run path</h3>
+  <div class="flow">
+    <div class="node"><div class="role">anonymous</div><div class="title">POST /api/sandbox/runs</div><div class="sub">sandbox_session cookie · {company, prompt}</div><div class="src">api/sandbox.py → sandbox_run()</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">rate limit: 3 runs/hour rolling — else 429</span></div></div>
+    <div class="node"><div class="title">sandbox_queue.enqueue()</div><div class="sub">creates a job (origin=sandbox), sets a per-scope budget cap, emits job.created + sandbox.queued</div><div class="src">sandbox/queue.py · router.set_scope_cap()</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">FIFO drain, SANDBOX_MAX_CONCURRENT at a time</span></div></div>
+    <div class="node"><div class="title">emit sandbox.started → engine.submit_job()</div><div class="sub">runs the identical stage 0→7 pipeline</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">returns {job_id, queue_position}</span></div></div>
+    <div class="node accent"><div class="title">client streams GET /api/jobs/{job_id}/events</div><div class="sub">the standard Build view — sandbox reuses the whole job channel</div></div>
+  </div>
+</section>
+
+<!-- ============================================================ ROUTING -->
+<section id="routing">
+  <span class="over">06 · Model-call routing</span>
+  <h2>The one place a dispatch happens</h2>
+  <p class="sectlede"><code>models/router.py → Router.complete()</code> is the single chokepoint. Every internal
+  stage call and every <code>/proxy/complete</code> call goes through it, and the boundary is enforced here,
+  in code — not in config. The order is fixed: resolve the seat's binding, apply overrides, check backend
+  health, enforce the zone / data-class matrix, guard the budget, dispatch (with one structured-output
+  repair round), then record meter + egress + <code>model.call</code>.</p>
+
+  <div class="flow" style="max-width:820px">
+    <div class="node accent"><div class="role">entry</div><div class="title">complete(seat, messages, *, scope, data_class, sovereign?, schema?)</div><div class="src">models/router.py L140</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">_resolve_override(seat, scope)</span></div></div>
+    <div class="node"><div class="title">1 · override lookup</div><div class="sub">seat_overrides table, job-scope then global → custom model (BYOK connection) or a builtin models.yaml key</div><div class="src">_resolve_override()</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">registry.resolve(seat, sovereign, healthy_local_nodes, override)</span></div></div>
+    <div class="node"><div class="title">2 · binding resolution</div><div class="sub">sovereign overlay → default/pool → <b>if local node not ready &amp; fallback exists → fallback</b> (badge: fallback-serving). model_mode: mock / live / auto decides use_mock</div><div class="src">models/registry.py · SeatDef.binding_for()</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">seat ceiling + _check_boundary()</span></div></div>
+    <div class="node danger"><div class="title">3 · boundary matrix (fail closed)</div><div class="sub">RAW data to a SANITIZED-ceiling seat → BoundaryViolation. Then the zone × data-class table below. Every blocked attempt is logged to the egress ledger first.</div><div class="src">_check_boundary() L103</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">_budget_guard()</span></div></div>
+    <div class="node warnn"><div class="title">4 · budget guard</div><div class="sub">Fireworks daily cap → BudgetExceeded; per-scope cap (sandbox) → BudgetExceeded</div><div class="src">_budget_guard() L189</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">_dispatch_with_repair() → _call()</span></div></div>
+    <div class="node"><div class="title">5 · dispatch by backend</div><div class="sub">provider_id() maps the registry key → wire id, then one of the clients</div><div class="src">_call() L247</div></div>
+    <div class="arrowrow"><div class="arrow"><span class="lbl">schema invalid? one repair round (a 2nd billed call)</span></div></div>
+    <div class="node ok"><div class="title">6 · record</div><div class="sub">meter.record → egress.record → emit model.call → meter.tick, per dispatch (repair shows twice)</div><div class="src">_record_dispatch() L226</div></div>
+  </div>
+
+  <h4>Boundary matrix — <code>_check_boundary()</code> (zone × data class)</h4>
+  <div class="branch">
+    <div class="opt"><span class="cond">sovereign &amp; !local</span><span class="out"><span class="z z-block">BLOCK</span>SovereignViolation — only LOCAL or attested-local CUSTOM may serve</span></div>
+    <div class="opt"><span class="cond">RAW → LOCAL</span><span class="out"><span class="z z-local">ALLOW</span>on-fleet, no badge</span></div>
+    <div class="opt"><span class="cond">RAW → AMD_HOSTED</span><span class="out"><span class="z z-amd">ALLOW*</span>only if <code>allow_raw_on_amd_hosted</code> → badge <code>demo-exception</code>; else BoundaryViolation</span></div>
+    <div class="opt"><span class="cond">RAW → CUSTOM</span><span class="out"><span class="z z-custom">ALLOW*</span>only if connection ceiling is RAW → badge <code>customer-attested</code>; else block</span></div>
+    <div class="opt"><span class="cond">RAW → EXTERNAL</span><span class="out"><span class="z z-block">BLOCK</span>hard error — RAW never reaches a frontier provider</span></div>
+    <div class="opt"><span class="cond">SANITIZED → any</span><span class="out"><span class="z z-external">ALLOW</span>travels everywhere (sovereign+external already blocked above)</span></div>
+  </div>
+
+  <h4>Backend → client → zone map</h4>
+  <div class="tablewrap"><table>
+    <thead><tr><th>backend</th><th>client (clients.py)</th><th>zone</th><th>wire</th><th>fallback role</th></tr></thead>
+    <tbody>
+      <tr><td class="code">local</td><td>VllmClient(node ip:8000)</td><td><span class="z z-local">LOCAL</span></td><td>OpenAI-compat <code>/v1/chat/completions</code>, vLLM guided-decoding schema</td><td>default for most seats</td></tr>
+      <tr><td class="code">fireworks</td><td>FireworksClient</td><td><span class="z z-amd">AMD_HOSTED</span></td><td>OpenAI-compat, JSON mode + schema in prompt</td><td>the <b>fallback</b> when a local node is down</td></tr>
+      <tr><td class="code">anthropic</td><td>AnthropicClient (SDK)</td><td><span class="z z-external">EXTERNAL</span></td><td>tool-call with schema as input_schema; server-side Opus-4.8 fallback on refusal</td><td>planner default only</td></tr>
+      <tr><td class="code">custom</td><td>FireworksClient(base,key)</td><td><span class="z z-custom">CUSTOM</span></td><td>OpenAI-compat BYOK; may be attested <code>counts_as_local</code></td><td>user seat overrides</td></tr>
+      <tr><td class="code">mock</td><td>MockClient</td><td><span class="z z-local">LOCAL</span></td><td>fixture-or-synthesized schema-valid output; one-shot invalid to drive the repair round</td><td>dev/CI or any unavailable backend</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call">
+    <div class="h"><span class="k">Key detail</span> Bindings carry the registry <em>key</em>, not the wire id</div>
+    <p>A binding's <code>model</code> is the <code>models.yaml</code> key (so the pool scheduler can read
+    capability flags and metering can key rates on it). Only at the dispatch boundary does
+    <code>registry.provider_id()</code> resolve it to the real <code>hf_id</code> sent on the wire —
+    pass-through for anything not in the registry (built-in full-path bindings, BYOK ids are already wire-ready).</p>
+  </div>
+  <div class="snip">
+    <div class="cap"><b>models/registry.py</b> · Registry.resolve() ~L205 — the auto-mode fallback + mock decision</div>
+<pre><span class="k">if</span> settings.model_mode == <span class="s">"mock"</span>: use_mock, badge = <span class="k">True</span>, <span class="s">"mock"</span>
+<span class="k">elif</span> settings.model_mode == <span class="s">"live"</span>: use_mock = <span class="k">False</span>
+<span class="k">else</span>:  <span class="c"># auto</span>
+    <span class="k">if</span> binding.backend == <span class="s">"local"</span> <span class="k">and</span> <span class="k">not</span> local_ready <span class="k">and</span> sd.fallback:
+        binding = sd.fallback; badge = <span class="s">"fallback-serving"</span>   <span class="c"># fleet down -&gt; Fireworks</span>
+    real_ok = (anthropic&amp;key) <span class="k">or</span> (fireworks&amp;key) <span class="k">or</span> (local&amp;ready) <span class="k">or</span> custom
+    use_mock = <span class="k">not</span> real_ok</pre>
+  </div>
+</section>
+
+<!-- ============================================================ PROXY TOKEN -->
+<section id="proxytok">
+  <span class="over">07 · Proxy-token scheme</span>
+  <h2>A self-contained HMAC capability</h2>
+  <p class="sectlede">Generated process code never holds a model key. It calls the control-plane proxy, which
+  dispatches to the process's <em>allowed</em> seats on its behalf. That call is gated by a compact HMAC
+  token scoped to one <code>process</code> id + a seat allowlist — a token minted for process A cannot drive
+  seats for process B. <code>backend/app/boundary/proxy_token.py</code>, no server-side store.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Element</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Format</td><td><code>&lt;b64url(claims)&gt;.&lt;b64url(hmac_sha256)&gt;</code> — self-contained, stateless</td></tr>
+      <tr><td>Claims (signed)</td><td><code>{process, seats:[...], exp}</code> — canonical JSON (sorted keys)</td></tr>
+      <tr><td>Algorithm</td><td>HMAC-SHA256 over the b64url claims body</td></tr>
+      <tr><td>Signing key</td><td><code>sha256("nxcleus:proxy-token:v1:" + ADMIN_TOKEN)</code>; a stable dev key when ADMIN_TOKEN is unset</td></tr>
+      <tr><td>TTL</td><td>default 3600 s; <code>verify_token()</code> rejects expired, never raises</td></tr>
+      <tr><td>Verification</td><td><code>hmac.compare_digest</code> (constant-time) → exp check → return claims or <code>None</code></td></tr>
+      <tr><td>Enforced at</td><td><code>/proxy/complete</code> (header <code>X-Process-Token</code>) and the staging shim's <code>POST /run_unit</code> (header <code>x-proxy-token</code>)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call danger">
+    <div class="h"><span class="k">Divergence</span> Two header names, and nothing mints tokens in the app</div>
+    <p>The control-plane proxy reads <code>X-Process-Token</code>; the staging shim reads
+    <code>x-proxy-token</code> — two names for the same capability. And <code>sign_token()</code> is
+    <b>never called from application code</b> — only from tests. In the live path, stage-6 QA deploys the
+    staging shim with <code>expect_token=False</code>, so the wrong-tenant boundary exists in code and is
+    proven by tests, but the running demo doesn't yet mint or require the token. See §8.</p>
+  </div>
+</section>
+
+<!-- ============================================================ DIVERGE -->
+<section id="diverge">
+  <span class="over">08 · Spec vs Code</span>
+  <h2>Where the implementation diverges from spec 06</h2>
+  <p class="sectlede">The frontend's own normalizer says it best: the live backend diverged from the 06 §3
+  contract across ~30 event types, and the UI conforms to <em>reality</em> at the SSE boundary. These are the
+  divergences that matter for anyone reading the spec expecting the code to match.</p>
+
+  <div class="div">
+    <div class="div-h"><span class="sev mismatch">mismatch</span><span class="t">~20 emitted event types are absent from the <code>E</code> catalog</span></div>
+    <div class="div-b">The backend emits many types as raw string literals via <code>ctx.emit("…")</code> that are
+      <em>not</em> declared in <code>events.py</code>'s <code>E</code> class — and several are also missing from
+      the frontend's <code>KNOWN_EVENT_TYPES</code>, so no <code>addEventListener</code> is registered for them
+      and <code>EventSource</code> never delivers them (and <code>normalizeEvent</code> would return <code>null</code> anyway).
+      <div class="cols">
+        <div class="spec"><div class="lab">emitted but not in E / not streamed to UI</div>
+          <code>qa.probe_started · qa.probe_passed · qa.probe_timeout · qa.probe_exhausted · qa.oracle_vote · certify.consult_requested · certify.scenarios_emitted · certify.rehydrated · certify.check_completed · plan.replanned · intake.turn · intake.mode_classified · task.fix_applied · task.files_written · conductor.goal_drift · consolidate.assembled · deliver.docs_generated · boundary.sweep</code></div>
+        <div class="code2"><div class="lab">the UI-known equivalent it diverges from</div>
+          <code>qa.probe · qa.oracle_check · certify.consult_opened · certify.certified · certify.check_started · plan.completed · intake.message · intake.classified · task.completed · consolidate.completed · deliver.registered</code></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="div">
+    <div class="div-h"><span class="sev gap">gap</span><span class="t">The <code>system</code> scope is emitted-to but never streamed</span></div>
+    <div class="div-b"><code>config.connection_added</code>, <code>config.model_registered</code>, <code>config.seat_bound</code>
+      and admin <code>system.notice</code> all target scope <code class="scope">system</code>, yet no SSE endpoint
+      subscribes to it. They are only reachable via <code>GET /api/replay/system</code>. Router-level
+      <code>system.notice</code> events avoid this by emitting to the active job/run scope instead.</div>
+  </div>
+
+  <div class="div">
+    <div class="div-h"><span class="sev gap">gap</span><span class="t">Proxy token: dual header names + no in-app minting</span></div>
+    <div class="div-b"><code>X-Process-Token</code> (proxy) vs <code>x-proxy-token</code> (staging shim) for the same
+      HMAC capability; <code>sign_token()</code> is exercised only by the test suite. Live QA runs the staging
+      shim with <code>expect_token=False</code>, so the demo path doesn't require the token even though the
+      authz boundary is fully implemented.</div>
+  </div>
+
+  <div class="div">
+    <div class="div-h"><span class="sev info">extra</span><span class="t">Endpoints and behaviours beyond the spec surface</span></div>
+    <div class="div-b">Several surfaces exist in code that a 06-only reader wouldn't expect: the whole
+      <code>/proxy/complete</code> egress path, <code>POST /processes/{id}/instantiate</code> (re-enter at stage 4,
+      no planner call), <code>POST /processes/{id}/refine</code>, the type-prefix <code>/egress/stream</code>,
+      voice-policy intake (<code>multipart</code> → Whisper) on <code>/jobs/{id}/policy</code>, and the
+      <code>GET /api/replay/{scope:path}</code> catch-all. The error envelope is also reshaped app-side
+      (<code>{"error":{code,message}}</code>) because FastAPI's default <code>{"detail":…}</code> wrapper would
+      misparse on every client error path.</div>
+  </div>
+
+  <div class="div">
+    <div class="div-h"><span class="sev info">note</span><span class="t">No Pydantic request models — bodies are hand-parsed dicts</span></div>
+    <div class="div-b">Every write handler takes <code>body: dict</code> and reads keys with <code>.get()</code>. Validation
+      is manual and permissive (missing keys default rather than 422). The typed contract lives entirely on the
+      response side and in the frontend's <code>client.ts</code> interfaces.</div>
+  </div>
+</section>
+
+<footer>
+  Generated from source at <code>backend/app/</code> + <code>frontend/src/api/</code>. Palette from
+  <code>frontend/src/styles/tokens.css</code> ([data-temp="inside"]). Every endpoint, event, and code
+  excerpt is read from the running implementation; spec 06 is referenced only to mark divergence.
+  Line numbers are approximate.
+</footer>
+
+</main>
+</div>
+</body>
+</html>

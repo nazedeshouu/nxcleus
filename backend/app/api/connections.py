@@ -95,6 +95,15 @@ async def bind_seat(seat: str, body: dict) -> dict:
         if sd.data_class_max == "RAW" and conn and conn["data_class_ceiling"] != "RAW":
             raise _err(409, f"seat {seat} needs RAW clearance; connection ceiling is "
                             f"{conn['data_class_ceiling']} (attest the boundary to raise it)")
+    elif model_key in registry.merged_models():
+        if sd.data_class_max == "RAW" and registry.merged_models()[model_key].get("provider") == "anthropic":
+            raise _err(409, f"seat {seat} carries RAW data; an EXTERNAL model cannot hold it")
+    else:
+        raise _err(404, f"unknown model key {model_key!r}")
     await dao.set_seat_override(seat=seat, model_key=model_key, scope=scope)
-    await emit("system", E.CONFIG_SEAT_BOUND, {"seat": seat, "model_key": model_key, "scope": scope})
-    return {"seat": seat, "model_key": model_key, "scope": scope}
+    payload = {"seat": seat, "model_key": model_key, "scope": scope}
+    await emit("system", E.CONFIG_SEAT_BOUND, payload)
+    if scope.startswith("job:"):
+        # "system" is a write-only scope (no SSE endpoint subscribes) — mirror to the job stream
+        await emit(scope, E.CONFIG_SEAT_BOUND, payload)
+    return payload

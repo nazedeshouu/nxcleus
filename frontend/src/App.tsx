@@ -9,6 +9,7 @@ import { Sandbox } from "./routes/Sandbox";
 import { Gallery } from "./routes/Gallery";
 import { Replay } from "./routes/Replay";
 import { Config } from "./routes/Config";
+import { Traces } from "./routes/Traces";
 
 export function App() {
   return (
@@ -23,6 +24,7 @@ export function App() {
         <Route path="/replay/:kind/:id" element={<Replay />} />
         <Route path="/sandbox" element={<Sandbox />} />
         <Route path="/config" element={<Config />} />
+        <Route path="/traces" element={<Traces />} />
       </Route>
     </Routes>
   );

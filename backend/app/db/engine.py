@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from app.config import settings
@@ -42,16 +42,40 @@ class Database:
         self._write_lock = asyncio.Lock()
         url = f"sqlite+aiosqlite:///{settings.sqlite_file}"
         self._engine = create_async_engine(url, future=True, echo=False)
-        async with self._engine.begin() as conn:
-            await conn.exec_driver_sql("PRAGMA journal_mode=WAL")
-            await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
-            await conn.exec_driver_sql("PRAGMA busy_timeout=5000")
+
+        # SQLite pragmas are PER-CONNECTION; setting them once on startup only configures one
+        # pooled connection, leaving FK enforcement a per-request lottery (the sandbox FK bug).
+        @event.listens_for(self._engine.sync_engine, "connect")
+        def _set_pragmas(dbapi_conn, _record) -> None:
+            cur = dbapi_conn.cursor()
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA foreign_keys=ON")
+            cur.execute("PRAGMA busy_timeout=5000")
+            cur.close()
+
+        async with self._engine.connect() as conn:
+            await conn.exec_driver_sql("SELECT 1")  # materialize one connection -> pragmas apply
+
+    # additive columns for pre-existing DBs (CREATE TABLE IF NOT EXISTS won't alter them);
+    # each ALTER is a no-op error ("duplicate column") on a fresh schema — swallowed below.
+    _MIGRATIONS = (
+        "ALTER TABLE jobs ADD COLUMN request TEXT",
+        "ALTER TABLE processes ADD COLUMN corpus_company TEXT",
+        "ALTER TABLE runs ADD COLUMN params_json TEXT",
+        "ALTER TABLE runs ADD COLUMN next_steps_json TEXT",
+    )
 
     async def apply_schema(self) -> None:
         statements = _split_statements(SCHEMA_PATH.read_text())
         async with self._write_lock, self.engine.begin() as conn:
             for stmt in statements:
                 await conn.exec_driver_sql(stmt)
+        for stmt in self._MIGRATIONS:  # own txn each: a duplicate-column error must not poison the batch
+            try:
+                async with self._write_lock, self.engine.begin() as conn:
+                    await conn.exec_driver_sql(stmt)
+            except Exception:  # noqa: BLE001 — column already exists (fresh schema)
+                pass
 
     async def disconnect(self) -> None:
         if self._engine is not None:

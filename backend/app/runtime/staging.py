@@ -34,7 +34,10 @@ def _free_port() -> int:
 
 
 def _load_entrypoint(workspace: Path):
-    """Return the assembled process's `run_unit` callable if the package exposes one, else None."""
+    """Return the assembled process's `run_unit` callable if the package exposes one, else None.
+    A broken entrypoint (syntax/import error in generated code) is SAID OUT LOUD — silently
+    stubbing it would let a broken build pass QA against the manifest fallback."""
+    import sys
     for cand in (workspace / "src" / "process.py", workspace / "process.py"):
         if cand.exists():
             try:
@@ -44,7 +47,9 @@ def _load_entrypoint(workspace: Path):
                 fn = getattr(mod, "run_unit", None)
                 if callable(fn):
                     return fn
-            except Exception:
+            except Exception as exc:  # noqa: BLE001
+                print(f"[staging] WARNING: entrypoint {cand} failed to load "
+                      f"({type(exc).__name__}: {exc}) — serving manifest fallback", file=sys.stderr)
                 return None
     return None
 

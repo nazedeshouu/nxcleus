@@ -95,7 +95,7 @@
   gap: 0.4em;
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: #fff;
+  color: var(--paper);
   background: var(--accent);
   padding: 8px 15px;
   border-radius: var(--r-pill);

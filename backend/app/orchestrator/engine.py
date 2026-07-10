@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 
+from app.boundary.errors import BudgetExceeded
 from app.db import dao
 from app.events import E, emit
 from app.metering import meter
@@ -25,7 +26,7 @@ _STAGE_MODULES: dict[str, tuple[str, str]] = {
 }
 
 # statuses the driver stops on (parked or terminal)
-_STOP = {"quoted", "blocked", "done", "aborted"}
+_STOP = {"quoted", "blocked", "done", "aborted", "awaiting_input"}
 
 # whole-stage watchdog seconds (07 §3)
 _WATCHDOG = {
@@ -35,8 +36,8 @@ _WATCHDOG = {
 _MAX_STAGE_ATTEMPTS = 2
 
 # stage number for the UI (03 §1)
-_STAGE_NUM = {"intake": 0, "planning": 1, "certifying": 2, "quoted": 3, "building": 4,
-              "consolidating": 5, "qa": 6, "delivering": 7, "done": 7}
+_STAGE_NUM = {"intake": 0, "awaiting_input": 0, "planning": 1, "certifying": 2, "quoted": 3,
+              "building": 4, "consolidating": 5, "qa": 6, "delivering": 7, "done": 7}
 
 
 class StageContext:
@@ -141,6 +142,14 @@ class Engine:
             ok = await self._run_stage(job, status)
             if not ok:
                 return  # blocked/parked by failure policy
+            # B6: a stage that returns ok without advancing would hot-loop forever — park it
+            after = await dao.get_job(job_id)
+            if after and after["status"] == status:
+                await dao.update_job(job_id, status="blocked")
+                await emit(f"job:{job_id}", E.SYSTEM_NOTICE,
+                           {"text": f"stage {status} returned without advancing — job parked",
+                            "level": "error"})
+                return
 
     async def _run_stage(self, job: dict, status: str) -> bool:
         mod_path, fn_name = _STAGE_MODULES[status]
@@ -155,6 +164,12 @@ class Engine:
                 return True
             except asyncio.CancelledError:
                 raise
+            except BudgetExceeded as exc:
+                # deterministic guard, not a fault: no retry; the run aborts gracefully (09 §4)
+                await dao.update_job(job["id"], status="aborted")
+                await emit(ctx.scope, E.JOB_ABORTED,
+                           {"reason": f"budget cap reached during {status}: {exc}"})
+                return False
             except Exception as exc:  # noqa: BLE001 — uniform failure policy (07 §3)
                 await emit(ctx.scope, E.SYSTEM_NOTICE,
                            {"text": f"stage {status} attempt {attempt} failed: {type(exc).__name__}: "

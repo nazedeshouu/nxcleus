@@ -9,7 +9,10 @@ import type { JobView } from "../store/jobStore";
 import type { ConnState } from "../api/sse";
 import { TopStrip } from "../components/build/TopStrip";
 import { IntakePanel } from "../components/build/IntakePanel";
+import { ClarifyPanel } from "../components/build/ClarifyPanel";
+import { StageGate } from "../components/build/StageGate";
 import { PlanPanel } from "../components/build/PlanPanel";
+import { CertifyPanel } from "../components/build/CertifyPanel";
 import { AuditRail } from "../components/build/AuditRail";
 import { WaveBoard } from "../components/build/WaveBoard";
 import { ValidationWall, DefectBoard, DeliveryMoment } from "../components/build/QaPanels";
@@ -18,7 +21,7 @@ import { EgressMonitor } from "../components/build/EgressMonitor";
 
 /** The cockpit chrome + panel grid, driven purely by a folded view. Shared by
  *  the live BuildView and the replay player — same fold, same panels. */
-export function CockpitFrame({ view, top }: { view: JobView; top: ReactNode }) {
+export function CockpitFrame({ view, top, jobId }: { view: JobView; top: ReactNode; jobId?: string }) {
   const blocked = view.status === "blocked" || view.status === "aborted";
   return (
     <div className="bv-root">
@@ -51,8 +54,11 @@ export function CockpitFrame({ view, top }: { view: JobView; top: ReactNode }) {
         </div>
 
         <div className="bv-col bv-col-center">
+          <ClarifyPanel view={view} jobId={jobId} />
+          <StageGate view={view} jobId={jobId} />
           <IntakePanel view={view} />
           <PlanPanel view={view} />
+          <CertifyPanel view={view} />
           <WaveBoard view={view} />
           <ValidationWall view={view} />
           <DefectBoard view={view} />
@@ -80,7 +86,7 @@ function Cockpit({ jobId }: { jobId: string }) {
       onRestart={() => location.reload()}
     />
   );
-  return <CockpitFrame view={view} top={top} />;
+  return <CockpitFrame view={view} top={top} jobId={jobId} />;
 }
 
 export function BuildView() {

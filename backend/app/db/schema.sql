@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   sovereign INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL,                           -- intake|planning|certifying|quoted|building|
                                                   -- consolidating|qa|delivering|done|blocked|aborted
+                                                  -- |awaiting_input (clarifying intake, stage 0)
+  request TEXT,                                   -- RAW original request; survives the intake spec
+                                                  -- overwrite (D9/D10 anchor — hardening 2026-07-10)
   current_stage INTEGER, spec_json TEXT,
   policy_json TEXT,                               -- RedactionPolicy (03 §2.1, D11); null = PII baseline only
   goal TEXT,                                      -- goal statement, set at stage 2 (03 §4.3, D10)
@@ -71,6 +74,7 @@ CREATE TABLE IF NOT EXISTS processes (
   goal TEXT,                                      -- carried from jobs.goal at delivery (D10)
   status TEXT,                                    -- active | archived
   current_version INTEGER, created_from_job TEXT, created_from TEXT,  -- lineage (instantiate)
+  corpus_company TEXT,                            -- default corpus binding (hardening 2026-07-10)
   created_at TEXT
 );
 CREATE TABLE IF NOT EXISTS process_versions (
@@ -85,7 +89,9 @@ CREATE TABLE IF NOT EXISTS runs (
   kind TEXT,                                      -- batch | sandbox | spotcheck | probe
   status TEXT,                                    -- queued|running|done|failed|aborted
   input_ref TEXT, started_at TEXT, finished_at TEXT,
-  stats_json TEXT, cost_json TEXT
+  stats_json TEXT, cost_json TEXT,
+  params_json TEXT,                               -- {corpus:{company}, sample:{mode,n}} (hardening)
+  next_steps_json TEXT                            -- cached trust-seat next-step suggestions
 );
 CREATE TABLE IF NOT EXISTS run_units (
   id TEXT PRIMARY KEY, run_id TEXT REFERENCES runs(id), unit_ref TEXT,
@@ -101,7 +107,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   scope TEXT,                                     -- 'job:x' (stage 6) | 'process:x' (warranty)
   source TEXT,                                    -- inspector | oracle | consolidation | warranty
   severity TEXT,                                  -- blocker | major | minor | disagreement
-  status TEXT,                                    -- open | in_fix | verified | human_review | wont_fix
+  status TEXT,                                    -- open | in_fix | fix_applied | verified | human_review | wont_fix
   title TEXT, body_json TEXT,                     -- repro, expected/actual, plan/module refs
   fix_attempts INTEGER DEFAULT 0, ts TEXT
 );
@@ -170,3 +176,22 @@ CREATE TABLE IF NOT EXISTS checkpoints (
   scope TEXT, key TEXT, value_json TEXT, ts TEXT,
   PRIMARY KEY (scope, key)
 );
+
+-- createTool registry (hardening 2026-07-10 T8): only self-tested tools land here.
+CREATE TABLE IF NOT EXISTS tools (
+  id TEXT PRIMARY KEY, ts TEXT, scope TEXT, agent_dir TEXT,
+  name TEXT, description TEXT, args_schema_json TEXT, code TEXT,
+  self_test_passed INTEGER, created_by_seat TEXT, model TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_tools_scope ON tools(scope, ts);
+
+-- prompt trace layer (hardening 2026-07-10): one row per router dispatch, FULL messages as sent.
+-- RAW by design — a LOCAL-only debugging surface; rows never leave the box.
+CREATE TABLE IF NOT EXISTS model_traces (
+  id TEXT PRIMARY KEY, ts TEXT, scope TEXT,
+  seat TEXT, backend TEXT, model TEXT, zone TEXT,
+  messages_json TEXT, response_text TEXT,
+  parsed_ok INTEGER, tokens_in INTEGER, tokens_out INTEGER,
+  cost_usd REAL, latency_ms INTEGER, badge TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_model_traces_scope ON model_traces(scope, ts);

@@ -65,7 +65,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  background: var(--ink);
+  background: var(--seal);
   color: var(--raw-on);
   border-radius: var(--r-sm);
   font-size: var(--fs-xs);

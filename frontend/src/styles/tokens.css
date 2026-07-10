@@ -83,4 +83,85 @@
 
   --maxw: 1240px;
   --nav-h: 68px;
+
+  /* ---- Sealed fills (dark blocks that stay dark in every theme) ---- */
+  --seal: var(--ink);
+  --seal-on: var(--raw-on);
+  --glow-accent: 0 0 0 0 transparent;
+}
+
+/* =====================================================================
+   Inside the walls — the platform lives in sealed midnight.
+   Same semantic tokens, remapped: every module stylesheet that speaks
+   var(--surface)/var(--text-muted)/washes flips with zero edits.
+   ===================================================================== */
+[data-temp="inside"] {
+  --ink: #e9f4f8;
+  --ink-2: #cfe2e9;
+  --paper: #060f14;
+  --surface: #0a1a21;
+  --surface-sunk: #071319;
+  --surface-raised: #0d2029;
+  --hairline: #163542;
+  --hairline-soft: #112834;
+  --text: #dcebf0;
+  --text-muted: #85a0aa;
+  --text-faint: #567179;
+
+  --accent: #38a6d2;
+  --accent-strong: #85d3f0;
+  --accent-mid: #216f92;
+  --accent-pale: #0e2c3a;
+  --accent-wash: rgba(56, 166, 210, 0.09);
+
+  --zone-local: #4cb4dc;
+  --zone-local-wash: rgba(76, 180, 220, 0.1);
+  --zone-amd: #e2a35e;
+  --zone-amd-wash: rgba(226, 163, 94, 0.1);
+  --zone-custom: #8fa0cd;
+  --zone-custom-wash: rgba(143, 160, 205, 0.1);
+  --zone-external: #92a4ae;
+  --zone-external-wash: rgba(146, 164, 174, 0.08);
+
+  --raw: #030a0e;
+  --raw-on: #bfe3f2;
+
+  --ok: #4bcb90;
+  --ok-wash: rgba(75, 203, 144, 0.1);
+  --warn: #e2a35e;
+  --warn-wash: rgba(226, 163, 94, 0.1);
+  --danger: #ff5f65;
+  --danger-wash: rgba(255, 95, 101, 0.1);
+  --danger-strong: #ff888c;
+
+  --seal: #030a0e;
+  --seal-on: #bfe3f2;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 10px rgba(0, 0, 0, 0.35);
+  --glow-accent: 0 0 0 1px rgba(56, 166, 210, 0.22), 0 0 26px rgba(56, 166, 210, 0.12);
+
+  color-scheme: dark;
+}
+
+/* Sovereign Mode deepens the interior: shields up, everything re-tints
+   to the sealed teal. Sits on the same element as data-temp. */
+[data-temp="inside"][data-sovereign="true"] {
+  --paper: #03090c;
+  --surface: #061419;
+  --surface-sunk: #040e12;
+  --surface-raised: #081c22;
+  --hairline: #12333b;
+  --hairline-soft: #0d262d;
+
+  --accent: #3fd8c4;
+  --accent-strong: #8ceadb;
+  --accent-mid: #1f7a6e;
+  --accent-pale: #0a2a28;
+  --accent-wash: rgba(63, 216, 196, 0.08);
+  --zone-local: #3fd8c4;
+  --zone-local-wash: rgba(63, 216, 196, 0.1);
+
+  --glow-accent: 0 0 0 1px rgba(63, 216, 196, 0.24), 0 0 26px rgba(63, 216, 196, 0.12);
 }
