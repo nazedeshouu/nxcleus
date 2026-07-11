@@ -1,6 +1,7 @@
 import { TestTube, Bug, Scales, Target, SealCheck, ArrowRight, Wrench } from "@phosphor-icons/react";
 import { Link } from "react-router-dom";
 import { Panel, type PanelStatus } from "./Panel";
+import { ShortId } from "../ui/ShortId";
 import type { JobView } from "../../store/jobStore";
 
 export function ValidationWall({ view }: { view: JobView }) {
@@ -150,7 +151,7 @@ export function DeliveryMoment({ view }: { view: JobView }) {
     <Panel title="Delivered to registry" icon={SealCheck} status="ok" tag="stage 7">
       <div className="bv-deliver">
         <SealCheck weight="fill" className="bv-deliver-icon" />
-        <div className="bv-deliver-title">{d.process_id} · v{d.version}</div>
+        <div className="bv-deliver-title"><ShortId id={d.process_id} /> · v{d.version}</div>
         <div className="bv-deliver-pkg">
           {d.package.plan && <span className="bv-deliver-item">plan</span>}
           {d.package.docs && <span className="bv-deliver-item">docs</span>}

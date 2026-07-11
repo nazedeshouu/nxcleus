@@ -31,6 +31,7 @@
   flex-direction: column;
   gap: 18px;
   padding: 18px 14px;
+  overflow: hidden;
   background: color-mix(in srgb, var(--surface-sunk) 72%, transparent);
   border-right: 1px solid var(--hairline-soft);
   backdrop-filter: saturate(140%) blur(14px);
@@ -67,31 +68,39 @@
   width: 17px;
   height: 17px;
 }
-[data-collapsed="true"] .railToggle {
-  display: none;
+/* collapsed: stack the mark and the toggle so the rail can still be reopened */
+[data-collapsed="true"] .sidebarTop {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 4px 0 0;
 }
 
-/* New process CTA */
+/* New process — a native cockpit control, not a marketing button */
 .cta {
   display: flex;
   align-items: center;
-  gap: 0.6em;
-  padding: 10px 14px;
-  border-radius: var(--r-md);
-  background: var(--accent);
-  color: var(--paper);
-  font-size: var(--fs-sm);
+  gap: 0.55em;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
   font-weight: 600;
-  box-shadow: var(--glow-accent);
-  transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
 }
 .cta:hover {
-  background: var(--accent-strong);
-  transform: translateY(-1px);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--ink);
 }
 .cta svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   flex: none;
 }
 [data-collapsed="true"] .cta {

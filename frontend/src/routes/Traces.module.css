@@ -215,14 +215,16 @@
 .m_assistant .msgRole { color: var(--ok); }
 .msgBody {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  line-height: 1.6;
-  padding: 10px 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-size: 0.72rem;
+  line-height: 1.7;
+  padding: 12px 14px;
+  white-space: pre-wrap;      /* preserve prompt formatting, but wrap */
+  overflow-wrap: anywhere;    /* break even unspaced tokens (long ids, minified json) */
+  word-break: normal;
+  tab-size: 2;
   color: var(--ink);
-  max-height: 340px;
-  overflow-y: auto;
+  max-height: min(340px, 42vh); /* long system prompts scroll inside the box, never the page */
+  overflow: auto;             /* contain both axes so nothing escapes the container */
   margin: 0;
 }
 .copy {

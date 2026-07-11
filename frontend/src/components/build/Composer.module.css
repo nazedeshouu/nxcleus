@@ -100,6 +100,21 @@
   line-height: 1.45;
   color: var(--ink);
 }
+/* reasoning-heavy tasks (semantic / multi-hop) — cyan micro-badge that draws the eye first */
+.reason {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+  border-radius: var(--r-xs);
+  padding: 1px 6px;
+  margin-right: 8px;
+  vertical-align: 1.5px;
+}
 .chipValue {
   font-size: var(--fs-xs);
   line-height: 1.4;

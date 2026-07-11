@@ -76,7 +76,7 @@ export function PlatformLayout() {
         <aside className={styles.sidebar}>
           <div className={styles.sidebarTop}>
             <Link to="/" className={styles.brand} aria-label="Nxcleus home">
-              <Logo size={19} tone="invert" />
+              <Logo size={19} tone="invert" markOnly={collapsed} />
             </Link>
             <button className={styles.railToggle} onClick={toggleRail} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label="Toggle sidebar">
               <SidebarSimple weight="regular" />

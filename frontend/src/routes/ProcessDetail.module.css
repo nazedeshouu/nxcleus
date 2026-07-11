@@ -340,11 +340,6 @@
 .runHead:hover {
   background: var(--surface-sunk);
 }
-.runId {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-}
 .runStat {
   display: flex;
   gap: 16px;

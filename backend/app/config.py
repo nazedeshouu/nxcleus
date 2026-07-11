@@ -12,9 +12,12 @@ from pathlib import Path
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# app/config.py -> app -> backend -> repo root
-REPO_ROOT = Path(__file__).resolve().parents[2]
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
+# app/config.py -> app -> backend -> repo root (local). The container flattens backend/ into /app,
+# so parents[2] overshoots to '/'; anchor on the nearest ancestor that actually holds infra/ so
+# infra-relative paths (seeds corpora, seats/models yaml) resolve in BOTH layouts. (ponytail)
+_here = Path(__file__).resolve()
+REPO_ROOT = next((p for p in _here.parents if (p / "infra").is_dir()), _here.parents[2])
+BACKEND_ROOT = _here.parents[1]
 
 
 def _resolve(path_str: str) -> Path:
@@ -85,7 +88,7 @@ class Settings(BaseSettings):
     sandbox_max_concurrent: int = 1
     sandbox_max_units: int = 250                # per-run scope guard (09 §4) — LLM-judged units only
     sql_step_row_cap: int = 5000                # sql topology steps: max candidate rows returned
-    sql_step_timeout_s: float = 10.0
+    sql_step_timeout_s: float = 60.0           # cross-row self-joins over 100k+ row corpora (insurer
 
     # --- prompt trace layer (LOCAL-only debugging; rows never leave the box)
     trace_prompts: bool = True

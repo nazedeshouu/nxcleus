@@ -112,6 +112,12 @@
   width: 19px;
   height: 19px;
 }
+.companyMark {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  display: block;
+}
 .companyNameRow {
   display: flex;
   align-items: center;

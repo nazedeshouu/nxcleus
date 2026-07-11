@@ -7,7 +7,7 @@ import { api, companyPrompts, type CompanySummary } from "../api/client";
 import { DataClassChip } from "../components/ui/DataClassChip";
 import { OriginBadge } from "../components/ui/OriginBadge";
 import { Composer, type ComposerSubmit } from "../components/build/Composer";
-import { businessValueFor } from "../lib/businessValue";
+import { businessValueFor, isReasoningPrompt } from "../lib/businessValue";
 import { useDemoToken } from "../api/useDemoToken";
 import { compact } from "../lib/format";
 import styles from "./Sandbox.module.css";
@@ -22,6 +22,9 @@ const PERSONA: Record<string, { icon: Icon; desc: string }> = {
   freight: { icon: Truck, desc: "Logistics. Denied-party screening of consignees and lanes against live watchlists." },
   market: { icon: Storefront, desc: "Online marketplace. Seller fraud, refund abuse, and listing-policy sweeps." },
 };
+
+// Generated raster brandmarks (Higgsfield) live at /brands/<id>.svg for these; others use the Phosphor icon.
+const BRAND = new Set(["bank", "clinic", "lawfirm"]);
 
 // ponytail: static fallback so the sandbox renders (and screenshots) with no backend
 const FALLBACK_COMPANIES: CompanySummary[] = Object.entries({
@@ -151,7 +154,10 @@ function DataBrowser({ companyId }: { companyId: string }) {
 function AskPanel({ company }: { company: CompanySummary }) {
   const navigate = useNavigate();
   const suggestions = useMemo(
-    () => companyPrompts(company).map((p) => ({ prompt: p, value: businessValueFor(company.id, p) })),
+    () =>
+      companyPrompts(company)
+        .map((p) => ({ prompt: p, value: businessValueFor(company.id, p), reasoning: isReasoningPrompt(p) }))
+        .sort((a, b) => Number(b.reasoning) - Number(a.reasoning)), // reasoning-heavy tasks lead
     [company],
   );
 
@@ -188,7 +194,11 @@ function CompanyCard({ company, selected, onSelect, onDelete }: {
   return (
     <div className={styles.companyWrap}>
       <button className={`${styles.company} ${selected ? styles.sel : ""}`} onClick={onSelect}>
-        <div className={styles.companyIcon}><Ico weight="fill" /></div>
+        <div className={styles.companyIcon}>
+          {BRAND.has(company.id)
+            ? <img src={`/brands/${company.id}.svg`} alt="" className={styles.companyMark} />
+            : <Ico weight="fill" />}
+        </div>
         <div className={styles.companyNameRow}>
           <span className={styles.companyName}>{company.name}</span>
           {custom && <OriginBadge origin={company.origin!} size="xs" />}

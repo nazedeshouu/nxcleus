@@ -22,7 +22,7 @@ interface Props {
   variant: "build" | "sandbox";
   /** sandbox: the fixed data source; its prompts + business values seed the chips */
   boundCompany?: CompanySummary;
-  suggestions?: Array<{ prompt: string; value?: string }>;
+  suggestions?: Array<{ prompt: string; value?: string; reasoning?: boolean }>;
   placeholder?: string;
   submitLabel: string;
   onSubmit: (p: ComposerSubmit) => Promise<void>;
@@ -142,7 +142,10 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
               onClick={() => setRequest(s.prompt)}
               title={s.value}
             >
-              <span className={styles.chipText}>{s.prompt}</span>
+              <span className={styles.chipText}>
+                {s.reasoning && <span className={styles.reason}>reasoning</span>}
+                {s.prompt}
+              </span>
               {s.value && <span className={styles.chipValue}>{s.value}</span>}
             </button>
           ))}

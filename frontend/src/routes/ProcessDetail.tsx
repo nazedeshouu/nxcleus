@@ -9,6 +9,7 @@ import {
 import { api, type EconProcess, type NextStep, type PackageInvoice, type PackageManifest, type ProcessSummary, type ProcessVersion, type RunUnit, type VersionDiff } from "../api/client";
 import { useDemoToken } from "../api/useDemoToken";
 import { useBreadcrumb } from "../components/shell/breadcrumbs";
+import { ShortId } from "../components/ui/ShortId";
 import { usd } from "../lib/format";
 import styles from "./ProcessDetail.module.css";
 
@@ -154,7 +155,7 @@ function VersionsCard({ versions }: { versions: ProcessVersion[] }) {
                 {v.diff?.triage === "amend" ? "Amendment" : v.version === 1 ? "Initial certification" : "Revision"}
                 {v.status === "certified" && " · certified"}
               </div>
-              <div className={styles.verMetaSub}>{v.plan_id}</div>
+              <div className={styles.verMetaSub}><ShortId id={v.plan_id} /></div>
             </div>
             {v.version === sel ? <CaretDown weight="bold" style={{ width: 12, color: "var(--accent)" }} /> : <CaretRight weight="bold" style={{ width: 12, color: "var(--text-faint)" }} />}
           </div>
@@ -424,7 +425,7 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
     <div className={styles.runRow}>
       <div className={styles.runHead} onClick={() => setOpen((o) => !o)}>
         {open ? <CaretDown weight="bold" style={{ width: 13, color: "var(--accent)" }} /> : <CaretRight weight="bold" style={{ width: 13, color: "var(--text-faint)" }} />}
-        <span className={styles.runId}>{run.run_id.replace(/^run_/, "run · ")}</span>
+        <ShortId id={run.run_id} />
         <div className={styles.runStat}>
           <span><b>{run.units}</b> units</span>
           <span className="good"><b className="good">{usd(run.cost_usd)}</b></span>
