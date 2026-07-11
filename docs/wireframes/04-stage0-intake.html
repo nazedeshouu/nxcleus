@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Stage 0 · Intake, Policy &amp; Boundary</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ================= page-scoped one-offs (stage0 only) =============== */
+#wf-stage0 .s0-sech{display:flex; align-items:center; gap:var(--sp3); margin:var(--sp6) 0 var(--sp3)}
+#wf-stage0 .s0-sech .num{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-faint); border:1px solid var(--hairline); border-radius:var(--r-xs); padding:2px 7px}
+#wf-stage0 .s0-sech h2{font-size:var(--fs-h2)}
+#wf-stage0 .s0-mic{display:flex; align-items:center; gap:var(--sp3); padding:var(--sp4); border:1px dashed var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk)}
+#wf-stage0 .s0-mic .orb{width:44px; height:44px; border-radius:50%; flex:none; display:grid; place-items:center; border:1px solid var(--zone-local); color:var(--zone-local); background:var(--zone-local-wash); font-size:18px}
+#wf-stage0 .s0-wave{display:flex; align-items:center; gap:3px; height:22px}
+#wf-stage0 .s0-wave i{width:3px; border-radius:2px; background:var(--zone-local); opacity:.55}
+#wf-stage0 .s0-boundary{display:grid; grid-template-columns:1fr auto 1fr; gap:0; align-items:stretch; border:1px solid var(--hairline); border-radius:var(--r-md); overflow:hidden}
+@media(max-width:760px){#wf-stage0 .s0-boundary{grid-template-columns:1fr}}
+#wf-stage0 .s0-zone{padding:var(--sp4)}
+#wf-stage0 .s0-zone.local{background:var(--zone-local-wash)}
+#wf-stage0 .s0-zone.ext{background:var(--zone-external-wash)}
+#wf-stage0 .s0-wall{width:2px; background:repeating-linear-gradient(180deg,var(--seal) 0 6px,transparent 6px 12px); position:relative}
+@media(max-width:760px){#wf-stage0 .s0-wall{width:auto; height:2px; background:repeating-linear-gradient(90deg,var(--seal) 0 6px,transparent 6px 12px)}}
+#wf-stage0 .s0-zt{font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2); display:flex; align-items:center; gap:6px}
+#wf-stage0 .s0-item{display:flex; align-items:center; gap:8px; font-size:var(--fs-sm); padding:5px 0; border-bottom:1px solid var(--hairline-soft)}
+#wf-stage0 .s0-item:last-child{border-bottom:0}
+#wf-stage0 .s0-item .ph{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--accent-strong)}
+#wf-stage0 .s0-code{font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.7; color:var(--text-muted); background:var(--raw); border:1px solid var(--hairline); border-radius:var(--r-sm); padding:var(--sp4); overflow-x:auto; white-space:pre}
+#wf-stage0 .s0-code .k{color:var(--accent-strong)} #wf-stage0 .s0-code .s{color:var(--seal)} #wf-stage0 .s0-code .c{color:var(--text-faint)}
+#wf-stage0 .s0-mode{display:flex; gap:var(--sp3); align-items:stretch}
+@media(max-width:640px){#wf-stage0 .s0-mode{flex-direction:column}}
+#wf-stage0 .s0-modecard{flex:1; padding:var(--sp4); border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk)}
+#wf-stage0 .s0-modecard.sel{border-color:var(--accent); background:var(--accent-wash)}
+#wf-stage0 .s0-modecard .mt{font-weight:660; color:var(--text); display:flex; align-items:center; justify-content:space-between}
+#wf-stage0 .s0-attach{display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--hairline-soft); border-radius:var(--r-sm); background:var(--surface-raised); font-size:var(--fs-sm)}
+#wf-stage0 .s0-attach .ic{font-size:15px}
+#wf-stage0 .s0-q{padding:12px 0; border-bottom:1px solid var(--hairline-soft)}
+#wf-stage0 .s0-q:last-child{border-bottom:0}
+#wf-stage0 .s0-q .tag{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--warn); text-transform:uppercase; letter-spacing:.08em}
+#wf-stage0 .tnum{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a class="active" href="02-build-jobs.html">Build</a>
+      <a href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START stage0-->
+<section class="wf-page" id="wf-stage0">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Build Pipeline</b> · Wireframe</div>
+    <h1 class="wf-title">Stage 0 — Intake, Policy &amp; Boundary &nbsp;<span class="wf-route">/build/:jobId · stage 0</span></h1>
+    <p class="wf-sub">The customer describes the automation they want, states what must never leak, and attaches context. The local <span class="wf-chip seat">trust</span> seat elicits, classifies build-vs-process, and seals the data boundary — composing the sanitized planner brief before a single token crosses to the frontier.</p>
+
+    <!-- legend -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- ==== THE WIREFRAME ==== -->
+
+    <!-- pipeline stepper -->
+    <div class="wf-steps">
+      <span class="wf-step active"><span class="n">0</span> Intake &amp; boundary</span>
+      <span class="wf-step"><span class="n">1</span> Planning</span>
+      <span class="wf-step"><span class="n">2</span> Certify</span>
+      <span class="wf-step"><span class="n">3</span> Quote</span>
+      <span class="wf-step"><span class="n">4</span> Codegen</span>
+      <span class="wf-step"><span class="n">5</span> Consolidate</span>
+      <span class="wf-step"><span class="n">6</span> QA</span>
+      <span class="wf-step"><span class="n">7</span> Deliver</span>
+    </div>
+    <div class="row wrap" style="gap:8px;margin-bottom:8px">
+      <span class="wf-chip seat">trust</span>
+      <span class="wf-chip local">Local · MI300X</span>
+      <span class="muted" style="font-size:var(--fs-xs)">job <code>job_01JQ8K…</code> · status <b class="strong">intake</b> · &lt;10 s / turn target</span>
+    </div>
+
+    <!-- 1 · REQUEST BOX -->
+    <div class="s0-sech"><span class="num">01</span><h2>Automation request</h2><span class="wf-badge fn">Functional</span></div>
+    <div class="wf-grid split">
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-field">
+          <label class="wf-label" for="s0-req">What should Nxcleus automate?<span class="req">*</span></label>
+          <textarea class="wf-textarea" id="s0-req" style="min-height:120px" placeholder="e.g. Screen every new customer application against sanctions and PEP lists, score AML risk, and route anything over threshold to a compliance officer with a filled SAR draft.">Onboard new banking customers end-to-end: OCR their ID &amp; proof-of-address, screen each applicant against OFAC / EU / UN sanctions and PEP lists, compute an AML risk score from our tiering rules, and auto-clear low-risk while routing amber/red to a compliance officer with a pre-filled review packet. Run it over the backlog of ~200 pending applications, then keep it running on new arrivals.</textarea>
+          <div class="wf-hint">Plain language. <span class="wf-chip seat">trust</span> runs a multi-turn elicitation (<code>job_messages</code>) and drafts the spec each turn. The verbatim text is persisted to <code>jobs.request</code> — the raw anchor stage 2 &amp; operate read from.</div>
+        </div>
+        <div class="wf-btnrow">
+          <button class="wf-btn primary">Start build <sup class="wf-tag fn">POST /jobs</sup></button>
+          <button class="wf-btn ghost">Send follow-up <sup class="wf-tag fn">/messages</sup></button>
+          <span class="spacer"></span>
+          <span class="wf-chip custom">Sovereign off</span>
+        </div>
+      </div>
+      <div class="wf-panel sunk">
+        <div class="wf-eyebrow">Elicitation transcript</div>
+        <div class="stack g3">
+          <div class="wf-card"><div class="faint" style="font-size:var(--fs-micro);text-transform:uppercase;letter-spacing:.1em">trust</div><div style="font-size:var(--fs-sm)">Is the SAR draft the deliverable, or just the routing decision?</div></div>
+          <div class="wf-card" style="border-color:var(--accent-mid)"><div class="faint" style="font-size:var(--fs-micro);text-transform:uppercase;letter-spacing:.1em">customer</div><div style="font-size:var(--fs-sm)">Both — reviewer needs the packet <i>and</i> the pass/route flag.</div></div>
+          <div class="wf-note"><span class="pin">i</span><div>Turns stream over <code>/jobs/{id}/events</code> as <code>intake.message</code> — the panel is SSE-driven, not polled.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · CLARIFYING QUESTIONS -->
+    <div class="s0-sech"><span class="num">02</span><h2>Clarifying questions</h2><span class="wf-badge fn">Functional</span><span class="muted" style="font-size:var(--fs-xs)">status <b class="strong">awaiting_input</b></span></div>
+    <div class="wf-panel" data-wf="fn">
+      <p class="muted" style="margin-top:0;font-size:var(--fs-sm)">The trust brief may raise up to 3 questions — only where the answer <i>changes the built artifact</i> (delivery · threshold · population · scope). The job parks at <code>awaiting_input</code> until answered.</p>
+      <div class="s0-q">
+        <div class="row between"><label class="wf-label" for="s0-a1" style="margin:0">What sanctions/PEP sources are authoritative?</label><span class="tag">scope</span></div>
+        <div class="wf-inputrow" style="margin-top:6px"><input class="wf-input" id="s0-a1" placeholder="e.g. OFAC SDN + EU consolidated + UN" value="OFAC SDN, EU consolidated, UN — refreshed daily"></div>
+        <div class="wf-hint">Folds into <code>spec.clarification_answers</code>; intake re-runs bound to the answer.</div>
+      </div>
+      <div class="s0-q">
+        <div class="row between"><label class="wf-label" for="s0-a2" style="margin:0">Auto-clear threshold — what risk score routes to a human?</label><span class="tag">threshold</span></div>
+        <div class="wf-inputrow" style="margin-top:6px"><input class="wf-input" id="s0-a2" placeholder="e.g. ≥ 60 → compliance review" value="≥ 60 amber to officer; ≥ 80 red, hard-hold"></div>
+        <div class="wf-hint">A numeric rule — will become an <code>OracleVector</code> the oracle checks blind at stage 6.</div>
+      </div>
+      <div class="s0-q">
+        <div class="row between"><label class="wf-label" for="s0-a3" style="margin:0">Deliverable format for the reviewer packet?</label><span class="tag">delivery</span></div>
+        <div class="wf-inputrow" style="margin-top:6px"><input class="wf-input" id="s0-a3" placeholder="e.g. one PDF packet per flagged applicant" value="PDF packet per applicant + a queue dashboard"></div>
+        <div class="wf-hint">Delivery answers populate <code>spec.deliverable</code>.</div>
+      </div>
+      <div class="wf-btnrow" style="margin-top:16px">
+        <button class="wf-btn primary">Submit answers &amp; resume <sup class="wf-tag fn">POST /jobs/{id}/answers</sup></button>
+        <span class="muted" style="font-size:var(--fs-xs)">Sandbox / reinstantiate jobs auto-answer and never park.</span>
+      </div>
+    </div>
+
+    <!-- 3 · CONFIDENTIALITY POLICY (D11) -->
+    <div class="s0-sech"><span class="num">03</span><h2>Confidentiality policy <span class="muted" style="font-weight:400;font-size:var(--fs-sm)">(D11)</span></h2><span class="wf-badge fn">Functional</span></div>
+    <div class="wf-panel">
+      <p class="muted" style="margin-top:0;font-size:var(--fs-sm)">State what must never leak, through any combination of three paths. <span class="wf-chip seat">trust</span> distills all sources into a structured <b class="strong">RedactionPolicy</b> (<code>jobs.policy_json</code>). Endpoint <code>POST /jobs/{id}/policy</code> is wired for all three; per-path fidelity differs (marked below).</p>
+
+      <div class="wf-field">
+        <label class="wf-label">Policy source</label>
+        <div class="wf-radios">
+          <span class="wf-radio"><span class="dot"></span>Upload document <sup class="wf-tag plan">plan</sup></span>
+          <span class="wf-radio sel"><span class="dot"></span>Type text <sup class="wf-tag fn">fn</sup></span>
+          <span class="wf-radio"><span class="dot"></span>Voice dictate <sup class="wf-tag plan">plan</sup></span>
+        </div>
+        <div class="wf-hint">All three may be combined — <code>policy_json.sources[]</code> records each with its <code>kind</code>.</div>
+      </div>
+
+      <div class="wf-grid cols-2">
+        <!-- upload doc -->
+        <div class="stack g3" data-wf="plan">
+          <label class="wf-label" for="s0-doc">Upload policy document <span class="wf-badge plan">Planned</span></label>
+          <div class="wf-upload" id="s0-doc">Drop your terms-of-use / data-handling policy<br><span class="faint">PDF or text · dragged file never leaves the box</span></div>
+          <div class="wf-hint">Endpoint accepts the multipart POST, but doc <b class="strong">file parsing/OCR is not yet wired</b> — the handler currently reads the <code>text</code> field only, so paste-in works; file ingest is speced (§2.2), not built.</div>
+        </div>
+        <!-- typed text -->
+        <div class="stack g3" data-wf="fn">
+          <label class="wf-label" for="s0-pol">Type your policy <span class="wf-badge fn">Functional</span></label>
+          <textarea class="wf-textarea" id="s0-pol" placeholder="e.g. Never leak client legal names, account numbers, or our internal fee schedule.">Never leak client legal names or account numbers. Do not expose our internal risk-tier table names or the fee schedule. Mask any government ID, DOB, and contact details before anything leaves the local zone.</textarea>
+          <div class="wf-hint"><code>trust.distill_policy()</code> turns this into typed rules (<code>never_leak</code> / <code>mask</code> / <code>generalize</code>) with a <code>customer_policy §</code> origin. Emits <code>intake.policy_registered</code>.</div>
+        </div>
+      </div>
+
+      <!-- voice dictate -->
+      <div class="wf-field" style="margin-top:16px">
+        <label class="wf-label">Voice dictate <span class="wf-badge plan">Planned</span> <span class="muted" style="font-weight:400">— capture UI</span></label>
+        <div class="s0-mic">
+          <div class="orb">●</div>
+          <div class="s0-wave" aria-hidden="true">
+            <i style="height:8px"></i><i style="height:16px"></i><i style="height:22px"></i><i style="height:12px"></i><i style="height:18px"></i><i style="height:6px"></i><i style="height:14px"></i><i style="height:20px"></i><i style="height:10px"></i><i style="height:16px"></i><i style="height:8px"></i>
+          </div>
+          <div class="stack g2" style="flex:1">
+            <span style="font-size:var(--fs-sm);color:var(--text)">Record dictation</span>
+            <span class="wf-hint" style="margin:0">Transcribed by <b class="strong">local Whisper</b> — the recording never leaves the box.</span>
+          </div>
+          <button class="wf-btn sm ghost">Start recording</button>
+        </div>
+        <div class="wf-note"><span class="pin">i</span><div>Transcription backend <span class="wf-badge fn">Functional</span> — <code>POST /jobs/{id}/policy</code> with <code>kind=voice</code> runs <code>whisper.transcribe()</code> (whisper.cpp on the VM, O9), gated on the local model being present (<code>WhisperUnavailable</code> → 400). The in-browser <b class="strong">recorder/capture control is Planned</b> — no MediaRecorder wiring in the current IntakePanel yet.</div></div>
+      </div>
+
+      <div class="wf-hr"></div>
+      <div class="wf-eyebrow">Distilled RedactionPolicy — <code>jobs.policy_json</code></div>
+      <div class="wf-grid cols-3" style="margin-top:8px">
+        <div class="wf-card"><div class="tnum" style="font-size:1.6rem;font-weight:680">9</div><div class="faint" style="font-size:var(--fs-xs)">policy rules total</div></div>
+        <div class="wf-card"><div class="tnum" style="font-size:1.6rem;font-weight:680">5</div><div class="faint" style="font-size:var(--fs-xs)">PII baseline <span class="muted">(always on)</span></div></div>
+        <div class="wf-card"><div class="tnum" style="font-size:1.6rem;font-weight:680">4</div><div class="faint" style="font-size:var(--fs-xs)">customer clauses</div></div>
+      </div>
+      <table class="wf-table" style="margin-top:12px">
+        <thead><tr><th>Rule</th><th>Kind</th><th>Description</th><th>Origin</th></tr></thead>
+        <tbody>
+          <tr><td><b class="strong">RP-1</b></td><td>never_leak</td><td>Client legal names</td><td class="mono" style="font-size:var(--fs-xs)">customer_policy §1</td></tr>
+          <tr><td><b class="strong">RP-2</b></td><td>never_leak</td><td>Account numbers</td><td class="mono" style="font-size:var(--fs-xs)">customer_policy §1</td></tr>
+          <tr><td><b class="strong">RP-3</b></td><td>generalize</td><td>Internal risk-tier table names</td><td class="mono" style="font-size:var(--fs-xs)">customer_policy §2</td></tr>
+          <tr><td><b class="strong">RP-4</b></td><td>mask</td><td>Fee schedule figures</td><td class="mono" style="font-size:var(--fs-xs)">customer_policy §2</td></tr>
+          <tr><td><b class="strong">PB-*</b></td><td>mask</td><td>Names · accounts · contacts · gov IDs · credentials</td><td class="mono" style="font-size:var(--fs-xs)">pii_baseline</td></tr>
+        </tbody>
+      </table>
+      <p class="wf-hint">No policy provided → the PII baseline alone applies, stated explicitly. This table renders from the <code>policy_summary</code> the endpoint returns and the <code>intake.policy_registered</code> event.</p>
+    </div>
+
+    <!-- 4 · CONTEXT INTAKE -->
+    <div class="s0-sech"><span class="num">04</span><h2>Context intake <span class="muted" style="font-weight:400;font-size:var(--fs-sm)">(§2.2)</span></h2><span class="wf-badge plan">Planned</span></div>
+    <div class="wf-panel" data-wf="plan">
+      <p class="muted" style="margin-top:0;font-size:var(--fs-sm)">Attach a codebase, database, or files. Each is ingested locally into a <i>raw</i> rendition (kept for stages 2/4) and a <i>sanitized</i> rendition (for the planner brief). <b class="strong">No attach endpoint exists yet</b> — <code>POST /jobs</code> takes only <code>request</code> + <code>policy_text</code>; ingestion is speced (§2.2), not built.</p>
+      <div class="wf-btnrow" style="margin-bottom:16px">
+        <button class="wf-btn">＋ Add codebase <sup class="wf-tag plan">plan</sup></button>
+        <button class="wf-btn">＋ Add database <sup class="wf-tag plan">plan</sup></button>
+        <button class="wf-btn">＋ Add files <sup class="wf-tag plan">plan</sup></button>
+        <button class="wf-btn ghost">＋ Connector <sup class="wf-tag plan">plan</sup></button>
+      </div>
+      <div class="stack g3">
+        <div class="s0-attach">
+          <span class="ic">▤</span>
+          <div class="stack" style="flex:1"><span class="strong">onboarding-svc</span> <span class="wf-hint" style="margin:0">repo · code-map: 214 files · 31 modules · FastAPI + SQLAlchemy</span></div>
+          <span class="wf-chip local">Raw local</span><span class="wf-chip sanitized">Sanitized brief</span>
+        </div>
+        <div class="s0-attach">
+          <span class="ic">▦</span>
+          <div class="stack" style="flex:1"><span class="strong">core_banking (schema dump)</span> <span class="wf-hint" style="margin:0">12 tables · schema-only, <b class="strong">never rows</b> · names maskable per RP-3</span></div>
+          <span class="wf-chip raw">Raw local</span><span class="wf-chip sanitized">«TABLE_A»</span>
+        </div>
+        <div class="s0-attach">
+          <span class="ic">▧</span>
+          <div class="stack" style="flex:1"><span class="strong">3 files</span> <span class="wf-hint" style="margin:0">sample_passport.pdf · proof_of_address.pdf · fee_schedule.xlsx · OCR'd locally (pytesseract)</span></div>
+          <span class="wf-chip local">Local OCR</span>
+        </div>
+      </div>
+      <div class="wf-note warn"><span class="pin">!</span><div>Attached list &amp; counts are <span class="wf-badge stub">Stub</span> presenter data — sourced from the <code>intake.context_mapped</code> event shape (files/symbols/tables/masked-identifiers), which no attach endpoint yet emits.</div></div>
+    </div>
+
+    <!-- 5 · MODE CLASSIFICATION -->
+    <div class="s0-sech"><span class="num">05</span><h2>Mode classification</h2><span class="wf-badge fn">Functional</span><span class="muted" style="font-size:var(--fs-xs)">SSE · <code>intake.classified</code></span></div>
+    <div class="wf-panel" data-wf="fn">
+      <p class="muted" style="margin-top:0;font-size:var(--fs-sm)"><span class="wf-chip seat">trust</span> auto-classifies whether this job builds <b class="strong">software</b> or runs a <b class="strong">process</b> over a corpus. Streamed on <code>/jobs/{id}/events</code>; the recommendation is confirmable below.</p>
+      <div class="s0-mode">
+        <div class="s0-modecard sel">
+          <div class="mt">Build <span class="wf-chip sanitized">recommended</span></div>
+          <p class="muted" style="font-size:var(--fs-sm);margin:8px 0 0">Produces a versioned automation (modules + interfaces + DAG). The screening + scoring logic is net-new code targeting the runtime contract.</p>
+        </div>
+        <div class="s0-modecard">
+          <div class="mt">Process <span class="faint" style="font-size:var(--fs-xs)">alt</span></div>
+          <p class="muted" style="font-size:var(--fs-sm);margin:8px 0 0">Fan-out over a fixed corpus with per-unit steps + aggregation. Fits the ~200-application backlog, but the reusable artifact is what's asked for.</p>
+        </div>
+      </div>
+      <div class="wf-note"><span class="pin">i</span><div><b class="strong">Rationale (streamed):</b> "Customer wants a durable, re-runnable onboarding automation, not a one-shot pass over the backlog — recommend <code>build</code>; the backlog becomes the first operate run." Persists to <code>spec.mode.recommended</code>; <code>confirmed</code> set at the gate below.</div></div>
+    </div>
+
+    <!-- 6 · DATA-BOUNDARY DECISION -->
+    <div class="s0-sech"><span class="num">06</span><h2>Data-boundary decision</h2><span class="wf-badge fn">Functional</span><span class="muted" style="font-size:var(--fs-xs)">SSE · <code>boundary.sanitized</code></span></div>
+    <p class="muted" style="font-size:var(--fs-sm);max-width:74ch">The seal moment: <span class="wf-chip seat">trust</span> extracts every value the policy + PII baseline forbid, replaces it with a typed placeholder, and files the raw→placeholder map in the <code>boundary_vault</code> — a local table never serialized outward. Left of the wall is what the frontier planner will <i>never</i> see.</p>
+
+    <div class="s0-boundary" data-wf="fn" style="margin:16px 0">
+      <div class="s0-zone local">
+        <div class="s0-zt"><span class="wf-chip local">Local</span> Kept RAW · sealed</div>
+        <div class="s0-item"><span class="wf-chip raw">raw</span> Client legal names <span class="spacer"></span><span class="ph">«PERSON_1..7»</span></div>
+        <div class="s0-item"><span class="wf-chip raw">raw</span> Account numbers <span class="spacer"></span><span class="ph">«ACCOUNT_A..»</span></div>
+        <div class="s0-item"><span class="wf-chip raw">raw</span> Real DB table names <span class="spacer"></span><span class="ph">«TABLE_A..L»</span></div>
+        <div class="s0-item"><span class="wf-chip raw">raw</span> Fee schedule figures <span class="spacer"></span><span class="ph">masked</span></div>
+        <div class="s0-item"><span class="wf-chip raw">raw</span> Gov IDs · DOB · contacts <span class="spacer"></span><span class="ph">«PII_*»</span></div>
+      </div>
+      <div class="s0-wall" aria-hidden="true"></div>
+      <div class="s0-zone ext">
+        <div class="s0-zt"><span class="wf-chip external">External</span> Crosses to planner · SANITIZED</div>
+        <div class="s0-item"><span class="wf-chip sanitized">safe</span> Entity: Applicant (structure only)</div>
+        <div class="s0-item"><span class="wf-chip sanitized">safe</span> Field shapes &amp; types</div>
+        <div class="s0-item"><span class="wf-chip sanitized">safe</span> «TABLE_A»(id, «FIELD_1»: decimal)</div>
+        <div class="s0-item"><span class="wf-chip sanitized">safe</span> Sanctions/PEP connector = mock</div>
+        <div class="s0-item"><span class="wf-chip sanitized">safe</span> Numeric rule: risk = weighted sum</div>
+      </div>
+    </div>
+
+    <div class="wf-grid split">
+      <div class="wf-panel">
+        <div class="wf-panel-h"><h3>SanitizedSpec — the planner brief <span class="muted" style="font-weight:400;font-size:var(--fs-sm)">jobs.spec_json</span></h3><span class="wf-badge stub">Stub</span></div>
+        <div class="s0-code"><span class="c">// §2.3 — no raw values below this line</span>
+{
+  <span class="k">"title"</span>: <span class="s">"KYC/AML customer onboarding"</span>,
+  <span class="k">"narrative"</span>: <span class="s">"sanitized restatement — no raw values"</span>,
+  <span class="k">"mode"</span>: { <span class="k">"recommended"</span>:<span class="s">"build"</span>, <span class="k">"confirmed"</span>:null },
+  <span class="k">"entities"</span>: [{ <span class="k">"name"</span>:<span class="s">"Applicant"</span>,
+    <span class="k">"fields"</span>:[{<span class="k">"name"</span>:<span class="s">"full_name"</span>,<span class="k">"type"</span>:<span class="s">"string"</span>,<span class="k">"pii"</span>:true}] }],
+  <span class="k">"numeric_rules"</span>: [{ <span class="k">"id"</span>:<span class="s">"NR-1"</span>,
+    <span class="k">"text"</span>:<span class="s">"risk_score = weighted sum of factors"</span> }],
+  <span class="k">"context_pack"</span>: {
+    <span class="k">"code_map"</span>:{<span class="k">"files"</span>:214,<span class="k">"framework"</span>:<span class="s">"FastAPI"</span>},
+    <span class="k">"db_schemas"</span>:[{<span class="k">"table"</span>:<span class="s">"«TABLE_A»"</span>,<span class="k">"fields"</span>:[…]}] },
+  <span class="k">"connectors"</span>: [{<span class="k">"name"</span>:<span class="s">"sanctions_list"</span>,<span class="k">"mock"</span>:true}],
+  <span class="k">"volume"</span>: {<span class="k">"units_estimate"</span>:200,<span class="k">"unit_noun"</span>:<span class="s">"application"</span>}
+}</div>
+        <p class="wf-hint">Presenter mock of the <code>spec_json</code> shape (§2.3). The live Build view renders the sensitivity summary from SSE; a full spec-JSON viewer on this route is not built — hence <b class="strong">Stub</b>.</p>
+      </div>
+
+      <div class="wf-panel sunk">
+        <div class="wf-panel-h"><h3>Sensitivity report</h3><span class="wf-badge fn">Functional</span></div>
+        <p class="muted" style="margin-top:0;font-size:var(--fs-sm)">The "what the frontier will never see" moment — carried by <code>boundary.sanitized</code>, citing your own rule IDs.</p>
+        <table class="wf-table">
+          <tbody>
+            <tr><td><b class="strong">7</b></td><td>PII fields masked</td></tr>
+            <tr><td><b class="strong">12</b></td><td>identifiers generalized</td></tr>
+            <tr><td><b class="strong">3</b></td><td>documents OCR'd (local)</td></tr>
+            <tr><td><b class="strong">RP-1, RP-3</b></td><td>policy rules applied</td></tr>
+          </tbody>
+        </table>
+        <div class="wf-note"><span class="pin">🔒</span><div>The raw→placeholder map lives in <code>boundary_vault</code> — never serialized into any artifact leaving <span class="wf-chip local">Local</span>. Rehydrated back to real values only by <span class="wf-chip seat">certifier</span> at stage 2, inside the wall.</div></div>
+      </div>
+    </div>
+
+    <!-- 7 · CONFIRM & CONTINUE -->
+    <div class="s0-sech"><span class="num">07</span><h2>Confirm &amp; continue</h2><span class="wf-badge fn">Functional</span></div>
+    <div class="wf-panel" data-wf="fn">
+      <div class="row between wrap" style="gap:16px">
+        <div class="stack g2">
+          <span class="strong">Confirm spec &amp; mode → open the boundary to the planner</span>
+          <span class="muted" style="font-size:var(--fs-sm)">Mode <b class="strong">build</b> · policy sealed (9 rules) · boundary set (7 masked). This is the gate to stage 1.</span>
+        </div>
+        <div class="wf-btnrow">
+          <button class="wf-btn danger">Abort <sup class="wf-tag fn">/abort</sup></button>
+          <button class="wf-btn primary">Confirm &amp; plan <sup class="wf-tag fn">POST /jobs/{id}/confirm-spec</sup></button>
+        </div>
+      </div>
+      <div class="wf-note"><span class="pin">i</span><div><code>confirm-spec</code> requires status <code>intake</code> (409 otherwise), writes <code>mode</code>, sets stage <code>planning</code>, and submits the job to the engine. From here the sanitized brief — and only the sanitized brief — crosses to <span class="wf-chip external">External</span> <span class="wf-chip seat">planner</span> (Fable 5).</div></div>
+    </div>
+
+    <!-- ==== status ledger ==== -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Request box · start build</td><td class="ev">POST /jobs</td><td>client.createJob({request, policy_text, sovereign}); backend/app/api/jobs.py create route present.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Follow-up turns</td><td class="ev">POST /jobs/{id}/messages</td><td>client.postMessage; adds job_message + emits intake.message (SSE).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Clarifying questions / resume</td><td class="ev">POST /jobs/{id}/answers</td><td>jobs.py post_answers (2026-07-10 hardening); parks at awaiting_input, folds spec.clarification_answers.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Policy — typed text</td><td class="ev">POST /jobs/{id}/policy</td><td>add_policy reads form/JSON text → trust.distill_policy → policy_json; emits intake.policy_registered.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Policy — document upload</td><td class="ev">POST /jobs/{id}/policy</td><td>Endpoint exists but non-voice multipart reads only the text field; doc file parsing/OCR (§2.2) not wired.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span> <span class="wf-badge plan">Planned</span></td><td>Policy — voice dictation</td><td class="ev">POST /jobs/{id}/policy · kind=voice</td><td>Backend whisper.transcribe() wired (gated on local Whisper; WhisperUnavailable→400). In-browser recorder/capture control not built — Planned.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Context intake — codebase / DB / files</td><td class="ev">— (no attach endpoint)</td><td>createJob body = {request, policy_text} only; ingestion + intake.context_mapped speced §2.2, not built.</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Attached-context list &amp; counts</td><td class="ev">fixture · intake.context_mapped shape</td><td>Presenter data (214 files / 12 tables / 3 docs); no endpoint emits it yet.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Mode classification result</td><td class="ev">SSE intake.classified</td><td>IntakePanel.tsx renders intake.classification from /jobs/{id}/events; trust seat emits.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Data-boundary / sensitivity report</td><td class="ev">SSE boundary.sanitized</td><td>adapt.ts case "intake.policy_registered"/boundary; IntakePanel bv-sanitize renders findings + never_leaves.</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>SanitizedSpec / planner-brief JSON preview</td><td class="ev">fixture · jobs.spec_json §2.3</td><td>Presenter mock of spec_json; no full spec-viewer on this route.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Confirm &amp; continue → stage 1</td><td class="ev">POST /jobs/{id}/confirm-spec</td><td>jobs.py confirm_spec: guards status==intake, sets mode, stage=planning, submit_job.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Abort</td><td class="ev">POST /jobs/{id}/abort</td><td>client.abort; jobs.py abort route present.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+</body>
+</html>

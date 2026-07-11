@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Gallery</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ================= page-scoped one-offs (#wf-gallery only) ========== */
+#wf-gallery .g-toolbar{display:flex; gap:var(--sp3); align-items:flex-end; flex-wrap:wrap}
+#wf-gallery .g-toolbar .wf-field{margin-bottom:0; min-width:150px}
+#wf-gallery .g-toolbar .grow{flex:1; min-width:220px}
+#wf-gallery .gcard-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--sp4)}
+#wf-gallery .gcard{position:relative; display:flex; flex-direction:column; gap:var(--sp3); padding:var(--sp5); background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg); overflow:hidden}
+#wf-gallery .gcard.feature{border-color:var(--accent-mid); background:linear-gradient(180deg,var(--accent-wash),var(--surface) 60%)}
+#wf-gallery .gcard .ct{display:flex; align-items:center; justify-content:space-between; gap:var(--sp2)}
+#wf-gallery .gcard .thumb{height:96px; border-radius:var(--r-md); border:1px solid var(--hairline-soft); background:
+   linear-gradient(120deg,var(--surface-sunk),var(--surface-raised)); position:relative; overflow:hidden; display:grid; place-items:center}
+#wf-gallery .gcard .thumb::before{content:""; position:absolute; inset:0; background:
+   repeating-linear-gradient(90deg,transparent 0 26px,rgba(56,166,210,.06) 26px 27px),
+   radial-gradient(420px 120px at 12% 0%, rgba(56,166,210,.10), transparent 70%)}
+#wf-gallery .gcard .thumb .play{position:relative; width:34px; height:34px; border-radius:50%; background:var(--accent); display:grid; place-items:center; color:#04141b; font-size:14px; box-shadow:0 0 18px rgba(56,166,210,.5)}
+#wf-gallery .gcard .cmode{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-pill)}
+#wf-gallery .gcard .cname{font-size:var(--fs-h3); letter-spacing:-.015em; margin:0}
+#wf-gallery .gcard .cgoal{font-size:var(--fs-sm); color:var(--text-muted); line-height:1.5}
+#wf-gallery .gcard .cmeta{display:flex; gap:var(--sp3); flex-wrap:wrap; font-size:var(--fs-xs); color:var(--text-faint)}
+#wf-gallery .gcard .cmeta b{color:var(--text-muted); font-weight:600}
+#wf-gallery .gcard .cact{margin-top:auto; display:flex; gap:var(--sp2); flex-wrap:wrap; padding-top:var(--sp1)}
+#wf-gallery .ctag{display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:var(--fs-micro); text-transform:uppercase; letter-spacing:.05em; color:var(--ok)}
+#wf-gallery .ctag.ref{color:var(--accent-strong)}
+</style>
+</head>
+<body>
+
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a href="02-build-jobs.html">Build</a>
+      <a href="12-operations.html">Operations</a>
+      <a class="active" href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START gallery-->
+<section class="wf-page" id="wf-gallery">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Showcase &amp; Replay</b> · Wireframe</div>
+    <h1 class="wf-title">Gallery &nbsp;<span class="wf-route">/gallery</span></h1>
+    <p class="wf-sub">Completed builds and process runs anyone can replay at their own pace — play, pause, scrub, and speed through the very same live cockpit at ×1, ×4, or ×16. The reference build always works; live cards appear as real jobs finish. This is the always-on fallback surface if GPU capacity dies mid-demo.</p>
+
+    <!-- legend: always include, verbatim -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- ==== THE WIREFRAME ==================================================== -->
+
+    <!-- ============ REGION 1 — Filter / query toolbar =================== -->
+    <div class="wf-panel sunk" data-wf="plan" style="margin-bottom:var(--sp5)">
+      <div class="wf-panel-h">
+        <h3>Filter the gallery <span class="wf-badge plan">Planned</span></h3>
+        <span class="muted" style="font-size:var(--fs-xs)">No filter controls exist in <code>Gallery.tsx</code> today — the list is unfiltered. <code>api.listJobs()</code> already accepts <code>origin</code> &amp; <code>status</code> query params, so status/origin filtering is a small wire-up; domain/mode filtering is client-side.</span>
+      </div>
+      <div class="g-toolbar">
+        <div class="wf-field grow">
+          <label class="wf-label" for="g-q">Search builds</label>
+          <input class="wf-input" id="g-q" type="text" placeholder="e.g. KYC onboarding, dormant accounts, renewal sweep…">
+          <div class="wf-hint">Matches title + goal. Client-side filter over the fetched jobs list. <sup class="wf-tag plan">planned</sup></div>
+        </div>
+        <div class="wf-field">
+          <label class="wf-label" for="g-mode">Mode</label>
+          <select class="wf-select" id="g-mode">
+            <option>All modes</option>
+            <option>build</option>
+            <option>process</option>
+          </select>
+          <div class="wf-hint">Build vs. re-runnable process. <sup class="wf-tag plan">planned</sup></div>
+        </div>
+        <div class="wf-field">
+          <label class="wf-label" for="g-domain">Demo / domain</label>
+          <select class="wf-select" id="g-domain">
+            <option>All domains</option>
+            <option>KYC / AML (banking)</option>
+            <option>Trade surveillance</option>
+            <option>Contract review (legal)</option>
+            <option>Claims (insurance)</option>
+            <option>Ledger reconciliation</option>
+          </select>
+          <div class="wf-hint">Seed-kit domain tag. Not yet emitted per job. <sup class="wf-tag plan">planned</sup></div>
+        </div>
+        <div class="wf-field">
+          <label class="wf-label" for="g-status">Status</label>
+          <select class="wf-select" id="g-status">
+            <option>done · delivered</option>
+            <option>done</option>
+            <option>delivered</option>
+          </select>
+          <div class="wf-hint">Gallery only shows <code>done</code>/<code>delivered</code>. Maps to <code>?status=</code>. <sup class="wf-tag plan">planned</sup></div>
+        </div>
+        <div class="wf-field">
+          <span class="wf-label">&nbsp;</span>
+          <button class="wf-btn primary" type="button">Apply filters</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ REGION 2 — Reference build (feature card) ========== -->
+    <div class="wf-panel-h" style="margin-top:var(--sp2)">
+      <h3>Reference build <span class="wf-badge stub">Stub</span></h3>
+      <span class="muted" style="font-size:var(--fs-xs)">Hardcoded <code>FEATURE</code> const in <code>Gallery.tsx</code>, keyed to <code>KYC_JOB_ID</code> — always renders, plays from the bundled fixture.</span>
+    </div>
+    <div class="gcard-grid" style="margin-bottom:var(--sp5)">
+      <div class="gcard feature" data-wf="stub" style="grid-column:span 2; min-width:0">
+        <div class="ct">
+          <span class="ctag ref">✦ Reference build</span>
+          <span class="cmode">build mode</span>
+        </div>
+        <div class="row wrap" style="gap:var(--sp2)">
+          <span class="wf-chip seat">trust</span>
+          <span class="wf-chip seat">planner</span>
+          <span class="wf-chip seat">certifier</span>
+          <span class="wf-chip seat">conductor</span>
+          <span class="wf-chip seat">oracle</span>
+          <span class="wf-chip raw">Raw behind wall</span>
+          <span class="wf-chip sanitized">Sanitized egress</span>
+        </div>
+        <h2 class="cname">KYC / AML customer onboarding</h2>
+        <p class="cgoal">The reference build, start to finish: intake and sanitization, a certified plan, three build waves, adversarial QA with the Numeric Oracle, and delivery to the registry.</p>
+        <div class="wf-steps" style="margin:4px 0">
+          <span class="wf-step done"><span class="n">0</span>Intake</span>
+          <span class="wf-step done"><span class="n">1</span>Plan</span>
+          <span class="wf-step done"><span class="n">2</span>Certify</span>
+          <span class="wf-step done"><span class="n">3</span>Quote</span>
+          <span class="wf-step done"><span class="n">4</span>Codegen</span>
+          <span class="wf-step done"><span class="n">5</span>Consolidate</span>
+          <span class="wf-step done"><span class="n">6</span>QA</span>
+          <span class="wf-step done"><span class="n">7</span>Delivery</span>
+        </div>
+        <div class="cmeta">
+          <span><b>Job</b> job_01JKYCDEMO…0001</span>
+          <span><b>Applicants</b> 30 synthetic</span>
+          <span><b>Lists</b> OFAC + EU consolidated</span>
+          <span><b>Egress</b> EXTERNAL $0.00</span>
+        </div>
+        <div class="cact">
+          <a class="wf-btn primary" href="#">▶ Watch the build <sup class="wf-tag stub">stub</sup></a>
+          <span class="muted" style="font-size:var(--fs-xs); align-self:center">→ <code>/build/job_01JKYCDEMO…0001</code> · plays from <code>fixtures/kycJob.ts</code></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ REGION 3 — Live completed runs ===================== -->
+    <div class="wf-panel-h">
+      <h3>Completed live runs <span class="wf-badge fn">Functional</span></h3>
+      <span class="muted" style="font-size:var(--fs-xs)"><code>useQuery(api.listJobs())</code> → <code>GET /jobs</code>, filtered client-side to <code>status ∈ {done, delivered}</code>.</span>
+    </div>
+    <div class="gcard-grid">
+
+      <!-- live card A -->
+      <div class="gcard" data-wf="fn">
+        <div class="thumb"><span class="play">▶</span></div>
+        <div class="ct">
+          <span class="ctag">✓ delivered</span>
+          <span class="cmode">process mode</span>
+        </div>
+        <h2 class="cname">Dormant-account reactivation screen</h2>
+        <p class="cgoal">Meridian Bank — flag dormant accounts with sudden reactivation and structuring-shaped deposit runs; rank by AML risk with an audited case file per hit.</p>
+        <div class="cmeta">
+          <span><b>Units</b> 812 / 812</span>
+          <span><b>Flags</b> 47</span>
+          <span><span class="wf-chip local">Local MI300X</span></span>
+        </div>
+        <div class="cact">
+          <a class="wf-btn primary" href="#">▶ Replay this build <sup class="wf-tag fn">fn</sup></a>
+          <a class="wf-btn ghost" href="#">Open live → <sup class="wf-tag fn">fn</sup></a>
+        </div>
+      </div>
+
+      <!-- live card B -->
+      <div class="gcard" data-wf="fn">
+        <div class="thumb"><span class="play">▶</span></div>
+        <div class="ct">
+          <span class="ctag">✓ done</span>
+          <span class="cmode">process mode</span>
+        </div>
+        <h2 class="cname">Auto-renew clause sweep</h2>
+        <p class="cgoal">Hale &amp; Ostrom — read 200 contracts, extract renewal dates and auto-renew clauses, flag notice windows under 60 days and missing signature blocks.</p>
+        <div class="cmeta">
+          <span><b>Units</b> 200 / 200</span>
+          <span><b>Flags</b> 18</span>
+          <span><span class="wf-chip amd">AMD Fireworks</span></span>
+        </div>
+        <div class="cact">
+          <a class="wf-btn primary" href="#">▶ Replay this build <sup class="wf-tag fn">fn</sup></a>
+          <a class="wf-btn ghost" href="#">Open live → <sup class="wf-tag fn">fn</sup></a>
+        </div>
+      </div>
+
+      <!-- live card C -->
+      <div class="gcard" data-wf="fn">
+        <div class="thumb"><span class="play">▶</span></div>
+        <div class="ct">
+          <span class="ctag">✓ delivered</span>
+          <span class="cmode">process mode</span>
+        </div>
+        <h2 class="cname">Spoofing &amp; wash-trade surveillance</h2>
+        <p class="cgoal">Ashford Mercantile Exchange — sweep the order/execution blotter for spoofing episodes, wash-trade pairs and marking-the-close, sovereign mode, EXTERNAL egress zero.</p>
+        <div class="cmeta">
+          <span><b>Units</b> 250 / 250</span>
+          <span><b>Flags</b> 63</span>
+          <span><span class="wf-chip external">External 0</span></span>
+        </div>
+        <div class="cact">
+          <a class="wf-btn primary" href="#">▶ Replay this build <sup class="wf-tag fn">fn</sup></a>
+          <a class="wf-btn ghost" href="#">Open live → <sup class="wf-tag fn">fn</sup></a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="wf-note">
+      <span class="pin">i</span>
+      <div><b>Card actions.</b> “Replay this build” → <code>/replay/job/{id}</code>, which <code>useReplay</code> loads via <code>api.replay(scope)</code> → <code>GET /api/replay/{scope}</code> and re-drives the live cockpit at ×1/×4/×16. “Open live” → <code>/build/{id}</code> (<code>GET /jobs/{id}</code> + <code>/events</code> SSE). Both endpoints exist — the two card buttons are FUNCTIONAL.</div>
+    </div>
+
+    <!-- ============ REGION 4 — Empty state ============================= -->
+    <div class="wf-panel-h" style="margin-top:var(--sp6)">
+      <h3>Empty state <span class="wf-badge fn">Functional</span></h3>
+      <span class="muted" style="font-size:var(--fs-xs)">Rendered by <code>Gallery.tsx</code> when <code>live.length === 0 &amp;&amp; !q.isLoading</code>.</span>
+    </div>
+    <div class="wf-empty">No completed live jobs yet — the reference build above always works.</div>
+
+    <!-- ============ REGION 5 — Demo seed-kit showcase ================== -->
+    <div class="wf-panel-h" style="margin-top:var(--sp6)">
+      <h3>Demo seed kits <span class="wf-badge plan">Planned</span> <span class="wf-badge stub">Stub</span></h3>
+      <span class="muted" style="font-size:var(--fs-xs)">Presenter-authored from spec 09 §2 — not a region of <code>Gallery.tsx</code> yet. Cards would deep-link into <code>/sandbox</code>; the underlying data is FUNCTIONAL via <code>GET /sandbox/companies</code>.</span>
+    </div>
+    <div class="wf-panel">
+      <table class="wf-table">
+        <thead>
+          <tr><th>Seed kit</th><th>Domain</th><th>Planted patterns (so good prompts find real things)</th><th>Suggested prompt</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Meridian Bank</b><br><span class="faint">customers 800 · txns 8,000</span></td>
+            <td>KYC / AML</td>
+            <td>Dormant→reactivation; structuring-shaped deposit runs; sanctions-adjacent names</td>
+            <td class="muted">“Flag dormant accounts with unusual reactivation and rank by risk”</td>
+            <td><a href="17-sandbox.html">Run in sandbox → <sup class="wf-tag plan">planned</sup></a></td>
+          </tr>
+          <tr>
+            <td><b>Hale &amp; Ostrom</b><br><span class="faint">contracts 200 · parties 350</span></td>
+            <td>Contract review</td>
+            <td>Auto-renew clauses &lt;60-day notice; missing signature blocks; fee-cap breaches</td>
+            <td class="muted">“Extract renewal dates &amp; auto-renew clauses; flag notice windows under 60 days”</td>
+            <td><a href="17-sandbox.html">Run in sandbox → <sup class="wf-tag plan">planned</sup></a></td>
+          </tr>
+          <tr>
+            <td><b>Ashford Mercantile Exchange</b><br><span class="faint">orders 549,749 · execs 181,475</span></td>
+            <td>Trade surveillance</td>
+            <td>40 spoofing episodes; 60 wash-trade pairs; 15 marking-the-close; 12 limit breaches</td>
+            <td class="muted">“Detect spoofing and wash-trade pairs across the blotter”</td>
+            <td><a href="17-sandbox.html">Run in sandbox → <sup class="wf-tag plan">planned</sup></a></td>
+          </tr>
+          <tr>
+            <td><b>Cascadia Mutual</b><br><span class="faint">claims 140,299 · policies 50,000</span></td>
+            <td>Claims (insurance)</td>
+            <td>120 duplicate-claim pairs; 8 staged-accident rings; 200 over-coverage payouts</td>
+            <td class="muted">“Find duplicate claims and coverage-breach payouts”</td>
+            <td><a href="17-sandbox.html">Run in sandbox → <sup class="wf-tag plan">planned</sup></a></td>
+          </tr>
+          <tr>
+            <td><b>Aldgate Holdings plc</b><br><span class="faint">gl_entries 643,599 · fx 5,480</span></td>
+            <td>Ledger reconciliation</td>
+            <td>30 intercompany mismatches; 500 misclassifications; 80 LEI gaps; 25 unbalanced batches</td>
+            <td class="muted">“Reconcile intercompany balances and flag LEI gaps”</td>
+            <td><a href="17-sandbox.html">Run in sandbox → <sup class="wf-tag plan">planned</sup></a></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="wf-note warn">
+        <span class="pin">!</span>
+        <div>Seed-kit cards render presenter content here; in <code>Sandbox.tsx</code> the same companies come live from <code>GET /sandbox/companies</code> and a run is <code>POST /sandbox/runs</code>. Track-rule anchor (09): seed kits are <b>input</b> data only — outputs are always computed live, never canned.</div>
+      </div>
+    </div>
+
+    <!-- ==== status ledger: auditable evidence for every label ==== -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Completed live runs grid</td><td class="ev">GET /jobs</td><td>Gallery.tsx: <code>useQuery(["jobs"], () =&gt; api.listJobs())</code>, filters <code>status ∈ {done,delivered}</code>. Endpoint present (§3).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>“Replay this build” button</td><td class="ev">GET /api/replay/{scope}</td><td>Link → <code>/replay/job/{id}</code>; <code>useReplay</code> calls <code>api.replay(scope)</code>. Endpoint present (§3); spec 09 §6.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>“Open live” button</td><td class="ev">GET /jobs/{id} · /events (SSE)</td><td>Link → <code>/build/{id}</code> (BuildView). Both endpoints present (§3).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Empty state</td><td class="ev">Gallery.tsx</td><td>Renders when <code>live.length === 0 &amp;&amp; !q.isLoading</code>.</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Reference-build feature card</td><td class="ev">fixtures/kycJob.ts</td><td>Hardcoded <code>FEATURE</code> const keyed to <code>KYC_JOB_ID</code>; “Watch the build” → <code>/build/{id}</code> plays the bundled fixture stream, not a live job.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Filter / query toolbar</td><td class="ev">?origin= · ?status= (listJobs)</td><td>No filter UI in Gallery.tsx. <code>api.listJobs({origin,status})</code> supports server-side status/origin filtering; domain/mode filtering is not yet emitted per job.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Seed-kit showcase — “Run in sandbox”</td><td class="ev">GET /sandbox/companies · POST /sandbox/runs</td><td>Not a region of Gallery.tsx (spec 09 §2 content). Data path is FUNCTIONAL in Sandbox.tsx; the gallery cross-link is not built here.</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Card thumbnails / preview</td><td class="ev">CSS gradient</td><td>Presenter-only preview art; no per-job thumbnail endpoint exists.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+</body>
+</html>

@@ -75,7 +75,7 @@ export function BoundaryDiagram() {
             <span className={styles.zoneSub}>frontier planner</span>
           </div>
           <div className={`${styles.frontier} ${sovereign ? styles.dim : ""}`}>
-            <div className={styles.frontierModel}>Claude Fable 5</div>
+            <div className={styles.frontierModel}>GPT-5.6</div>
             <div className={styles.frontierNote}>
               {sovereign ? "Not called in Sovereign Mode" : "Sees only the sanitized brief. Never your data."}
             </div>

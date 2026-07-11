@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nxcleus - cover</title>
+<style>
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-Light.ttf"); font-weight:300; }
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-Regular.ttf"); font-weight:400; }
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-Medium.ttf"); font-weight:500; }
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-SemiBold.ttf"); font-weight:600; }
+  @font-face { font-family:"CS Arcel Mono"; src:url("../../fonts/CS-Arcel-Mono/CSArcelMono-Regular.woff2") format("woff2"); font-weight:400; }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  html,body { font-family:"Lenia Sans",sans-serif; }
+  :root{ --seal:#030a0e; --seal-ink:#e9f4f8; --seal-ink2:#9db8c2; --seal-line:rgba(233,244,248,.16); --accent-dk:#38a6d2; --accent-dk-tint:rgba(56,166,210,.14); }
+  .mono{ font-family:"CS Arcel Mono",monospace; }
+  .card{ width:1280px; height:720px; position:relative; overflow:hidden; background:var(--seal); color:var(--seal-ink); }
+  .chip{
+    display:inline-flex; align-items:center;
+    font-family:"CS Arcel Mono",monospace; font-size:10.5px; letter-spacing:.1em;
+    padding:8px 14px; border-radius:100px; color:var(--seal-ink2); border:1px solid var(--seal-line); background:transparent;
+  }
+  .chip.amd{ color:var(--accent-dk); border-color:var(--accent-dk); background:var(--accent-dk-tint); }
+</style>
+</head>
+<body>
+<div class="card">
+  <img src="assets/bg-wall3.png" style="position:absolute; inset:0; width:1280px; height:720px; object-fit:cover; opacity:.96;">
+  <div style="position:absolute; inset:0; background:linear-gradient(100deg, rgba(3,10,14,.6) 0%, rgba(3,10,14,.3) 47%, rgba(3,10,14,0) 72%);"></div>
+  <div style="position:relative; height:100%; padding:62px 72px; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+      <div class="mono" style="font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--seal-ink2);">Nxcleus · Oxys Studio</div>
+      <div class="mono" style="font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--seal-ink2);">AMD Developer Hackathon: ACT II · Unicorn Track</div>
+    </div>
+    <div style="margin-top:auto; margin-bottom:6px;">
+      <div style="font-size:29px; font-weight:600; letter-spacing:-.01em; color:var(--seal-ink);">Nxcleus</div>
+      <h1 style="font-size:52px; font-weight:500; letter-spacing:-.02em; line-height:1.08; margin-top:24px; color:var(--seal-ink); max-width:900px;">Describe an internal process.<br>Get it running <span style="color:#2f9ac6;">inside</span> <span style="color:#5fc6ea;">your</span> <span style="color:#a9e7ff;">walls.</span></h1>
+      <p style="margin-top:26px; max-width:600px; font-size:17px; line-height:1.55; color:var(--seal-ink2); font-weight:400;">Sovereign process automation for enterprises where external AI is banned, planned, certified, and fleet-built on AMD MI300X GPUs the customer controls.</p>
+      <div style="margin-top:34px; display:flex; align-items:center; gap:12px;">
+        <span class="chip amd">BUILT ON AMD MI300X · ROCm + vLLM</span>
+        <span class="chip">LIVE AT NXCLEUS.TECH</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

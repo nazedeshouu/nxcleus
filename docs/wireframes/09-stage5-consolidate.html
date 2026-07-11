@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Stage 5 · Consolidation</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ================= page-scoped one-offs (stage5 only) =============== */
+#wf-stage5 .goalbar{display:flex; gap:12px; align-items:flex-start; padding:14px 16px; border:1px solid var(--accent-mid); background:var(--accent-wash); border-radius:var(--r-md); margin:var(--sp4) 0 var(--sp5)}
+#wf-stage5 .goalbar .lbl{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--accent-strong); font-weight:700; flex:none; padding-top:2px}
+#wf-stage5 .modeflip{display:inline-flex; border:1px solid var(--hairline); border-radius:var(--r-pill); overflow:hidden; font-size:var(--fs-xs)}
+#wf-stage5 .modeflip span{padding:5px 13px; color:var(--text-muted); cursor:default}
+#wf-stage5 .modeflip span.on{background:var(--accent-wash); color:var(--accent-strong)}
+#wf-stage5 .merge{display:grid; grid-template-columns:1fr 34px 1fr; gap:8px; align-items:center}
+@media(max-width:720px){#wf-stage5 .merge{grid-template-columns:1fr; gap:6px}}
+#wf-stage5 .modchip{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 11px; border:1px solid var(--hairline-soft); border-radius:var(--r-sm); background:var(--surface-sunk); font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text)}
+#wf-stage5 .modchip .loc{color:var(--text-faint); font-size:var(--fs-micro)}
+#wf-stage5 .arrow{display:grid; place-items:center; color:var(--accent); font-size:1rem}
+@media(max-width:720px){#wf-stage5 .arrow{transform:rotate(90deg)}}
+#wf-stage5 .pkg{display:flex; align-items:center; justify-content:center; padding:11px; border:1px dashed var(--accent-mid); border-radius:var(--r-sm); background:var(--accent-wash); font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--accent-strong); text-align:center}
+/* validation wall */
+#wf-stage5 .wall{display:flex; flex-direction:column; gap:10px}
+#wf-stage5 .runrow{display:grid; grid-template-columns:76px 1fr 96px; gap:12px; align-items:center; font-size:var(--fs-xs)}
+#wf-stage5 .bar{height:12px; border-radius:var(--r-pill); background:var(--surface-sunk); border:1px solid var(--hairline-soft); overflow:hidden; display:flex}
+#wf-stage5 .bar .pass{background:var(--ok); opacity:.85}
+#wf-stage5 .bar .fail{background:var(--danger); opacity:.85}
+#wf-stage5 .runrow .tag{font-family:var(--font-mono); color:var(--text-faint)}
+#wf-stage5 .runrow .res{text-align:right; font-family:var(--font-mono)}
+#wf-stage5 .res .g{color:var(--ok)} #wf-stage5 .res .r{color:var(--danger)}
+#wf-stage5 .tree{font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.85; color:var(--text-muted)}
+#wf-stage5 .tree .d{color:var(--accent-strong)} #wf-stage5 .tree .f{color:var(--text)} #wf-stage5 .tree .new{color:var(--ok)}
+#wf-stage5 .metric{display:flex; flex-direction:column; gap:2px}
+#wf-stage5 .metric .v{font-size:var(--fs-h2); font-weight:680; color:var(--text); letter-spacing:-.02em}
+#wf-stage5 .metric .k{font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint)}
+#wf-stage5 .metrics{display:flex; gap:var(--sp5); flex-wrap:wrap}
+#wf-stage5 .st-ok{color:var(--ok)} #wf-stage5 .st-fix{color:var(--warn)} #wf-stage5 .st-open{color:var(--danger)}
+</style>
+</head>
+<body>
+
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a class="active" href="02-build-jobs.html">Build</a>
+      <a href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START stage5-->
+<section class="wf-page" id="wf-stage5">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Build Pipeline</b> · Wireframe</div>
+    <h1 class="wf-title">Stage 5 — Consolidation &nbsp;<span class="wf-route">/build/:jobId · stage 5</span></h1>
+    <p class="wf-sub">The <code>consolidator</code> seat merges every module built in stage 4 into one assembled package, then runs the full stage-2 integration suite behind an objective validation wall — no green wall, no delivery. The customer watches partial → all-green live. (Process-mode jobs aggregate corpus results here instead; toggle below.)</p>
+
+    <!-- legend: always include, verbatim -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- ==== THE WIREFRAME ==== -->
+
+    <!-- pipeline stepper -->
+    <div class="wf-steps" aria-label="Build pipeline stages 0–7">
+      <div class="wf-step done"><span class="n">0</span>Intake</div>
+      <div class="wf-step done"><span class="n">1</span>Plan</div>
+      <div class="wf-step done"><span class="n">2</span>Certify</div>
+      <div class="wf-step done"><span class="n">3</span>Quote</div>
+      <div class="wf-step done"><span class="n">4</span>Build waves</div>
+      <div class="wf-step active"><span class="n">5</span>Consolidate</div>
+      <div class="wf-step"><span class="n">6</span>Adversarial QA</div>
+      <div class="wf-step"><span class="n">7</span>Deliver</div>
+    </div>
+
+    <!-- goal pin -->
+    <div class="goalbar">
+      <span class="lbl">Goal</span>
+      <div>
+        <span class="muted">Given a batch of applicants, produce for each an auditable case file with an ID-verification result, sanctions / PEP / adverse-media findings that cite their source, a risk score, and an onboarding decision — <b style="color:var(--text)">without any raw PII leaving local infrastructure.</b></span>
+        <div class="wf-hint" style="margin-top:6px">Pinned from <code>certify.goal_set</code> (stage 2). Consolidation is checked against it before the QA gate opens. <span class="wf-tag fn">SSE</span></div>
+      </div>
+    </div>
+
+    <!-- top row: consolidator seat + live status -->
+    <div class="wf-grid split">
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-panel-h">
+          <h3>Consolidator seat</h3>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+        <div class="row wrap" style="gap:10px; margin-bottom:var(--sp4)">
+          <span class="wf-chip seat">consolidator</span>
+          <span class="wf-chip local">Local · node B</span>
+          <span class="wf-chip raw">Raw</span>
+          <span class="mono muted" style="font-size:var(--fs-xs)">local:B / glm-4.6</span>
+        </div>
+        <p class="muted" style="font-size:var(--fs-sm); margin:0 0 var(--sp4)">Receives all module files + certified interfaces (read-only <code>shared/interfaces.json</code>) + the wiring spec. It is the single cross-folder reader — <code>workspace.merge_agent_src</code> merges every <code>agents/&lt;module&gt;/</code> tree into one package <code>src/</code>, resolves imports, and threads config. Emits the entrypoint <code>process.py</code> implementing the runtime contract.</p>
+        <div class="metrics">
+          <div class="metric"><span class="v">6</span><span class="k">Modules merged</span></div>
+          <div class="metric"><span class="v st-ok">62 / 62</span><span class="k">Integration suite</span></div>
+          <div class="metric"><span class="v">3</span><span class="k">Fix rounds cap</span></div>
+          <div class="metric"><span class="v">$0.00</span><span class="k">Egress (local)</span></div>
+        </div>
+        <div class="wf-note"><span class="pin">i</span><div>Seat identity, model binding & call metering stream over <code>GET /jobs/{'{'}id{'}'}/events</code> — the <code>consolidate.*</code> + model-call events. BuildView prefers this live channel and falls back to the <code>kycJob</code> fixture. <span class="wf-tag fn">SSE</span> <span class="wf-tag stub">fixture-fallback</span></div></div>
+      </div>
+
+      <div class="wf-panel sunk" data-wf="fn">
+        <div class="wf-panel-h">
+          <h3>Stage status</h3>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+        <div class="stack g3">
+          <div class="row between"><span class="muted">Job status</span><span><b>consolidating</b></span></div>
+          <div class="row between"><span class="muted">Mode</span><span>build · interdependent</span></div>
+          <div class="row between"><span class="muted">Started event</span><span class="mono faint" style="font-size:var(--fs-xs)">consolidate.started</span></div>
+          <div class="row between"><span class="muted">Validation wall</span><span class="st-ok"><b>green</b></span></div>
+          <div class="row between"><span class="muted">Open tickets</span><span>0 · 1 verified</span></div>
+        </div>
+        <hr class="wf-hr">
+        <div class="wf-eyebrow">Mode</div>
+        <div class="modeflip" role="group" aria-label="Consolidation mode">
+          <span class="on">Build · consolidate</span>
+          <span>Process · aggregate</span>
+        </div>
+        <div class="wf-hint">Build merges module code behind the test wall. Process-mode jobs (4′/5′) skip codegen and aggregate corpus results server-side. <span class="wf-tag fn">SSE</span></div>
+      </div>
+    </div>
+
+    <div style="height:var(--sp5)"></div>
+
+    <!-- merge map + validation wall -->
+    <div class="wf-grid split">
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-panel-h">
+          <div class="row" style="gap:10px"><h3>Module outputs → assembled package</h3><span class="wf-chip local">Local</span></div>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+        <p class="wf-hint" style="margin:0 0 var(--sp4)">Six stage-4 module folders, each with its own tests already green, merged into one package. Module names + LOC come from <code>task.completed</code> / <code>conductor.wave_started</code> events.</p>
+        <div class="merge">
+          <div class="stack g2">
+            <div class="modchip">document-intake <span class="loc">214 loc</span></div>
+            <div class="modchip">sanctions-screen <span class="loc">188 loc</span></div>
+            <div class="modchip">pep-screen <span class="loc">96 loc</span></div>
+            <div class="modchip">adverse-media <span class="loc">142 loc</span></div>
+            <div class="modchip">risk-score <span class="loc">120 loc</span></div>
+            <div class="modchip">case-file <span class="loc">176 loc</span></div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="stack g2">
+            <div class="pkg">process.py<br><span class="faint">entrypoint · runtime contract</span></div>
+            <div class="pkg">src/ (6 modules)</div>
+            <div class="pkg">shared/interfaces.json<br><span class="faint">read-only</span></div>
+          </div>
+        </div>
+        <div class="wf-note"><span class="pin">i</span><div>Process-mode variant: no code merge — the topology runner streams <code>run.unit_completed</code> per unit and aggregate steps run server-side (pandas) into a dataset + dashboard payload. <span class="wf-tag fn">SSE</span></div></div>
+      </div>
+
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-panel-h">
+          <h3>Validation wall</h3>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+        <p class="wf-hint" style="margin:0 0 var(--sp4)">Full stage-2 integration suite in the code-exec sandbox (<code>--network none</code>). Objective pass/fail — no review-by-vibes. Each <code>consolidate.test_run</code> event advances the wall.</p>
+        <div class="wall">
+          <div class="runrow"><span class="tag">run 1</span><span class="bar"><span class="pass" style="flex:58"></span><span class="fail" style="flex:4"></span></span><span class="res"><span class="g">58</span> / <span class="r">4</span></span></div>
+          <div class="runrow"><span class="tag">run 2</span><span class="bar"><span class="pass" style="flex:61"></span><span class="fail" style="flex:1"></span></span><span class="res"><span class="g">61</span> / <span class="r">1</span></span></div>
+          <div class="runrow"><span class="tag">run 3</span><span class="bar"><span class="pass" style="flex:62"></span></span><span class="res"><span class="g">62</span> / 0</span></div>
+        </div>
+        <hr class="wf-hr">
+        <div class="row between">
+          <div class="metric"><span class="v st-ok">62 / 62</span><span class="k">Suite green</span></div>
+          <span class="wf-btn primary sm" role="button" aria-disabled="true">Open QA gate →</span>
+        </div>
+        <div class="wf-hint">Failures fold into structured defect tickets → <code>coder</code> fixes (≤3 rounds) → re-run. Demo-3 "validation wall". <span class="wf-tag fn">SSE</span></div>
+      </div>
+    </div>
+
+    <div style="height:var(--sp5)"></div>
+
+    <!-- consolidation tickets -->
+    <div class="wf-panel" data-wf="fn">
+      <div class="wf-panel-h">
+        <div class="row" style="gap:10px"><h3>Consolidation tickets</h3><span class="muted" style="font-size:var(--fs-sm)">interface conflicts & suite mismatches surfaced as tickets</span></div>
+        <span class="wf-badge fn">Functional</span>
+      </div>
+      <div style="overflow-x:auto">
+      <table class="wf-table">
+        <thead>
+          <tr><th>Ticket</th><th>Origin</th><th>Interface / module</th><th>Detail</th><th>Severity</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>tk_1</b></td>
+            <td><span class="wf-chip local">consolidation</span></td>
+            <td class="mono">adverse-media</td>
+            <td><b>Pagination drops results past page 1</b> — merged adapter under-returned in the integration suite.</td>
+            <td class="st-fix">medium</td>
+            <td class="st-ok"><b>verified</b> · fixed in 1 round</td>
+          </tr>
+          <tr>
+            <td><b>tk_2</b></td>
+            <td><span class="wf-chip local">consolidation</span></td>
+            <td class="mono">if_sanctions_result → risk-score</td>
+            <td>Interface mismatch — <code>eu_consolidated</code> hit shape differed from <code>ofac_entries</code>; consolidator normalized both to the certified schema.</td>
+            <td class="st-fix">low</td>
+            <td class="st-ok"><b>verified</b></td>
+          </tr>
+          <tr>
+            <td><b>tk_3</b></td>
+            <td><span class="wf-chip local">consolidation</span></td>
+            <td class="mono">case-file</td>
+            <td>Audit trail missing the sanctions-list version stamp (from the wave-2 conductor amendment).</td>
+            <td class="st-fix">low</td>
+            <td class="st-ok"><b>verified</b></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="wf-note"><span class="pin">i</span><div>Tickets stream as <code>ticket.opened → ticket.in_fix → ticket.verified</code> over the job SSE channel (source <code>consolidation</code>); the same rows are also queryable post-hoc at <code>GET /tickets</code>. <span class="wf-tag fn">SSE</span> <span class="wf-tag fn">GET /tickets</span></div></div>
+    </div>
+
+    <div style="height:var(--sp5)"></div>
+
+    <!-- assembled package preview -->
+    <div class="wf-panel sunk" data-wf="plan">
+      <div class="wf-panel-h">
+        <div class="row" style="gap:10px"><h3>Assembled package preview</h3><span class="wf-chip raw">Raw · local only</span></div>
+        <span class="wf-badge plan">Planned</span>
+      </div>
+      <div class="wf-grid cols-2">
+        <div>
+          <div class="wf-eyebrow">Package tree (post-merge)</div>
+          <div class="tree">
+            <span class="d">process.py</span>            <span class="faint">· entrypoint</span><br>
+            <span class="d">src/</span><br>
+            &nbsp;&nbsp;<span class="f">document_intake.py</span><br>
+            &nbsp;&nbsp;<span class="f">sanctions_screen.py</span><br>
+            &nbsp;&nbsp;<span class="f">pep_screen.py</span><br>
+            &nbsp;&nbsp;<span class="f">adverse_media.py</span> <span class="new">· patched</span><br>
+            &nbsp;&nbsp;<span class="f">risk_score.py</span><br>
+            &nbsp;&nbsp;<span class="f">case_file.py</span><br>
+            <span class="d">shared/</span> <span class="f">interfaces.json</span>  <span class="faint">· read-only</span><br>
+            <span class="d">tests/</span> <span class="f">integration/ (62)</span><br>
+            <span class="f">requirements.txt</span> · <span class="f">README.md</span> <span class="faint">· stage 7</span>
+          </div>
+        </div>
+        <div>
+          <div class="wf-field">
+            <label class="wf-label" for="pkg-path">Open file in package<span class="req">*</span></label>
+            <div class="wf-inputrow">
+              <input class="wf-input" id="pkg-path" type="text" placeholder="src/risk_score.py" value="src/risk_score.py">
+              <span class="wf-btn sm" role="button" aria-disabled="true">View</span>
+            </div>
+            <div class="wf-hint">Package file browse resolves at <code>GET /processes/{'{'}id{'}'}/package/{'{'}v{'}'}/{'{'}path{'}'}</code> — but that endpoint only exists <b>after delivery</b> (stage 7). During stage 5 the job has no <code>processId</code> yet, so this preview is speced, not wired. <span class="wf-tag plan">no build-time browse</span></div>
+          </div>
+          <div class="wf-field" style="margin-bottom:0">
+            <label class="wf-label" for="pkg-diff">Diff module vs. pre-merge<span class="req">*</span></label>
+            <select class="wf-select" id="pkg-diff" aria-disabled="true">
+              <option>adverse_media.py — pagination fix (+11 / −4)</option>
+              <option>case_file.py — audit version stamp (+6 / −0)</option>
+            </select>
+            <div class="wf-hint">Per-file merge diff is presenter-only here; stage-5 events carry counts, not file bodies. <span class="wf-tag plan">not emitted</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="wf-note warn"><span class="pin">!</span><div>Stage-5 SSE emits only <code>consolidate.started {'{'}modules{'}'}</code>, <code>consolidate.test_run {'{'}passed,failed,total{'}'}</code>, and <code>consolidate.completed</code> — <b>no file tree, no file bodies</b>. The tree above is reconstructed from module names + fixtures; live file inspection is only available once the package is registered at stage 7 and browsable from Operations. <span class="wf-tag plan">Planned</span> <span class="wf-tag stub">tree from fixtures</span></div></div>
+    </div>
+
+    <!-- status ledger -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Consolidator seat chip (LOCAL)</td><td class="ev">GET /jobs/{id}/events (SSE)</td><td>Seat id/model/zone + call metering arrive as <code>consolidate.*</code> + model-call events; adapt.ts maps <code>consolidator → GLM-4.6 / LOCAL</code>. STUB-fallback to kycJob fixture in BuildView.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Stage status / mode</td><td class="ev">GET /jobs/{id} · /events</td><td>job status <code>consolidating</code> + stage 5 from <code>job.stage_changed</code>; BuildView reads <code>GET /jobs/{id}</code> then subscribes to <code>/events</code>.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Module outputs merged (build)</td><td class="ev">consolidate.started · task.completed</td><td>Module count from <code>consolidate.started.modules</code>; names/LOC from stage-4 <code>task.completed</code>/<code>conductor.wave_started</code>. Spec 03 §7.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Corpus aggregation (process mode)</td><td class="ev">run.unit_completed · run.progress</td><td>Process-mode variant streams per-unit + server-side aggregate; spec 03 §8. Same SSE spine.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Validation wall (integration suite)</td><td class="ev">consolidate.test_run · consolidate.completed</td><td>Each run advances the wall (58/62 → 61/62 → 62/62) from live SSE payloads; jobStore reducer <code>case "consolidate.test_run"</code>. Spec 03 §7 gate.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Consolidation tickets</td><td class="ev">ticket.* (SSE) · GET /tickets</td><td>Opened/in_fix/verified with <code>source:"consolidation"</code> stream live (fixture tk_1); also queryable at <code>GET /tickets</code>.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Assembled package preview / file browse</td><td class="ev">GET /processes/{id}/package/{v}/{path}</td><td>Endpoint exists only <b>post-delivery</b> (stage 7 → Operations); no <code>processId</code> during stage 5 and no file bodies in <code>consolidate.*</code>. Tree reconstructed from fixtures.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Per-module merge diff</td><td class="ev">— (not emitted)</td><td>Stage-5 events carry counts, not diffs; presenter-only mock. Delivered-package diff lives at <code>/processes/{id}/versions/{v}/diff</code> (Operations).</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Goal pin text</td><td class="ev">certify.goal_set</td><td>Real event path (FUNCTIONAL via SSE) but rendered here from the kycJob fixture goal string; live goal comes from <code>jobs.goal</code>.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+
+</body>
+</html>

@@ -1,0 +1,894 @@
+<section id="viz-data-boundary">
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css  (inlined verbatim)
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* =====================================================================
+   Page-specific diagram CSS  —  scoped under #viz-data-boundary
+   ===================================================================== */
+#viz-data-boundary{position:relative; z-index:1}
+#viz-data-boundary .lead{font-size:1.05rem; color:var(--text-muted); max-width:74ch; line-height:1.7}
+#viz-data-boundary .lead b{color:var(--text)}
+#viz-data-boundary .sec{margin-top:var(--sp7)}
+#viz-data-boundary .sec-eyebrow{font-size:var(--fs-micro); letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:var(--sp2); font-weight:700}
+#viz-data-boundary .sec-title{font-size:var(--fs-h2); margin-bottom:var(--sp3)}
+#viz-data-boundary .sec-lede{color:var(--text-muted); max-width:78ch; margin-bottom:var(--sp5)}
+#viz-data-boundary .cite{font-size:var(--fs-micro); font-family:var(--font-mono); color:var(--text-faint); letter-spacing:.02em; white-space:nowrap}
+#viz-data-boundary .cite b{color:var(--accent)}
+
+/* one-sentence law banner */
+#viz-data-boundary .law{
+  display:flex; gap:var(--sp4); align-items:center; padding:var(--sp5) var(--sp5);
+  border:1px solid var(--accent-mid); border-radius:var(--r-lg);
+  background:linear-gradient(120deg,var(--accent-wash),transparent 70%);
+  margin:var(--sp5) 0;
+}
+#viz-data-boundary .law .glyph{flex:none; font-family:var(--font-mono); font-size:2rem; color:var(--accent-strong); opacity:.6; line-height:1}
+#viz-data-boundary .law p{margin:0; font-size:1.15rem; line-height:1.55; color:var(--text)}
+#viz-data-boundary .law .raw-t{color:var(--raw-on); background:var(--raw); border:1px solid #26424e; padding:0 6px; border-radius:var(--r-xs); font-weight:700}
+#viz-data-boundary .law .san-t{color:var(--sanitized); font-weight:700}
+#viz-data-boundary .law .ext-t{color:var(--zone-external); font-weight:700}
+
+/* zone cards */
+#viz-data-boundary .zones{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--sp3)}
+@media(max-width:900px){#viz-data-boundary .zones{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){#viz-data-boundary .zones{grid-template-columns:1fr}}
+#viz-data-boundary .zone{border:1px solid var(--z,var(--hairline)); border-radius:var(--r-md); padding:var(--sp4); background:var(--surface); position:relative; overflow:hidden}
+#viz-data-boundary .zone::before{content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--z)}
+#viz-data-boundary .zone.local{--z:var(--zone-local)}
+#viz-data-boundary .zone.amd{--z:var(--zone-amd)}
+#viz-data-boundary .zone.custom{--z:var(--zone-custom)}
+#viz-data-boundary .zone.external{--z:var(--zone-external)}
+#viz-data-boundary .zone h4{font-size:var(--fs-sm); margin-bottom:2px}
+#viz-data-boundary .zone .who{font-size:var(--fs-xs); color:var(--text-muted); margin-bottom:var(--sp3)}
+#viz-data-boundary .zone .cap{display:flex; flex-direction:column; gap:6px; font-size:var(--fs-xs)}
+#viz-data-boundary .zone .cap .row-c{display:flex; align-items:center; gap:6px}
+#viz-data-boundary .zone .ok{color:var(--ok)} #viz-data-boundary .zone .no{color:var(--danger)} #viz-data-boundary .zone .warn{color:var(--warn)}
+#viz-data-boundary .zone .mark{font-weight:800; width:14px; display:inline-block; text-align:center}
+
+/* the wall diagram */
+#viz-data-boundary .wall{
+  display:grid; grid-template-columns:1fr 92px 1fr; gap:0; align-items:stretch;
+  border:1px solid var(--hairline); border-radius:var(--r-lg); overflow:hidden; background:var(--surface-sunk);
+}
+@media(max-width:800px){#viz-data-boundary .wall{grid-template-columns:1fr; }}
+#viz-data-boundary .wall .side{padding:var(--sp5)}
+#viz-data-boundary .wall .inside{background:linear-gradient(180deg,var(--zone-local-wash),transparent 60%)}
+#viz-data-boundary .wall .outside{background:linear-gradient(180deg,var(--zone-external-wash),transparent 60%)}
+#viz-data-boundary .wall .side-h{display:flex; align-items:center; gap:var(--sp2); margin-bottom:var(--sp3)}
+#viz-data-boundary .wall .side-h .t{font-size:var(--fs-sm); font-weight:700; letter-spacing:.02em}
+#viz-data-boundary .wall .item{display:flex; gap:8px; align-items:baseline; padding:6px 0; font-size:var(--fs-xs); color:var(--text-muted); border-bottom:1px dashed var(--hairline-soft)}
+#viz-data-boundary .wall .item:last-child{border-bottom:0}
+#viz-data-boundary .wall .item b{color:var(--text)}
+#viz-data-boundary .wall .barrier{
+  position:relative; background:
+    repeating-linear-gradient(135deg, rgba(63,216,196,.10) 0 8px, transparent 8px 16px), var(--surface-raised);
+  border-left:1px solid var(--seal); border-right:1px solid var(--seal);
+  display:flex; align-items:center; justify-content:center;
+}
+@media(max-width:800px){#viz-data-boundary .wall .barrier{min-height:64px; border:0; border-top:1px solid var(--seal); border-bottom:1px solid var(--seal)}}
+#viz-data-boundary .wall .barrier .lbl{
+  writing-mode:vertical-rl; text-orientation:mixed; font-size:var(--fs-micro); letter-spacing:.24em;
+  text-transform:uppercase; color:var(--seal); font-weight:800;
+}
+@media(max-width:800px){#viz-data-boundary .wall .barrier .lbl{writing-mode:horizontal-tb}}
+
+/* crossing SVG lane */
+#viz-data-boundary .crossings{margin-top:var(--sp4); border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk); padding:var(--sp4) var(--sp3)}
+#viz-data-boundary .crossings svg{width:100%; height:auto; display:block}
+
+/* gate flow */
+#viz-data-boundary .gate-flow{display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:var(--sp2); align-items:stretch}
+@media(max-width:900px){#viz-data-boundary .gate-flow{grid-template-columns:1fr; }}
+#viz-data-boundary .gnode{border:1px solid var(--hairline); border-radius:var(--r-md); padding:var(--sp4); background:var(--surface); font-size:var(--fs-xs)}
+#viz-data-boundary .gnode.gate{border-color:var(--seal); background:linear-gradient(180deg,rgba(63,216,196,.08),transparent)}
+#viz-data-boundary .gnode h5{font-size:var(--fs-sm); margin-bottom:var(--sp2); display:flex; align-items:center; gap:6px}
+#viz-data-boundary .gnode ul{margin:6px 0 0; padding-left:16px; color:var(--text-muted)}
+#viz-data-boundary .gnode ul li{margin:2px 0}
+#viz-data-boundary .garrow{display:grid; place-items:center; color:var(--accent-strong); font-size:1.3rem; font-weight:700}
+@media(max-width:900px){#viz-data-boundary .garrow{transform:rotate(90deg); padding:4px 0}}
+
+/* sovereign compare */
+#viz-data-boundary .sov-grid{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp4)}
+@media(max-width:800px){#viz-data-boundary .sov-grid{grid-template-columns:1fr}}
+#viz-data-boundary .sov{border:1px solid var(--hairline); border-radius:var(--r-lg); padding:var(--sp5); background:var(--surface)}
+#viz-data-boundary .sov.on{border-color:var(--seal); background:linear-gradient(180deg,rgba(63,216,196,.07),transparent 55%)}
+#viz-data-boundary .sov .cap{display:flex; align-items:center; gap:var(--sp2); margin-bottom:var(--sp3)}
+#viz-data-boundary .sov .cap .h{font-size:var(--fs-h3); font-weight:700}
+#viz-data-boundary .sov .metric{display:flex; align-items:baseline; gap:8px; margin:var(--sp3) 0}
+#viz-data-boundary .sov .metric .n{font-size:1.8rem; font-weight:800; font-family:var(--font-mono)}
+#viz-data-boundary .sov.std .metric .n{color:var(--accent-strong)}
+#viz-data-boundary .sov.on .metric .n{color:var(--seal)}
+#viz-data-boundary .sov .metric .u{font-size:var(--fs-xs); color:var(--text-muted)}
+#viz-data-boundary .sov .line{display:flex; align-items:center; gap:8px; font-size:var(--fs-xs); color:var(--text-muted); padding:5px 0; border-top:1px dashed var(--hairline-soft)}
+#viz-data-boundary .sov .line .planner-bind{font-family:var(--font-mono); color:var(--text)}
+
+/* worked example split */
+#viz-data-boundary .worked{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp4)}
+@media(max-width:800px){#viz-data-boundary .worked{grid-template-columns:1fr}}
+#viz-data-boundary .doc{border:1px solid var(--hairline); border-radius:var(--r-md); overflow:hidden; background:var(--surface-sunk)}
+#viz-data-boundary .doc .doc-h{display:flex; align-items:center; gap:var(--sp2); padding:10px 14px; border-bottom:1px solid var(--hairline); font-size:var(--fs-xs); font-weight:700}
+#viz-data-boundary .doc.san .doc-h{background:var(--accent-wash); color:var(--sanitized)}
+#viz-data-boundary .doc.raw .doc-h{background:var(--raw); color:var(--raw-on)}
+#viz-data-boundary .doc pre{margin:0; padding:14px; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.6; color:var(--text-muted); overflow-x:auto; white-space:pre}
+#viz-data-boundary .doc pre .k{color:var(--accent-strong)}
+#viz-data-boundary .doc pre .mask{color:var(--seal); font-weight:700}
+#viz-data-boundary .doc pre .real{color:#f4b96b; font-weight:700}
+#viz-data-boundary .doc pre .c{color:var(--text-faint)}
+#viz-data-boundary .doc .foot{padding:8px 14px; border-top:1px solid var(--hairline); font-size:var(--fs-micro); color:var(--text-faint)}
+
+/* code enforcement snippet */
+#viz-data-boundary pre.code{margin:0; padding:var(--sp4); background:var(--raw); border:1px solid var(--hairline); border-radius:var(--r-md); font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.65; color:var(--text-muted); overflow-x:auto}
+#viz-data-boundary pre.code .kw{color:var(--accent-strong)} #viz-data-boundary pre.code .fn{color:var(--seal)}
+#viz-data-boundary pre.code .st{color:#f4b96b} #viz-data-boundary pre.code .cm{color:var(--text-faint)}
+#viz-data-boundary pre.code .err{color:var(--danger); font-weight:700}
+
+/* section header with cite */
+#viz-data-boundary .sec-head{display:flex; align-items:flex-end; justify-content:space-between; gap:var(--sp4); flex-wrap:wrap; margin-bottom:var(--sp4)}
+#viz-data-boundary .sec-head .sec-title{margin-bottom:0}
+#viz-data-boundary .matrix td .m-ok{color:var(--ok); font-weight:700}
+#viz-data-boundary .matrix td .m-no{color:var(--danger); font-weight:700}
+#viz-data-boundary .matrix td .m-warn{color:var(--warn); font-weight:700}
+</style>
+
+<!-- ===================== TOP NAV ===================== -->
+<header class="wf-topbar">
+  <div class="brand"><span class="mark"></span> Nxcleus <span class="faint" style="font-weight:500">· backend viz</span></div>
+  <nav class="wf-nav">
+    <a href="00-system-overview.html">00 · System</a>
+    <a href="01-seats-and-routing.html">01 · Seats &amp; Routing</a>
+    <a href="02-data-boundary.html" class="active">02 · Data Boundary</a>
+    <a href="03-pipeline-orchestrator.html">03 · Orchestrator</a>
+    <a href="04-economics-metering.html">04 · Economics</a>
+  </nav>
+  <div class="right">
+    <span class="wf-pill-sov"><span class="wf-toggle"></span> Standard</span>
+  </div>
+</header>
+
+<div class="wf-shell wf-page">
+
+  <!-- ===================== HEADER ===================== -->
+  <div class="wf-crumb">Backend Visualization · <b>02 — Data Boundary</b></div>
+  <h1 class="wf-title" style="font-size:var(--fs-display); max-width:20ch">The boundary is code, not policy.</h1>
+  <p class="lead">
+    Nxcleus runs a frontier planner it does not own, on hardware it does not control, over customer data that
+    must never leave the building. The reconciliation is one mechanical rule enforced in the request path of every
+    model call: <b>data is typed <span class="wf-chip raw" style="vertical-align:baseline">RAW</span> or
+    <span class="wf-chip sanitized" style="vertical-align:baseline">SANITIZED</span>, backends live in one of four
+    <b>zones</b>, and a wrong pairing raises an exception before a byte is sent.</b> This page traces exactly what
+    may cross where, the two sanitization gates that produce the only thing the frontier ever sees, and the Sovereign
+    switch that reduces off-box calls to zero.
+  </p>
+
+  <!-- legend -->
+  <div class="wf-legend">
+    <span class="k"><b>Data class</b></span>
+    <span class="k"><span class="wf-chip raw">RAW</span> customer data · never leaves LOCAL</span>
+    <span class="k"><span class="wf-chip sanitized">SANITIZED</span> masked / abstracted · may travel</span>
+    <span class="spacer"></span>
+    <span class="k"><b>Zones</b></span>
+    <span class="k"><span class="wf-chip local">LOCAL</span> MI300X</span>
+    <span class="k"><span class="wf-chip amd">AMD</span> Fireworks · fallback</span>
+    <span class="k"><span class="wf-chip custom">CUSTOM</span> BYOK</span>
+    <span class="k"><span class="wf-chip external">EXTERNAL</span> Anthropic</span>
+  </div>
+
+  <!-- ===================== THE LAW ===================== -->
+  <div class="law">
+    <span class="glyph">§</span>
+    <p>
+      <span class="raw-t">RAW</span> never leaves <b>LOCAL</b>. <b>EXTERNAL</b> only ever receives the
+      <span class="san-t">sanitized planner brief</span> and <span class="san-t">sanitized consults</span> — nothing else,
+      ever, in any mode.
+    </p>
+    <span class="cite">spec&nbsp;01&nbsp;<b>§3</b></span>
+  </div>
+
+  <!-- ===================== THE FOUR ZONES ===================== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-eyebrow">The terrain</div>
+        <h2 class="sec-title">Four zones, one wall</h2>
+      </div>
+      <span class="cite">spec&nbsp;01&nbsp;<b>§3</b> · 02&nbsp;<b>§4</b> · D7 · D13</span>
+    </div>
+    <p class="sec-lede">
+      A <b>zone</b> is where a model actually runs. Only the first is inside the customer's walls; the wall sits between
+      the local fleet and everything else. Each card shows what data class that zone is allowed to receive — this is
+      the exact truth <code>router.py</code> enforces per call, not a description of intent.
+    </p>
+
+    <div class="zones">
+      <div class="zone local">
+        <div class="row between" style="align-items:flex-start">
+          <div><h4>LOCAL</h4><div class="who">Self-hosted MI300X fleet</div></div>
+          <span class="wf-chip local">local</span>
+        </div>
+        <div class="cap">
+          <div class="row-c ok"><span class="mark">✓</span> RAW — full customer data</div>
+          <div class="row-c ok"><span class="mark">✓</span> SANITIZED</div>
+          <div class="row-c faint" style="margin-top:6px">Inside the wall. 7 of 8 seats live here.</div>
+        </div>
+      </div>
+
+      <div class="zone amd">
+        <div class="row between" style="align-items:flex-start">
+          <div><h4>AMD_HOSTED</h4><div class="who">Fireworks · fallback only (D7)</div></div>
+          <span class="wf-chip amd">amd</span>
+        </div>
+        <div class="cap">
+          <div class="row-c warn"><span class="mark">⚠</span> RAW — demo exception only<sup class="cite">*</sup></div>
+          <div class="row-c ok"><span class="mark">✓</span> SANITIZED</div>
+          <div class="row-c faint" style="margin-top:6px">Availability failover. Badged demo-infra, never product.</div>
+        </div>
+      </div>
+
+      <div class="zone custom">
+        <div class="row between" style="align-items:flex-start">
+          <div><h4>CUSTOM</h4><div class="who">BYOK endpoints (D13)</div></div>
+          <span class="wf-chip custom">custom</span>
+        </div>
+        <div class="cap">
+          <div class="row-c warn"><span class="mark">⚠</span> RAW — only if boundary-attested</div>
+          <div class="row-c ok"><span class="mark">✓</span> SANITIZED — default ceiling</div>
+          <div class="row-c faint" style="margin-top:6px"><code>counts_as_local</code> also satisfies Sovereign.</div>
+        </div>
+      </div>
+
+      <div class="zone external">
+        <div class="row between" style="align-items:flex-start">
+          <div><h4>EXTERNAL</h4><div class="who">Anthropic · the planner</div></div>
+          <span class="wf-chip external">external</span>
+        </div>
+        <div class="cap">
+          <div class="row-c no"><span class="mark">✕</span> RAW — hard error</div>
+          <div class="row-c ok"><span class="mark">✓</span> SANITIZED — Standard mode</div>
+          <div class="row-c no" style="margin-top:6px"><span class="mark">✕</span> anything — Sovereign mode (D7)</div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note" style="margin-top:var(--sp4)">
+      <span class="pin">*</span>
+      <div>The AMD_HOSTED RAW cell is a <b>demo-only</b> exception gated behind <code>ALLOW_RAW_ON_AMD_HOSTED=true</code>
+        — permitted only because all demo data is synthetic, and the run gets a persistent "fallback serving" badge.
+        In the product architecture, RAW on Fireworks never happens. <span class="cite">02&nbsp;<b>§4</b></span></div>
+    </div>
+  </section>
+
+  <!-- ===================== THE WALL ===================== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-eyebrow">What crosses</div>
+        <h2 class="sec-title">Inside the wall vs. what goes out</h2>
+      </div>
+      <span class="cite">spec&nbsp;01&nbsp;<b>§3</b> · 03&nbsp;<b>§2.3</b></span>
+    </div>
+    <p class="sec-lede">
+      Everything the pipeline touches is generated and stored inside LOCAL. Exactly one artifact is composed to cross
+      the wall: the <b>sanitized planner brief</b>. The wall is not a firewall config — it is the return value of a
+      function that decides, per call, whether a payload is allowed through.
+    </p>
+
+    <div class="wall">
+      <div class="side inside">
+        <div class="side-h">
+          <span class="wf-chip local">LOCAL</span>
+          <span class="t">Stays inside — data-class RAW</span>
+        </div>
+        <div class="item"><b>Original request</b><span class="spacer"></span><span class="faint">verbatim, unmasked</span></div>
+        <div class="item"><b>Uploaded files &amp; documents</b><span class="spacer"></span><span class="faint">OCR'd locally</span></div>
+        <div class="item"><b>Raw code map</b><span class="spacer"></span><span class="faint">real paths &amp; symbols</span></div>
+        <div class="item"><b>Real DB schemas</b><span class="spacer"></span><span class="faint">true table/field names</span></div>
+        <div class="item"><b>Certified plan (post-stage-2)</b><span class="spacer"></span><span class="faint">rehydrated, D9</span></div>
+        <div class="item"><b>Generated code, tests, oracle vectors</b><span class="spacer"></span><span class="faint">all downstream seats</span></div>
+        <div class="item"><b>boundary_vault</b> raw→placeholder map<span class="spacer"></span><span class="faint">never serialized out</span></div>
+      </div>
+      <div class="barrier"><span class="lbl">The&nbsp;Boundary</span></div>
+      <div class="side outside">
+        <div class="side-h">
+          <span class="wf-chip external">EXTERNAL</span>
+          <span class="t">Crosses out — data-class SANITIZED</span>
+        </div>
+        <div class="item"><b>Planner brief (SanitizedSpec)</b><span class="spacer"></span><span class="wf-chip sanitized">sanitized</span></div>
+        <div class="item"><b>Sanitized consults</b><span class="spacer"></span><span class="wf-chip sanitized">sanitized</span></div>
+        <div class="item faint" style="opacity:.6">— and nothing else, ever —</div>
+        <div style="margin-top:var(--sp4)" class="wf-note">
+          <span class="pin">i</span>
+          <div>Stage 0 <b>masks</b> to compose the brief; stage 2 deliberately <b>re-introduces</b> production detail into
+            the plan (rehydration) — legal because every seat after the planner is LOCAL (D7). Whatever goes back
+            <i>out</i> re-crosses via the consult gate. <span class="cite">01&nbsp;<b>§3</b> · 03&nbsp;<b>§4.2</b></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- crossing matrix as an SVG lane -->
+    <div class="crossings" aria-label="Data class crossing matrix">
+      <svg viewBox="0 0 920 150" role="img">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--sanitized)"/>
+          </marker>
+          <marker id="arx" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--danger)"/>
+          </marker>
+        </defs>
+        <!-- LOCAL node -->
+        <rect x="20" y="45" width="150" height="60" rx="10" fill="var(--zone-local-wash)" stroke="var(--zone-local)"/>
+        <text x="95" y="72" text-anchor="middle" fill="var(--zone-local)" font-size="14" font-weight="700" font-family="var(--font-mono)">LOCAL</text>
+        <text x="95" y="90" text-anchor="middle" fill="var(--text-muted)" font-size="10">RAW + SANITIZED</text>
+        <!-- barrier -->
+        <line x1="460" y1="10" x2="460" y2="140" stroke="var(--seal)" stroke-width="1.5" stroke-dasharray="4 5"/>
+        <text x="460" y="22" text-anchor="middle" fill="var(--seal)" font-size="9" font-weight="700" letter-spacing="1.5">BOUNDARY</text>
+        <!-- EXTERNAL node -->
+        <rect x="750" y="45" width="150" height="60" rx="10" fill="var(--zone-external-wash)" stroke="var(--zone-external)"/>
+        <text x="825" y="72" text-anchor="middle" fill="var(--zone-external)" font-size="14" font-weight="700" font-family="var(--font-mono)">EXTERNAL</text>
+        <text x="825" y="90" text-anchor="middle" fill="var(--text-muted)" font-size="10">SANITIZED only</text>
+        <!-- SANITIZED crosses -->
+        <path d="M175 62 L745 62" stroke="var(--sanitized)" stroke-width="2" marker-end="url(#ar)"/>
+        <rect x="360" y="47" width="200" height="20" rx="10" fill="var(--paper)"/>
+        <text x="460" y="61" text-anchor="middle" fill="var(--sanitized)" font-size="11" font-weight="700">SANITIZED brief + consults ✓</text>
+        <!-- RAW blocked -->
+        <path d="M175 90 L440 90" stroke="var(--danger)" stroke-width="2" marker-end="url(#arx)"/>
+        <line x1="446" y1="80" x2="466" y2="100" stroke="var(--danger)" stroke-width="2.5"/>
+        <line x1="466" y1="80" x2="446" y2="100" stroke="var(--danger)" stroke-width="2.5"/>
+        <rect x="250" y="97" width="200" height="20" rx="10" fill="var(--paper)"/>
+        <text x="300" y="90" text-anchor="middle" fill="var(--danger)" font-size="11" font-weight="700">RAW</text>
+        <text x="470" y="132" text-anchor="start" fill="var(--danger)" font-size="10">BoundaryViolation — raised in the router before dispatch</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ===================== CROSSING MATRIX (01 §3 table) ===================== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-eyebrow">The truth table</div>
+        <h2 class="sec-title">What each data class may reach, per zone</h2>
+      </div>
+      <span class="cite">spec&nbsp;01&nbsp;<b>§3</b> table</span>
+    </div>
+    <div class="wf-panel sunk matrix">
+      <table class="wf-table">
+        <thead>
+          <tr>
+            <th>Data class</th>
+            <th><span class="wf-chip local">LOCAL</span></th>
+            <th><span class="wf-chip amd">AMD_HOSTED</span></th>
+            <th><span class="wf-chip custom">CUSTOM (BYOK)</span></th>
+            <th><span class="wf-chip external">EXTERNAL</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="wf-chip raw">RAW</span><br><span class="faint" style="font-size:var(--fs-micro)">customer data · certified plan (D9)</span></td>
+            <td><span class="m-ok">✓ allowed</span></td>
+            <td><span class="m-warn">⚠ demo-exception</span><br><span class="faint" style="font-size:var(--fs-micro)"><code>ALLOW_RAW_ON_AMD_HOSTED</code></span></td>
+            <td><span class="m-warn">⚠ if attested</span><br><span class="faint" style="font-size:var(--fs-micro)">ceiling=RAW / <code>counts_as_local</code></span></td>
+            <td><span class="m-no">✕ hard error</span><br><span class="faint" style="font-size:var(--fs-micro)">BoundaryViolation</span></td>
+          </tr>
+          <tr>
+            <td><span class="wf-chip sanitized">SANITIZED</span><br><span class="faint" style="font-size:var(--fs-micro)">brief · Plan v1 · consults</span></td>
+            <td><span class="m-ok">✓</span></td>
+            <td><span class="m-ok">✓</span></td>
+            <td><span class="m-ok">✓</span></td>
+            <td><span class="m-ok">✓ normal</span> / <span class="m-no">✕ Sovereign</span><br><span class="faint" style="font-size:var(--fs-micro)">SovereignViolation</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="margin-top:var(--sp3); font-size:var(--fs-sm)">
+      Read it as a permission lattice: RAW is confined to the one column that lives inside the walls (plus two badged,
+      opt-in extensions); SANITIZED travels freely except that Sovereign Mode closes the EXTERNAL door entirely.
+    </p>
+  </section>
+
+  <!-- ===================== ENFORCEMENT IS CODE ===================== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-eyebrow">Why "code, not policy"</div>
+        <h2 class="sec-title">The check runs on the dispatch path of every call</h2>
+      </div>
+      <span class="cite">02&nbsp;<b>§4</b> · <code>router.py</code></span>
+    </div>
+    <p class="sec-lede">
+      <code>data_class</code> is a <b>required argument</b> to the router. There is no code path to a backend that
+      skips the zone check — it sits between seat resolution and dispatch, and it fails closed. This is the literal
+      guard from <code>backend/app/models/router.py</code> (<code>_check_boundary</code>):
+    </p>
+
+    <div class="wf-grid split">
+      <pre class="code"><span class="cm"># router.py — resolved backend r, data_class, sovereign flag</span>
+<span class="kw">if</span> sovereign <span class="kw">and not</span> (zone == <span class="st">"LOCAL"</span>
+        <span class="kw">or</span> (zone == <span class="st">"CUSTOM"</span> <span class="kw">and</span> counts_as_local)):
+    <span class="kw">return</span> <span class="err">None, "sovereign"</span>   <span class="cm"># → SovereignViolation</span>
+
+<span class="kw">if</span> data_class == <span class="st">"RAW"</span>:
+    <span class="kw">if</span> zone == <span class="st">"LOCAL"</span>:        <span class="kw">return</span> ok
+    <span class="kw">if</span> zone == <span class="st">"AMD_HOSTED"</span>:   <span class="kw">return</span> demo_badge  <span class="cm"># flag-gated</span>
+    <span class="kw">if</span> zone == <span class="st">"CUSTOM"</span> <span class="kw">and</span> ceiling == <span class="st">"RAW"</span>: <span class="kw">return</span> ok
+    <span class="kw">return</span> <span class="err">None, "boundary"</span>  <span class="cm"># EXTERNAL+RAW = hard error</span>
+
+<span class="cm"># SANITIZED travels everywhere; sovereign+EXTERNAL</span>
+<span class="cm"># already handled above → dispatch</span></pre>
+
+      <div class="stack g3">
+        <div class="wf-card">
+          <div class="row between"><b style="color:var(--danger)">BoundaryViolation</b><span class="wf-badge fn">fail-closed</span></div>
+          <p class="muted" style="font-size:var(--fs-xs); margin:6px 0 0">RAW headed anywhere but LOCAL (or an attested CUSTOM). Also raised earlier if a seat with a SANITIZED ceiling — e.g. <span class="wf-chip seat">planner</span> — is handed RAW.</p>
+        </div>
+        <div class="wf-card">
+          <div class="row between"><b style="color:var(--seal)">SovereignViolation</b><span class="wf-badge fn">fail-closed</span></div>
+          <p class="muted" style="font-size:var(--fs-xs); margin:6px 0 0">Any EXTERNAL egress while the job is sovereign. The demo <i>proves</i> it by attempting a planner call with Sovereign on and painting the run red.</p>
+        </div>
+        <div class="wf-card">
+          <div class="row between"><b>egress_log</b><span class="wf-badge fn">every dispatch</span></div>
+          <p class="muted" style="font-size:var(--fs-xs); margin:6px 0 0">Every call writes <code>(ts, host, zone, seat, scope, bytes)</code> through one wrapped client. The network monitor is a <b>query, not a screenshot</b> — it powers the per-job "exactly N external calls, all sanitized" receipt.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== THE TWO GATES ===================== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-eyebrow">How SANITIZED gets made</div>
+        <h2 class="sec-title">Two gates produce everything the frontier sees</h2>
+      </div>
+      <span class="cite">03&nbsp;<b>§2.1</b> · <b>§2.3</b> · <b>§4.2</b> · D9 · D11</span>
+    </div>
+    <p class="sec-lede">
+      RAW does not become SANITIZED by convention — it passes through a gate that extracts values, substitutes typed
+      placeholders, and sweeps for residuals. There are exactly two such gates: one <b>outbound</b> at stage 0
+      (composing the brief) and one <b>outbound</b> at stage 2 (consults going back to the planner). Between them,
+      <b>rehydration</b> runs the substitution in reverse — but only ever inward, into the LOCAL zone.
+    </p>
+
+    <div class="gate-flow">
+      <div class="gnode">
+        <h5><span class="wf-chip raw">RAW</span> Stage 0 intake</h5>
+        <div class="muted">Original request, files, code, DB schemas + the customer's <b>confidentiality policy</b> (doc / typed / voice→local Whisper).</div>
+        <ul>
+          <li><span class="wf-chip seat">trust</span> distills a <b>RedactionPolicy</b> (D11)</li>
+          <li>PII baseline always on: names, accounts, gov IDs, secrets</li>
+          <li>policy adds company rules: product names, fee tables</li>
+        </ul>
+      </div>
+      <div class="garrow">→</div>
+      <div class="gnode gate">
+        <h5>🛡 Stage-0 sanitization gate</h5>
+        <div class="muted"><span class="wf-chip seat">trust</span> replaces every value with a typed placeholder <code>«PERSON_1»</code>, <code>«ACCOUNT_A»</code>. The raw→placeholder map stays in <b>boundary_vault</b> — never serialized outward.</div>
+        <ul>
+          <li>emits <code>boundary.sanitized</code> + sensitivity report</li>
+          <li>cites the customer's own policy rule IDs</li>
+        </ul>
+      </div>
+      <div class="garrow">→</div>
+      <div class="gnode">
+        <h5><span class="wf-chip sanitized">SANITIZED</span> Planner brief</h5>
+        <div class="muted">The <b>SanitizedSpec</b> — spec + context pack + policy summary, framed as a brief <i>for a stronger model</i>: strip values, keep structure.</div>
+        <ul>
+          <li>the <b>only</b> artifact composed to cross to EXTERNAL</li>
+          <li>persisted to <code>jobs.spec_json</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="wf-note" style="margin-top:var(--sp4)">
+      <span class="pin">2</span>
+      <div><b>Rehydration (D9) — the inward pass.</b> At stage 2 the local <span class="wf-chip seat">certifier</span> reads
+        the <b>full RAW context</b> (request verbatim, raw code map, real schemas, the boundary vault) and resolves
+        placeholders back to real values — <code>«TABLE_A»</code> → the real table name. The certified plan is thereafter
+        data-class <b>RAW</b>, legal everywhere in LOCAL (which, per D7, is everything downstream) and illegal to serialize
+        out. This is the whole point: fix what the frontier couldn't know, safely, because no seat after the planner ever
+        talks to the cloud. <span class="cite">03&nbsp;<b>§4.1</b></span></div>
+    </div>
+
+    <div class="wf-panel" style="margin-top:var(--sp4); border-color:var(--seal)">
+      <div class="wf-panel-h">
+        <h3>🛡 The consult sanitization gate — the only RAW→out re-crossing</h3>
+        <span class="cite">03&nbsp;<b>§4.2</b></span>
+      </div>
+      <p class="muted" style="margin-top:0; font-size:var(--fs-sm)">
+        When the certifier can't fix a plan defect locally, it <b>consults</b> the planner — which is EXTERNAL, so the
+        request re-crosses the boundary. It cannot go out RAW. The gate does two things in order:
+      </p>
+      <div class="wf-grid cols-3" style="margin-top:var(--sp3)">
+        <div class="wf-card"><b>1 · Reverse-substitute</b><p class="muted" style="font-size:var(--fs-xs); margin:6px 0 0">Mechanical re-masking of <i>every known raw value</i> against the boundary_vault — real names become placeholders again.</p></div>
+        <div class="wf-card"><b>2 · Sweep for residuals</b><p class="muted" style="font-size:var(--fs-xs); margin:6px 0 0"><span class="wf-chip seat">trust</span> re-scans the payload for anything the mechanical pass missed, before dispatch.</p></div>
+        <div class="wf-card"><b>3 · Rehydrate the reply</b><p class="muted" style="font-size:var(--fs-xs); margin:6px 0 0">Returned patches arrive placeholder-based and are rehydrated <i>on application</i>, back inside LOCAL.</p></div>
+      </div>
+      <div class="wf-note" style="margin-top:var(--sp4)">
+        <span class="pin">✓</span>
+        <div>The egress ledger shows each consult as <span class="wf-chip external">EXTERNAL</span> / <span class="wf-chip sanitized">SANITIZED</span> — auditable in the demo. Consults are capped at 3 rounds; unresolved structural findings pause the job for human review (<code>certify.blocked</code>) rather than leaking to get an answer.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STANDARD vs SOVEREIGN ===================== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-eyebrow">The switch</div>
+        <h2 class="sec-title">Standard vs. Sovereign Mode</h2>
+      </div>
+      <span class="cite">D7 · 01&nbsp;<b>§3</b> · 02&nbsp;<b>§4</b></span>
+    </div>
+    <p class="sec-lede">
+      Sovereign Mode is a global toggle (also settable per job). It rebinds the one EXTERNAL seat — the
+      <span class="wf-chip seat">planner</span> — from Anthropic to the <b>local</b> node-B GLM, so the entire pipeline
+      runs on the self-hosted fleet. It is not "less cloud"; it is <b>zero non-local calls</b>. Any EXTERNAL egress
+      during a sovereign job raises <code>SovereignViolation</code> and paints the run red.
+    </p>
+
+    <div class="sov-grid">
+      <div class="sov std">
+        <div class="cap"><span class="wf-chip external">EXTERNAL used</span><span class="h">Standard Mode</span></div>
+        <div class="metric"><span class="n">1</span><span class="u">non-local call per build<br>(the stage-1 planner brief, sanitized)</span></div>
+        <div class="line"><span class="planner-bind">planner →</span> <span class="wf-chip external">anthropic:fable-5</span></div>
+        <div class="line"><span>Everything else</span><span class="spacer"></span><span class="wf-chip local">local MI300X</span></div>
+        <div class="line"><span>Frontier intelligence on the plan,</span></div>
+        <div class="line"><span>your data still never leaves — only the sanitized brief crosses.</span></div>
+      </div>
+
+      <div class="sov on">
+        <div class="cap"><span class="wf-chip local" style="border-color:var(--seal); color:var(--seal); background:rgba(63,216,196,.08)">SOVEREIGN</span><span class="h">Sovereign Mode</span></div>
+        <div class="metric"><span class="n">0</span><span class="u">non-local calls, whole pipeline<br>fail-closed on any EXTERNAL egress</span></div>
+        <div class="line"><span class="planner-bind">planner →</span> <span class="wf-chip local">local:B/glm-46</span> <span class="faint">(rebind, D7)</span></div>
+        <div class="line"><span>Everything else</span><span class="spacer"></span><span class="wf-chip local">local MI300X</span></div>
+        <div class="line"><span>Fireworks is <i>not</i> a sovereign target — it's EXTERNAL-adjacent fallback infra.</span></div>
+        <div class="line"><span>The egress ledger reads <b style="color:var(--seal)">zero frontier calls</b> — the Sovereign finale.</span></div>
+      </div>
+    </div>
+    <div class="wf-note" style="margin-top:var(--sp4)">
+      <span class="pin">i</span>
+      <div>The only in-code escape is a CUSTOM (BYOK) connection flagged <code>counts_as_local</code> — a customer attesting
+        their own endpoint is inside their trust boundary. That, and LOCAL, are the sole zones a sovereign call may reach.
+        <span class="cite">02&nbsp;<b>§8</b> · router <code>_check_boundary</code></span></div>
+    </div>
+  </section>
+
+  <!-- ===================== WORKED KYC/AML EXAMPLE ===================== -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-eyebrow">Worked example — KYC/AML onboarding</div>
+        <h2 class="sec-title">What the planner sees vs. what stays inside</h2>
+      </div>
+      <span class="cite">03&nbsp;<b>§2.3</b> · <b>§4.1</b> · D9 · D11</span>
+    </div>
+    <p class="sec-lede">
+      A bank asks Nxcleus to build a customer-onboarding screening flow. Their confidentiality policy says: <i>never
+      leak client legal names, account numbers, or our internal table names.</i> Here is the same fact — an applicant
+      record and its screening rule — as the <b>frontier planner</b> receives it, beside the <b>RAW</b> that never
+      leaves the box. Same structure, everything identifying replaced.
+    </p>
+
+    <div class="worked">
+      <div class="doc san">
+        <div class="doc-h"><span class="wf-chip sanitized">SANITIZED</span> → planner brief (crosses to EXTERNAL)</div>
+<pre><span class="c">// SanitizedSpec.entities — jobs.spec_json</span>
+{
+  <span class="k">"title"</span>: <span class="mask">"KYC/AML customer onboarding"</span>,
+  <span class="k">"entities"</span>: [{
+    <span class="k">"name"</span>: <span class="mask">"Applicant"</span>,
+    <span class="k">"fields"</span>: [
+      {<span class="k">"name"</span>:<span class="mask">"full_name"</span>,<span class="k">"type"</span>:<span class="mask">"string"</span>,<span class="k">"pii"</span>:true},
+      {<span class="k">"name"</span>:<span class="mask">"account_ref"</span>,<span class="k">"type"</span>:<span class="mask">"string"</span>,<span class="k">"pii"</span>:true}
+    ]}],
+  <span class="k">"context_pack"</span>: {
+    <span class="k">"db_schemas"</span>: [{
+      <span class="k">"table"</span>: <span class="mask">"«TABLE_A»"</span>,
+      <span class="k">"fields"</span>: [<span class="mask">"«FIELD_1»: decimal"</span>, ...]
+    }]},
+  <span class="k">"numeric_rules"</span>: [{
+    <span class="k">"id"</span>:<span class="mask">"NR-1"</span>,
+    <span class="k">"text"</span>:<span class="mask">"risk = weighted sum of sanctions,"</span>
+           <span class="mask">"PEP, geography flags"</span> }],
+  <span class="k">"sensitivity_report"</span>: {
+    <span class="k">"pii_fields_masked"</span>: 7,
+    <span class="k">"policy_rules_applied"</span>: [<span class="mask">"RP-1"</span>,<span class="mask">"RP-3"</span>],
+    <span class="k">"identifiers_generalized"</span>: 12 }
+}</pre>
+        <div class="foot">Structure preserved, every value a typed placeholder. This is the frontier's entire view of the job.</div>
+      </div>
+
+      <div class="doc raw">
+        <div class="doc-h"><span class="wf-chip raw">RAW</span> stays LOCAL (boundary_vault + certified plan)</div>
+<pre><span class="c"># boundary_vault — never serialized outward</span>
+«PERSON_1»   → <span class="real">"MariaGonzalez-Reyes"</span>
+«ACCOUNT_A»  → <span class="real">"GB29-NWBK-6016-1331-9268-19"</span>
+«TABLE_A»    → <span class="real">"cust_onboarding_applicants"</span>
+«FIELD_1»    → <span class="real">"aml_risk_score"</span>
+
+<span class="c"># certified plan after rehydration (D9) — data-class RAW</span>
+mod_sanctions.algorithm:
+  query <span class="real">cust_onboarding_applicants</span>
+    join <span class="real">ofac_sdn_list</span> on fuzzy(full_name)
+  set <span class="real">aml_risk_score</span> = w1·sanctions
+                    + w2·pep + w3·geo_risk
+
+<span class="c"># uploaded evidence (OCR'd locally, never leaves)</span>
+passport_scan_0417.pdf, source_of_funds.xlsx,
+prior SAR filings, real fee schedule table
+
+<span class="c"># the customer's original words, verbatim</span>
+"screen new applicants against OFAC + EU
+ consolidated list before account opening"</pre>
+        <div class="foot">The certifier reads all of this to fix what the planner assumed blind — then it stays put.</div>
+      </div>
+    </div>
+
+    <div class="wf-grid cols-3" style="margin-top:var(--sp4)">
+      <div class="wf-card">
+        <div class="wf-eyebrow">The why · fidelity</div>
+        <p class="muted" style="font-size:var(--fs-xs); margin:0">The brief keeps <b>enough structure</b> — an Applicant with a PII full_name, a decimal risk field, a 3-factor rule — that a model which never sees the data can still design a correct sanctions/PEP/geo screening flow.</p>
+      </div>
+      <div class="wf-card">
+        <div class="wf-eyebrow">The why · safety</div>
+        <p class="muted" style="font-size:var(--fs-xs); margin:0">Not one real name, IBAN, table name, or the fee schedule crosses. The <b>sensitivity report cites RP-1/RP-3</b> — the bank's <i>own</i> policy clauses — so sanitization is contractual, not discretionary (D11).</p>
+      </div>
+      <div class="wf-card">
+        <div class="wf-eyebrow">The why · correctness</div>
+        <p class="muted" style="font-size:var(--fs-xs); margin:0">Rehydration lets the local certifier bind <code>«TABLE_A»</code> to the real table and fix the planner's blind assumptions — <b>legal because it happens after the last EXTERNAL call</b> (D7/D9).</p>
+      </div>
+    </div>
+
+    <div class="wf-note" style="margin-top:var(--sp4)">
+      <span class="pin">§</span>
+      <div>End-to-end receipt for this KYC build in Standard Mode: <b>exactly one</b> EXTERNAL call (the brief above),
+        data-class SANITIZED, logged in <code>egress_log</code>. Flip Sovereign on and that call rebinds to
+        <span class="wf-chip local">local:B/glm-46</span> — <b>zero</b> bytes leave the building, at some cost to plan quality.
+        That trade is the customer's to make, per job. <span class="cite">01&nbsp;<b>§3</b> egress ledger · D7</span></div>
+    </div>
+  </section>
+
+  <!-- ===================== SPEC LEDGER ===================== -->
+  <div class="wf-ledger">
+    <h4>Source ledger — every claim on this page is traceable</h4>
+    <table>
+      <tr><td>Four zones + crossing table</td><td class="ev">spec 01 §3 — Data boundary &amp; zones</td><td class="muted">LOCAL / AMD_HOSTED / CUSTOM / EXTERNAL; RAW never leaves LOCAL; EXTERNAL gets only the sanitized brief + consults</td></tr>
+      <tr><td>Enforcement = code</td><td class="ev">spec 02 §4 + router.py <code>_check_boundary</code></td><td class="muted"><code>data_class</code> required arg; BoundaryViolation / SovereignViolation fail-closed; every dispatch writes egress_log</td></tr>
+      <tr><td>Seat data-class ceilings</td><td class="ev">infra/seats.yaml</td><td class="muted">planner <code>data_class_max: SANITIZED</code> (the one seat that can never see RAW); certifier / conductor / coder / consolidator / trust = RAW</td></tr>
+      <tr><td>Stage-0 gate + RedactionPolicy</td><td class="ev">spec 03 §2.1–2.3 · D11</td><td class="muted">trust distills policy (doc/typed/voice→local Whisper); PII baseline always on; SanitizedSpec = planner brief</td></tr>
+      <tr><td>Rehydration + RAW certified plan</td><td class="ev">spec 03 §4.1 · D9</td><td class="muted">certifier reads full RAW context; placeholders resolved to real values; certified plan is RAW, stays LOCAL</td></tr>
+      <tr><td>Consult sanitization gate</td><td class="ev">spec 03 §4.2</td><td class="muted">reverse-substitute vs vault → trust residual sweep → dispatch; reply rehydrated on application; 3-round cap</td></tr>
+      <tr><td>Sovereign Mode</td><td class="ev">D7 · spec 01 §3 · 02 §4</td><td class="muted">planner rebinds anthropic → local:B; zero non-local calls; EXTERNAL egress raises SovereignViolation; CUSTOM+counts_as_local also satisfies it</td></tr>
+      <tr><td>Egress ledger</td><td class="ev">spec 01 §3 · boundary/egress.py</td><td class="muted">every outbound request logs (ts, host, zone, seat, scope, bytes) → the "N external calls, all sanitized" receipt</td></tr>
+    </table>
+  </div>
+
+</div>
+</section>

@@ -1,0 +1,892 @@
+<section id="viz-economics-metering">
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css  (inlined verbatim, shared language)
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* =====================================================================
+   PAGE-SPECIFIC diagram CSS — scoped to #viz-economics-metering
+   ===================================================================== */
+#viz-economics-metering{position:relative; z-index:1}
+#viz-economics-metering .sec{margin-top:var(--sp7)}
+#viz-economics-metering .sec-head{display:flex; align-items:baseline; gap:var(--sp3); flex-wrap:wrap; margin-bottom:var(--sp2)}
+#viz-economics-metering .sec-num{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent); border:1px solid var(--accent-mid); background:var(--accent-wash); border-radius:var(--r-xs); padding:1px 8px}
+#viz-economics-metering .sec-head h2{font-size:var(--fs-h2)}
+#viz-economics-metering .spec-ref{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-faint)}
+#viz-economics-metering .lead{color:var(--text-muted); max-width:74ch; margin:var(--sp2) 0 var(--sp4)}
+
+/* mono callout of a code path / formula */
+#viz-economics-metering .code{font-family:var(--font-mono); font-size:var(--fs-sm); background:var(--surface-sunk); border:1px solid var(--hairline); border-radius:var(--r-sm); padding:var(--sp3) var(--sp4); color:var(--text); overflow-x:auto; line-height:1.7}
+#viz-economics-metering .code .cm{color:var(--text-faint)}
+#viz-economics-metering .code .kw{color:var(--accent-strong)}
+#viz-economics-metering .code .num{color:var(--ok)}
+#viz-economics-metering .code .fn{color:var(--zone-amd)}
+#viz-economics-metering .path{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--accent); background:var(--accent-wash); padding:1px 6px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+
+/* horizontal dispatch → meter flow rail */
+#viz-economics-metering .rail{display:flex; align-items:stretch; gap:0; flex-wrap:wrap}
+#viz-economics-metering .rail .node{flex:1 1 130px; min-width:130px; background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp3); text-align:center; position:relative}
+#viz-economics-metering .rail .node .t{font-size:var(--fs-xs); font-weight:600; color:var(--text)}
+#viz-economics-metering .rail .node .d{font-size:var(--fs-micro); color:var(--text-faint); margin-top:3px; line-height:1.4}
+#viz-economics-metering .rail .arr{flex:0 0 26px; display:grid; place-items:center; color:var(--accent)}
+#viz-economics-metering .rail .node.emph{border-color:var(--accent-mid); background:var(--accent-wash)}
+@media(max-width:860px){#viz-economics-metering .rail{flex-direction:column}#viz-economics-metering .rail .arr{transform:rotate(90deg); height:22px}}
+
+/* the meter_events row schema */
+#viz-economics-metering .schema{display:grid; grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:6px; margin-top:var(--sp3)}
+#viz-economics-metering .schema .col{background:var(--surface-sunk); border:1px solid var(--hairline-soft); border-radius:var(--r-sm); padding:8px 9px}
+#viz-economics-metering .schema .col .f{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--accent-strong)}
+#viz-economics-metering .schema .col .v{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-muted); margin-top:3px; word-break:break-all}
+
+/* rate card zone rows */
+#viz-economics-metering .rate-in{color:var(--zone-local)}
+#viz-economics-metering .rate-out{color:var(--zone-amd)}
+
+/* quote / invoice line item lists */
+#viz-economics-metering .lines{border:1px solid var(--hairline); border-radius:var(--r-md); overflow:hidden; background:var(--surface-sunk)}
+#viz-economics-metering .li{display:grid; grid-template-columns:1fr auto; gap:var(--sp3) var(--sp4); padding:var(--sp3) var(--sp4); border-bottom:1px solid var(--hairline-soft); align-items:baseline}
+#viz-economics-metering .li:last-child{border-bottom:0}
+#viz-economics-metering .li .item{font-size:var(--fs-sm); color:var(--text)}
+#viz-economics-metering .li .qty{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint); display:block; margin-top:3px}
+#viz-economics-metering .li .amt{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); white-space:nowrap; text-align:right}
+#viz-economics-metering .li.total{background:var(--surface-raised); border-top:1px solid var(--hairline)}
+#viz-economics-metering .li.total .item{font-weight:700}
+#viz-economics-metering .li.total .amt{color:var(--seal)}
+#viz-economics-metering .li.excl .item{color:var(--text-muted)}
+#viz-economics-metering .li.excl .amt{color:var(--text-faint)}
+
+/* reconciliation bar */
+#viz-economics-metering .recon{margin-top:var(--sp4)}
+#viz-economics-metering .recon svg{width:100%; height:auto; display:block}
+
+/* guard cards */
+#viz-economics-metering .guard{border:1px solid var(--hairline); border-radius:var(--r-md); padding:var(--sp4); background:var(--surface-raised); position:relative}
+#viz-economics-metering .guard .gh{display:flex; align-items:center; gap:var(--sp2); margin-bottom:var(--sp2)}
+#viz-economics-metering .guard .gn{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--accent); border:1px solid var(--accent-mid); border-radius:var(--r-pill); width:22px; height:22px; display:grid; place-items:center; flex:none}
+#viz-economics-metering .guard h4{font-size:var(--fs-sm)}
+#viz-economics-metering .guard p{font-size:var(--fs-xs); color:var(--text-muted); margin:0}
+#viz-economics-metering .guard.hard{border-left:3px solid var(--danger)}
+#viz-economics-metering .guard.soft{border-left:3px solid var(--warn)}
+#viz-economics-metering .guard.live{border-left:3px solid var(--ok)}
+
+/* capex vs opex mini chart */
+#viz-economics-metering .capex{display:flex; align-items:flex-end; gap:var(--sp3); height:150px; padding-top:var(--sp3)}
+#viz-economics-metering .capex .bar{flex:0 0 auto; width:46px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%}
+#viz-economics-metering .capex .bar .fill{width:100%; border-radius:var(--r-xs) var(--r-xs) 0 0; background:linear-gradient(180deg,var(--accent-strong),var(--accent-mid))}
+#viz-economics-metering .capex .bar.op .fill{background:linear-gradient(180deg,var(--ok),#1f8a5f)}
+#viz-economics-metering .capex .bar .cap{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint); margin-top:6px; text-align:center}
+#viz-economics-metering .capex .bar .val{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text); margin-bottom:5px}
+
+#viz-economics-metering .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:var(--sp3)}
+#viz-economics-metering .kpi{background:var(--surface-sunk); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp3) var(--sp4)}
+#viz-economics-metering .kpi .n{font-family:var(--font-mono); font-size:1.35rem; color:var(--seal); letter-spacing:-.02em}
+#viz-economics-metering .kpi .l{font-size:var(--fs-micro); color:var(--text-faint); text-transform:uppercase; letter-spacing:.1em; margin-top:2px}
+</style>
+
+<!-- ============================ TOP BAR ============================ -->
+<div class="wf-topbar">
+  <div class="brand"><span class="mark"></span> Nxcleus <span class="muted" style="font-weight:500">· backend viz</span></div>
+  <nav class="wf-nav">
+    <a href="00-system-overview.html">00 · system overview</a>
+    <a href="01-seats-and-routing.html">01 · seats &amp; routing</a>
+    <a href="02-data-boundary.html">02 · data boundary</a>
+    <a href="03-pipeline-orchestrator.html">03 · pipeline orchestrator</a>
+    <a href="04-economics-metering.html" class="active">04 · economics &amp; metering</a>
+  </nav>
+  <div class="right">
+    <span class="wf-pill-live"><i></i> live · $1.26 last E2E</span>
+  </div>
+</div>
+
+<div class="wf-shell">
+<div class="wf-page">
+
+  <!-- ============================ HEADER ============================ -->
+  <div class="wf-crumb">Backend AI &amp; routing · <b>Follow the money &amp; the tokens</b></div>
+  <h1 class="wf-title">Economics &amp; Metering</h1>
+  <p class="wf-sub">
+    Metering isn't bookkeeping garnish here — <b>it is the product claim</b>. "Frontier intelligence is a
+    capital expense, not a marginal cost" only holds if the receipt is real. So every model dispatch
+    writes a metered row from actual token counts and real rates; stage&nbsp;3 turns the plan into a
+    deterministic <em>quote</em> (a range); stage&nbsp;7 aggregates the metered rows into an exact
+    <em>invoice</em>; and the two are reconciled side-by-side at delivery. Below: how a row is written,
+    how local GPU time is attributed honestly, the rate card, the quote engine, the invoice, the
+    money-slide summary, and the budget guards — traced end-to-end through a KYC/AML onboarding build.
+    <span class="spec-ref">Ground truth: spec&nbsp;10, <span class="path">infra/rates.yaml</span>, <span class="path">backend/app/metering/*</span>, <span class="path">quote/stage3.py</span>.</span>
+  </p>
+
+  <!-- ============================ LEGEND ============================ -->
+  <div class="wf-legend">
+    <span class="k"><span class="wf-chip local">local</span> <b>LOCAL</b> MI300X · priced as GPU-seconds</span>
+    <span class="k"><span class="wf-chip amd">amd</span> <b>AMD_HOSTED</b> Fireworks · per-token, fallback only</span>
+    <span class="k"><span class="wf-chip external">external</span> <b>EXTERNAL</b> Anthropic · per-token, sanitized egress</span>
+    <span class="k"><span class="wf-chip custom">custom</span> <b>CUSTOM</b> BYOK endpoint</span>
+    <span class="k"><span class="wf-chip sanitized">quote</span> range (est.)</span>
+    <span class="k"><span class="wf-chip seat">invoice</span> exact (metered)</span>
+  </div>
+
+  <!-- ===================================================================
+       §1 — METER EVENTS
+       =================================================================== -->
+  <section class="sec" data-wf="fn">
+    <div class="sec-head">
+      <span class="sec-num">§1</span>
+      <h2>Every dispatch writes a metered row</h2>
+      <span class="spec-ref">spec 10 §1 · router.py <span class="mono">_record_dispatch()</span> → meter.record()</span>
+    </div>
+    <p class="lead">
+      There is exactly one place cost is born: the router. After <em>every</em> model call — planner,
+      certifier, coder, oracle, a schema-repair retry, a mock in dev — <span class="path">router._record_dispatch()</span>
+      writes a <code>meter_events</code> row, records the egress ledger, emits a <code>model.call</code>
+      event, and throttle-broadcasts a <code>meter.tick</code>. Nothing bills except through this seam,
+      so the invoice can never disagree with what actually ran.
+    </p>
+
+    <div class="rail" style="margin-bottom:var(--sp4)">
+      <div class="node"><div class="t">seat calls model</div><div class="d">e.g. <span class="wf-chip seat">planner</span> via router.complete()</div></div>
+      <div class="arr">&#8594;</div>
+      <div class="node"><div class="t">provider returns</div><div class="d"><code>usage.tokens_in / tokens_out</code> — exact, from the wire</div></div>
+      <div class="arr">&#8594;</div>
+      <div class="node emph"><div class="t">meter.record()</div><div class="d">rate lookup + GPU est → <b>cost_usd</b></div></div>
+      <div class="arr">&#8594;</div>
+      <div class="node"><div class="t">meter_events row</div><div class="d">INSERT (kind = <code>llm_call</code>)</div></div>
+      <div class="arr">&#8594;</div>
+      <div class="node"><div class="t">meter.tick</div><div class="d">≤1/s scope totals → live cost meter</div></div>
+    </div>
+
+    <div class="wf-grid split">
+      <div class="wf-panel sunk">
+        <div class="wf-eyebrow">meter_events row (05 §5 · one per LLM call)</div>
+        <div class="schema">
+          <div class="col"><div class="f">ts</div><div class="v">datetime('now')</div></div>
+          <div class="col"><div class="f">scope</div><div class="v">job:… / run:… / sandbox:…</div></div>
+          <div class="col"><div class="f">seat</div><div class="v">planner</div></div>
+          <div class="col"><div class="f">backend</div><div class="v">anthropic</div></div>
+          <div class="col"><div class="f">model_id</div><div class="v">claude-fable-5</div></div>
+          <div class="col"><div class="f">kind</div><div class="v">llm_call</div></div>
+          <div class="col"><div class="f">tokens_in</div><div class="v">14210</div></div>
+          <div class="col"><div class="f">tokens_out</div><div class="v">3820</div></div>
+          <div class="col"><div class="f">gpu_seconds</div><div class="v">0.0 (ext)</div></div>
+          <div class="col"><div class="f">cost_usd</div><div class="v">0.333100</div></div>
+        </div>
+        <div class="wf-note">
+          <span class="pin">i</span>
+          <span>A second row kind = <code>gpu_sample</code> is written from telemetry (1-in-15 sampling):
+          <code>(node → gpu_seconds at utilization)</code> for node-level cross-checks (§2). Same table, seat = <code>fleet</code>.</span>
+        </div>
+      </div>
+      <div class="wf-panel">
+        <div class="wf-eyebrow">cost formula — meter.cost_for()</div>
+        <div class="code">
+<span class="cm"># deterministic, no LLM — metering/meter.py</span>
+token_cost = tokens_in/<span class="num">1e6</span>·in_rate
+           + tokens_out/<span class="num">1e6</span>·out_rate
+gpu_cost   = gpu_seconds · gpu_hr/<span class="num">3600</span>
+<span class="kw">cost_usd</span>  = (token_cost+gpu_cost)·(<span class="num">1</span>+margin)
+        </div>
+        <p class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp3)">
+          Rates from <span class="path">rates.yaml</span> keyed by <code>(backend, model_id)</code>.
+          <b>margin = 0.0</b> (hackathon = cost passthrough; in product it's the pricing knob, 10 §3).
+          Rounded to 6 dp — sub-cent honesty.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       §2 — GPU-SECOND ATTRIBUTION
+       =================================================================== -->
+  <section class="sec" data-wf="fn">
+    <div class="sec-head">
+      <span class="sec-num">§2</span>
+      <h2>GPU-second attribution — an honest approximation</h2>
+      <span class="spec-ref">spec 10 §2 · meter.estimate_gpu_seconds()</span>
+    </div>
+    <p class="lead">
+      Local tokens on the MI300X fleet are <b>not priced per-token</b> (rates.yaml <code>local: 0/0</code>)
+      — self-hosted intelligence is GPU <em>time</em>, not a marginal token fee. But exact per-request
+      GPU accounting isn't feasible in the hackathon window, so we use a defensible estimate <em>and say
+      so in the invoice footnote</em>. Regulated-enterprise honesty is on-brand: never quote a number you
+      can't stand behind.
+    </p>
+    <div class="wf-grid cols-2">
+      <div class="wf-panel">
+        <div class="wf-eyebrow">the approximation (10 §2)</div>
+        <div class="code">
+<span class="cm"># per local LLM call</span>
+gpu_seconds ≈ wall_clock · (<span class="num">1</span> / avg_concurrent_reqs)
+             <span class="cm"># concurrency from vLLM /metrics</span>
+             <span class="cm"># snapshot at dispatch &amp; completion</span>
+cost_usd    = gpu_seconds · node_rate / <span class="num">3600</span>
+        </div>
+        <p class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp3)">
+          Per scope = sum of its calls' estimates, <b>cross-checked</b> against node-level utilization
+          samples; if the sum exceeds measured node time, scale down pro-rata. Two GPUs each doing 4
+          concurrent requests can't bill 8× a wall-clock second.
+        </p>
+      </div>
+      <div class="wf-panel">
+        <div class="wf-eyebrow">fallback when no concurrency snapshot</div>
+        <div class="code">
+<span class="cm"># estimate_gpu_seconds(backend, tokens_out)</span>
+<span class="kw">if</span> backend <span class="kw">in</span> (<span class="fn">"local"</span>,<span class="fn">"mock"</span>):
+    <span class="kw">return</span> max(<span class="num">0.1</span>, tokens_out/<span class="num">40.0</span>)
+<span class="kw">return</span> <span class="num">0.0</span>   <span class="cm"># external/fireworks: per-token, no GPU line</span>
+        </div>
+        <div class="wf-note warn">
+          <span class="pin">!</span>
+          <span>This <code>tokens_out / 40</code> heuristic is the calibration knob — a real MI300X under
+          real load reads differently. Real local dispatch overrides it with the measured value; the
+          fallback only fires when the <code>/metrics</code> snapshot is missing.</span>
+        </div>
+      </div>
+    </div>
+    <div class="wf-note">
+      <span class="pin">§</span>
+      <span><b>Invoice footnote, verbatim:</b> "GPU-seconds are an estimate (10 §2); token counts are exact."
+      — the estimate is disclosed at the point of billing, not buried.</span>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       §3 — RATE CARD
+       =================================================================== -->
+  <section class="sec" data-wf="fn">
+    <div class="sec-head">
+      <span class="sec-num">§3</span>
+      <h2>The rate card — real numbers</h2>
+      <span class="spec-ref">spec 10 §3 · infra/rates.yaml (confirmed 2026-07-09)</span>
+    </div>
+    <p class="lead">
+      Keys are <span class="path">models.yaml</span> keys (not bare provider ids) so
+      <code>token_rate(backend, model)</code> resolves the metered <code>model</code> directly. Prices are
+      live price-sheet numbers — the money slide cites these, so they can't be placeholders.
+    </p>
+    <div class="wf-panel sunk">
+      <table class="wf-table">
+        <thead><tr>
+          <th>Zone</th><th>Backend</th><th>Model key</th>
+          <th class="rate-in">$ / 1M in</th><th class="rate-out">$ / 1M out</th><th>Role</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="wf-chip external">external</span></td><td>anthropic</td>
+            <td><b>claude-fable-5</b></td><td class="rate-in"><b>10.00</b></td><td class="rate-out"><b>50.00</b></td>
+            <td>Planner — the one designed-in non-local seat. Sanitized egress only.</td>
+          </tr>
+          <tr>
+            <td><span class="wf-chip external">external</span></td><td>anthropic</td>
+            <td>claude-opus-4-8</td><td class="rate-in">5.00</td><td class="rate-out">25.00</td>
+            <td>Planner refusal-fallback (server-side).</td>
+          </tr>
+          <tr>
+            <td><span class="wf-chip amd">amd</span></td><td>fireworks</td>
+            <td>glm-52-hosted</td><td class="rate-in">1.40</td><td class="rate-out">4.40</td>
+            <td>Availability fallback only (D7), badged.</td>
+          </tr>
+          <tr>
+            <td><span class="wf-chip amd">amd</span></td><td>fireworks</td>
+            <td>deepseek-v4-pro</td><td class="rate-in">1.74</td><td class="rate-out">3.48</td>
+            <td>Availability fallback only (D7), badged.</td>
+          </tr>
+          <tr>
+            <td><span class="wf-chip local">local</span></td><td>local (MI300X)</td>
+            <td>default</td><td class="rate-in">0.00</td><td class="rate-out">0.00</td>
+            <td><b>Priced as GPU time, not per-token</b> — see §2.</td>
+          </tr>
+          <tr>
+            <td colspan="3"><b>gpu.mi300x_hour_usd</b> · 8× MI300X droplet $15.92/hr → $1.99/GPU-hr</td>
+            <td colspan="2"><b>2.00</b> / GPU-hr</td>
+            <td>Rounded (10 §3). Drives every LOCAL line.</td>
+          </tr>
+          <tr>
+            <td colspan="3"><b>margin</b></td><td colspan="2"><b>0.0</b></td>
+            <td>Cost passthrough (hackathon). Product pricing knob.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       §4 — QUOTE ENGINE + worked KYC quote
+       =================================================================== -->
+  <section class="sec" data-wf="fn">
+    <div class="sec-head">
+      <span class="sec-num">§4</span>
+      <h2>The quote engine — deterministic, at stage 3</h2>
+      <span class="spec-ref">spec 10 §4 · quote/stage3.py <span class="mono">build_quote_body()</span></span>
+    </div>
+    <div class="wf-steps">
+      <span class="wf-step done"><span class="n">0</span> intake</span>
+      <span class="wf-step done"><span class="n">1</span> plan</span>
+      <span class="wf-step done"><span class="n">2</span> certify</span>
+      <span class="wf-step active"><span class="n">3</span> quote</span>
+      <span class="wf-step"><span class="n">4</span> build</span>
+      <span class="wf-step"><span class="n">5</span> consolidate</span>
+      <span class="wf-step"><span class="n">6</span> QA</span>
+      <span class="wf-step"><span class="n">7</span> deliver + invoice</span>
+    </div>
+    <p class="lead">
+      The quote is a pure function of the certified plan's <code>estimates</code> + <code>model_bom</code> +
+      rates — <b>no LLM, fully reproducible</b>. It emits an itemized range and the job <b>parks at
+      <code>quoted</code></b> until <code>POST /approve-quote</code>: the customer sees the price before a
+      dollar of compute runs. Ranges = ±50% on token estimates, ±30% on GPU time.
+    </p>
+
+    <div class="wf-grid split">
+      <div class="wf-panel">
+        <div class="wf-eyebrow">how each line is computed</div>
+        <div class="code">
+<span class="cm"># inputs from the certified plan</span>
+frontier_tokens, gpu_hours, fleet.width
+
+<span class="cm"># frontier line uses the claude-fable-5 rate</span>
+frontier_low  = fT/<span class="num">1e6</span> · in_rate      <span class="cm"># all-input</span>
+frontier_high = low + fT/<span class="num">1e6</span> · out_rate <span class="cm"># +output</span>
+
+<span class="cm"># GPU hours split across stages, ×$2.00/GPU-h</span>
+build_gpu       = gpu_hours · <span class="num">0.7</span>
+consolidate_gpu = gpu_hours · <span class="num">0.1</span>
+qa_gpu          = gpu_hours · <span class="num">0.2</span>
+line_range      = base·<span class="num">0.7</span> … base·<span class="num">1.3</span>  <span class="cm"># ±30%</span>
+        </div>
+        <p class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp3)">
+          The "projected per-run operating cost" line (<code>[0.06, 0.12]</code> per 100 units) is shown
+          but <b>excluded from the build total</b> — it's opex, not capex. That distinction is the whole
+          pitch (§6).
+        </p>
+      </div>
+
+      <div class="wf-panel">
+        <div class="wf-eyebrow">worked example · plan estimates for the KYC/AML onboarding build</div>
+        <div class="kpis" style="margin-bottom:var(--sp4)">
+          <div class="kpi"><div class="n">120k</div><div class="l">frontier tokens</div></div>
+          <div class="kpi"><div class="n">2.7</div><div class="l">GPU-hours</div></div>
+          <div class="kpi"><div class="n">3×</div><div class="l">MI300X · width 3</div></div>
+        </div>
+        <p class="muted" style="font-size:var(--fs-xs)">
+          The plan: sanction/PEP screening pipeline (OFAC + EU lists), an ID-document extraction step, a
+          risk-scoring module, and a review-queue for <code>needs_review</code> cases. Only a
+          <span class="wf-chip sanitized">sanitized</span> brief reaches the planner — raw customer PII,
+          the DB schema and the built code never leave LOCAL (see <a href="02-data-boundary.html">02</a>).
+        </p>
+      </div>
+    </div>
+
+    <div class="wf-panel" style="margin-top:var(--sp4)">
+      <div class="wf-panel-h">
+        <h3>Quote — KYC/AML onboarding</h3>
+        <span class="wf-chip sanitized">estimate · range</span>
+      </div>
+      <div class="lines">
+        <div class="li">
+          <div><div class="item">Frontier planning &amp; consults <span class="wf-chip external">external</span></div>
+            <span class="qty">≈120k tokens · claude-fable-5 · 120k/1M×$10 … +120k/1M×$50</span></div>
+          <div class="amt">$1.20 – $7.20</div>
+        </div>
+        <div class="li">
+          <div><div class="item">Local certification, build waves &amp; conductor review (GPU) <span class="wf-chip local">local</span></div>
+            <span class="qty">≈1.9 GPU-h on 3× MI300X · 1.89×$2.00 ±30%</span></div>
+          <div class="amt">$2.65 – $4.91</div>
+        </div>
+        <div class="li">
+          <div><div class="item">Local consolidation (GPU) <span class="wf-chip local">local</span></div>
+            <span class="qty">≈0.3 GPU-h · 0.27×$2.00 ±30%</span></div>
+          <div class="amt">$0.38 – $0.70</div>
+        </div>
+        <div class="li">
+          <div><div class="item">Adversarial QA incl. Numeric Oracle &amp; goal check <span class="wf-chip local">local</span></div>
+            <span class="qty">≈0.5 GPU-h · 0.54×$2.00 ±30%</span></div>
+          <div class="amt">$0.76 – $1.40</div>
+        </div>
+        <div class="li excl">
+          <div><div class="item">Projected per-run operating cost <span class="faint">(opex — excluded from build total)</span></div>
+            <span class="qty">per 100 units</span></div>
+          <div class="amt">$0.06 – $0.12</div>
+        </div>
+        <div class="li total">
+          <div><div class="item">Build total (capex, one-time)</div>
+            <span class="qty">basis: model BoM v1 (width 3); ±50% tokens, ±30% GPU</span></div>
+          <div class="amt">$4.99 – $14.21</div>
+        </div>
+      </div>
+      <div class="wf-note">
+        <span class="pin">?</span>
+        <span><b>Why the frontier line is so wide ($1.20–$7.20):</b> the low end assumes those 120k tokens
+        are all cheap input; the high end adds an equal volume of $50/1M output. The router's job is to
+        keep this line <em>small</em> — only sanitized planning goes external; everything expensive runs
+        as flat GPU time.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       §5 — INVOICE + reconciliation
+       =================================================================== -->
+  <section class="sec" data-wf="fn">
+    <div class="sec-head">
+      <span class="sec-num">§5</span>
+      <h2>The invoice — exact, aggregated at stage 7</h2>
+      <span class="spec-ref">spec 10 §5 · metering/invoice.py <span class="mono">build_invoice()</span></span>
+    </div>
+    <p class="lead">
+      At delivery (and on every refine), <code>build_invoice(scope)</code> sums the metered rows
+      <code>GROUP BY backend</code>, maps each backend to its zone (registry <code>ZONE</code>), and emits
+      one line per zone with <b>real token counts and exact cost</b>. It counts <code>frontier_calls</code>
+      (EXTERNAL calls) and, if given the quote, computes <code>delta_vs_quote</code>. The result is stored
+      as <code>invoice.json</code> in the immutable package and rendered in the Build view.
+    </p>
+
+    <div class="wf-grid split">
+      <div class="wf-panel">
+        <div class="wf-panel-h">
+          <h3>Invoice — KYC/AML onboarding (scope <code>job:…</code>)</h3>
+          <span class="wf-chip seat">actual · metered</span>
+        </div>
+        <div class="lines">
+          <div class="li">
+            <div><div class="item">Frontier planning (sanitized brief only) <span class="wf-chip external">external</span></div>
+              <span class="qty">anthropic · 106,000 tokens · 6 calls</span></div>
+            <div class="amt">$1.94</div>
+          </div>
+          <div class="li">
+            <div><div class="item">Local GPU (certify / build / conductor / consolidate / QA) <span class="wf-chip local">local</span></div>
+              <span class="qty">local · 210,000 tokens · 41 calls · ≈2.25 GPU-h est.</span></div>
+            <div class="amt">$4.50</div>
+          </div>
+          <div class="li">
+            <div><div class="item">Fallback serving (Fireworks, AMD-hosted) <span class="wf-chip amd">amd</span></div>
+              <span class="qty">fireworks · 4,200 tokens · 1 call · glm-52-hosted</span></div>
+            <div class="amt">$0.01</div>
+          </div>
+          <div class="li total">
+            <div><div class="item">Build total (exact)</div>
+              <span class="qty">frontier_calls = 6 · footnote: GPU-seconds estimated, tokens exact</span></div>
+            <div class="amt">$6.45</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-panel">
+        <div class="wf-eyebrow">quote ↔ invoice reconciliation (rendered side-by-side)</div>
+        <div class="recon">
+          <svg viewBox="0 0 340 120" role="img" aria-label="Reconciliation: invoice $6.45 lands inside the quoted range $4.99 to $14.21">
+            <!-- axis 0 .. 16 -->
+            <line x1="20" y1="96" x2="320" y2="96" stroke="#163542" stroke-width="1"/>
+            <!-- ticks -->
+            <g font-family="ui-monospace,monospace" font-size="8" fill="#567179" text-anchor="middle">
+              <text x="20" y="110">$0</text>
+              <text x="132.5" y="110">$6</text>
+              <text x="245" y="110">$12</text>
+              <text x="320" y="110">$16</text>
+            </g>
+            <!-- quote range band: 4.99 .. 14.21 on 0..16 → x = 20 + v/16*300 -->
+            <rect x="113.6" y="34" width="172.9" height="26" rx="5" fill="rgba(56,166,210,.16)" stroke="#216f92"/>
+            <text x="200" y="28" font-family="ui-monospace,monospace" font-size="8.5" fill="#85d3f0" text-anchor="middle">quote  $4.99 – $14.21</text>
+            <!-- invoice marker at 6.45 → x = 20 + 6.45/16*300 = 140.9 -->
+            <line x1="140.9" y1="30" x2="140.9" y2="96" stroke="#3fd8c4" stroke-width="2"/>
+            <circle cx="140.9" cy="47" r="4.5" fill="#3fd8c4"/>
+            <text x="140.9" y="78" font-family="ui-monospace,monospace" font-size="9" fill="#3fd8c4" text-anchor="middle" font-weight="700">invoice $6.45</text>
+          </svg>
+        </div>
+        <div class="kpis" style="margin-top:var(--sp3)">
+          <div class="kpi"><div class="n" style="color:var(--seal)">+$1.46</div><div class="l">delta vs quote low</div></div>
+          <div class="kpi"><div class="n" style="color:var(--ok)">inside</div><div class="l">range · no overrun</div></div>
+        </div>
+        <p class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp3)">
+          Actuals landed near the low end of the quote — as expected: the run leaned on cheap Fireworks
+          fallback for one call ($0.01, "prices in cents", Wave-2 obs.) and the planner stayed disciplined.
+        </p>
+      </div>
+    </div>
+
+    <div class="wf-note">
+      <span class="pin">$</span>
+      <span><b>The honest inversion:</b> the frontier line reads scariest per-token ($10/$50 per 1M), yet
+      here it's the <em>minority</em> of spend — $1.94 of $6.45. The bulk ($4.50) is flat MI300X GPU time.
+      That's the money slide in one number: <b>intelligence bought as capex, not billed as marginal cost.</b></span>
+    </div>
+
+    <div class="wf-panel" style="margin-top:var(--sp4)" data-wf="fn">
+      <div class="wf-panel-h">
+        <h3>Refine invoice — the triage-authority receipt</h3>
+        <span class="spec-ref">10 §5 · refine/refine.py</span>
+      </div>
+      <p class="muted" style="font-size:var(--fs-sm); max-width:74ch">
+        When a change request comes in, the <span class="wf-chip seat">certifier</span> triages it locally
+        as <b>amend</b> (mechanical, scoped rebuild) or <b>consult</b> (structural, needs the frontier).
+        The refine invoice adds one line the customer specifically wants to see:
+      </p>
+      <div class="wf-grid cols-2" style="margin-top:var(--sp3)">
+        <div class="wf-card">
+          <div class="row between"><span class="item" style="font-size:var(--fs-sm)">Refine · triage = <b style="color:var(--ok)">amend</b> (stayed local)</span><span class="amt" style="font-family:var(--font-mono); color:var(--ok)">$0.00</span></div>
+          <div class="qty" style="font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint); margin-top:6px">frontier_consult_usd = 0.0 &nbsp; ← the receipt: "no data left the box for this change"</div>
+        </div>
+        <div class="wf-card">
+          <div class="row between"><span class="item" style="font-size:var(--fs-sm)">Refine · triage = <b style="color:var(--warn)">consult</b> (frontier)</span><span class="amt" style="font-family:var(--font-mono); color:var(--warn)">= total</span></div>
+          <div class="qty" style="font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint); margin-top:6px">frontier_consult_usd = invoice total &nbsp; ← charged only when structure genuinely changed</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       §6 — MONEY SLIDE
+       =================================================================== -->
+  <section class="sec" data-wf="fn">
+    <div class="sec-head">
+      <span class="sec-num">§6</span>
+      <h2>The money slide — capex once, flat opex per run</h2>
+      <span class="spec-ref">spec 10 §6 · GET /api/economics/summary</span>
+    </div>
+    <p class="lead">
+      <code>GET /api/economics/summary</code> is the contract the Operations view draws its chart from.
+      Per process: the one-time <code>build_cost_usd</code> (the invoice above), then a list of
+      <code>runs</code> — each with <code>units</code>, <code>cost_usd</code>, <code>cost_per_unit</code>,
+      and crucially <code>frontier_calls: 0</code>. <b>Runs never call the frontier.</b> The build bought a
+      packaged pipeline; running it is deterministic local execution.
+    </p>
+    <div class="wf-grid split">
+      <div class="wf-panel">
+        <div class="wf-eyebrow">the capex-vs-opex shape (why it's a flat line)</div>
+        <div class="capex">
+          <div class="bar"><span class="val">$6.45</span><div class="fill" style="height:100%"></div><span class="cap">build<br>(capex)</span></div>
+          <div class="bar op"><span class="val">$0.11</span><div class="fill" style="height:12%"></div><span class="cap">run 1<br>100 u</span></div>
+          <div class="bar op"><span class="val">$0.11</span><div class="fill" style="height:12%"></div><span class="cap">run 2<br>100 u</span></div>
+          <div class="bar op"><span class="val">$0.10</span><div class="fill" style="height:11%"></div><span class="cap">run 3<br>96 u</span></div>
+          <div class="bar op"><span class="val">$0.11</span><div class="fill" style="height:12%"></div><span class="cap">run 4<br>100 u</span></div>
+          <div class="bar op"><span class="val">$0.11</span><div class="fill" style="height:12%"></div><span class="cap">run 5<br>100 u</span></div>
+        </div>
+        <p class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp4)">
+          <code>cost_per_unit ≈ $0.0011</code> and <code>frontier_calls: 0</code> on every run. The
+          reg-report re-run beat and the sandbox both feed this live — the flat opex line is measured, not
+          asserted.
+        </p>
+      </div>
+      <div class="wf-panel sunk">
+        <div class="wf-eyebrow">/api/economics/summary payload (per process)</div>
+        <div class="code">
+{
+  <span class="kw">"process_id"</span>: <span class="fn">"proc_kyc…"</span>,
+  <span class="kw">"slug"</span>: <span class="fn">"kyc-aml-onboarding"</span>,
+  <span class="kw">"build_cost_usd"</span>: <span class="num">6.45</span>,
+  <span class="kw">"build_frontier_calls"</span>: <span class="num">6</span>,
+  <span class="kw">"runs"</span>: [
+    { <span class="kw">"run_id"</span>:<span class="fn">"run_1"</span>, <span class="kw">"units"</span>:<span class="num">100</span>,
+      <span class="kw">"cost_usd"</span>:<span class="num">0.11</span>,
+      <span class="kw">"cost_per_unit"</span>:<span class="num">0.0011</span>,
+      <span class="kw">"frontier_calls"</span>:<span class="num">0</span> }
+  ],
+  <span class="kw">"trend"</span>: <span class="fn">"capex once, flat opex per run"</span>
+}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       §7 — BUDGET GUARDS
+       =================================================================== -->
+  <section class="sec" data-wf="fn">
+    <div class="sec-head">
+      <span class="sec-num">§7</span>
+      <h2>Budget guards — where spend gets stopped</h2>
+      <span class="spec-ref">spec 10 §7 · 07 §5.4 · router._budget_guard()</span>
+    </div>
+    <p class="lead">
+      Guards run <b>pre-dispatch, on the same seam that meters</b> — before a call goes out, not after the
+      bill lands. There is no path to spend that skips the check.
+    </p>
+    <div class="wf-grid cols-3">
+      <div class="guard hard">
+        <div class="gh"><span class="gn">1</span><h4>Fireworks daily cap</h4></div>
+        <p>If <code>fireworks_spend_today() ≥ $15/day</code> (config <code>fireworks_daily_budget_usd</code>),
+        emit <code>system.notice</code> (error) and raise <code>BudgetExceeded</code>. Caps the badged
+        fallback so an outage can't run up an external bill.</p>
+      </div>
+      <div class="guard hard">
+        <div class="gh"><span class="gn">2</span><h4>Per-scope cap</h4></div>
+        <p>Sandbox / per-run scopes register a cap via <code>set_scope_cap()</code>. If
+        <code>scope_spend(scope) ≥ cap</code> → <code>BudgetExceeded</code>. Keeps a single judge run or
+        sandbox from overrunning.</p>
+      </div>
+      <div class="guard live">
+        <div class="gh"><span class="gn">3</span><h4>Live cost meter</h4></div>
+        <p><code>meter.tick</code> broadcasts scope totals ≤1/s; caps + current burn are exposed at
+        <code>/api/config/public</code> for the UI's cost meter. Visibility, not enforcement.</p>
+      </div>
+    </div>
+
+    <div class="wf-panel" style="margin-top:var(--sp4)">
+      <div class="wf-eyebrow">what happens when a hard guard fires</div>
+      <div class="rail">
+        <div class="node emph"><div class="t">_budget_guard()</div><div class="d">pre-dispatch, per call</div></div>
+        <div class="arr">&#8594;</div>
+        <div class="node"><div class="t">raise BudgetExceeded</div><div class="d">deterministic guard, not a fault</div></div>
+        <div class="arr">&#8594;</div>
+        <div class="node"><div class="t">engine catches</div><div class="d"><b>no retry</b> — aborts gracefully</div></div>
+        <div class="arr">&#8594;</div>
+        <div class="node"><div class="t">job → aborted</div><div class="d">emit <code>job.aborted</code> (09 §4)</div></div>
+      </div>
+    </div>
+
+    <div class="wf-note warn">
+      <span class="pin">⚑</span>
+      <span><b>Spec ↔ code divergence (shown honestly, per brief):</b> spec 10 §7 also describes a
+      <em>per-job soft ceiling</em> = approved quote upper bound ×1.5, warning at 80% and parking at 100%
+      (presenter may raise). The <b>code in <span class="path">router.py</span> enforces the two hard caps
+      above</b> (Fireworks daily + per-scope) and aborts on breach; the quote-×1.5 soft-ceiling / 80%-warn
+      behavior is specified but <b>not yet wired</b> into the router guard. Flagging it so the team doesn't
+      demo a park that can't trigger.</span>
+    </div>
+  </section>
+
+  <!-- ============================ LEDGER ============================ -->
+  <div class="wf-ledger">
+    <h4>Source ledger — every fact on this page</h4>
+    <table>
+      <tr><td>Meter row per dispatch</td><td class="ev">router.py _record_dispatch → meter.record()</td><td class="muted">spec 10 §1 · 05 §5</td></tr>
+      <tr><td>cost_for() formula, margin 0.0</td><td class="ev">metering/meter.py</td><td class="muted">spec 10 §1,§3</td></tr>
+      <tr><td>GPU-second estimate + footnote</td><td class="ev">meter.estimate_gpu_seconds · invoice.py footnote</td><td class="muted">spec 10 §2</td></tr>
+      <tr><td>Rate card (real prices)</td><td class="ev">infra/rates.yaml (confirmed 2026-07-09)</td><td class="muted">spec 10 §3</td></tr>
+      <tr><td>Quote lines, ±50%/±30%, parks at quoted</td><td class="ev">quote/stage3.py build_quote_body()</td><td class="muted">spec 10 §4</td></tr>
+      <tr><td>Invoice aggregate by backend→zone</td><td class="ev">metering/invoice.py build_invoice()</td><td class="muted">spec 10 §5</td></tr>
+      <tr><td>Refine frontier_consult_usd = $0 (amend)</td><td class="ev">refine/refine.py</td><td class="muted">spec 10 §5</td></tr>
+      <tr><td>Money-slide summary payload</td><td class="ev">api/economics.py GET /economics/summary</td><td class="muted">spec 10 §6</td></tr>
+      <tr><td>Budget guards, BudgetExceeded → abort</td><td class="ev">router._budget_guard · engine.py</td><td class="muted">spec 10 §7 · 07 §5.4 · 09 §4</td></tr>
+      <tr><td>Soft-ceiling ×1.5 / 80% warn</td><td class="ev">specified, not wired in router.py</td><td class="muted">spec 10 §7 (divergence)</td></tr>
+      <tr><td>KYC worked numbers</td><td class="ev">computed from build_quote_body + cost_for formulas</td><td class="muted">Wave-2 obs. 10 §Wave-2</td></tr>
+    </table>
+  </div>
+
+</div>
+</div>
+</section>

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus — Wireframe Index</title>
+<link rel="stylesheet" href="_kit.css">
+<style>
+  #hub{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:var(--sp7) var(--sp5) var(--sp8)}
+  .hub-hero{margin-bottom:var(--sp6)}
+  .hub-hero .wf-crumb{margin-bottom:var(--sp3)}
+  .hub-hero h1{font-size:var(--fs-display); letter-spacing:-.02em; margin-bottom:var(--sp3)}
+  .hub-hero p{color:var(--text-muted); max-width:72ch; font-size:var(--fs-lead, 1.1rem)}
+  .hub-group{margin-top:var(--sp7)}
+  .hub-group > h2{font-size:var(--fs-h2); margin-bottom:var(--sp2)}
+  .hub-group > .lead{color:var(--text-faint); font-size:var(--fs-sm); margin-bottom:var(--sp4)}
+  .hub-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--sp3)}
+  .hub-card{display:block; padding:var(--sp4); border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface); transition:.16s; position:relative}
+  .hub-card:hover{border-color:var(--accent-mid); background:var(--surface-raised); text-decoration:none; transform:translateY(-1px)}
+  .hub-card .n{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-faint)}
+  .hub-card h3{font-size:1rem; margin:4px 0 6px; color:var(--text)}
+  .hub-card .rt{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--accent-strong); background:var(--accent-wash); padding:1px 6px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+  .hub-card p{color:var(--text-muted); font-size:var(--fs-sm); margin:10px 0 0; line-height:1.5}
+  .hub-card.viz:hover{border-color:var(--seal)}
+  .hub-card.viz .n{color:var(--seal)}
+  .stage-strip{display:flex; gap:6px; flex-wrap:wrap; margin-top:var(--sp3)}
+</style>
+</head>
+<body>
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a class="active" href="00-index.html">Home</a>
+      <a href="02-build-jobs.html">Build</a>
+      <a href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<main id="hub">
+  <div class="hub-hero">
+    <div class="wf-crumb">Nxcleus · <b>Wireframe set</b> · for functional iteration</div>
+    <h1>Platform wireframes</h1>
+    <p>Every functional step of the Nxcleus platform, drawn as a mid-fi themed wireframe. Each page labels
+       what is <b>wired</b>, what is <b>planned</b>, and what is <b>mocked</b> — so the team can iterate on
+       function screen by screen. Backend AI &amp; routing logic is visualized as a separate unified suite below.</p>
+    <div class="wf-legend" style="margin-top:var(--sp5)">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k faint">Source of truth: <code>_BRIEF.md</code> · <code>_kit.css</code></span>
+    </div>
+  </div>
+
+  <section class="hub-group">
+    <h2>Entry &amp; shell</h2>
+    <div class="lead">How a customer arrives and how the platform frames itself.</div>
+    <div class="hub-cards">
+      <a class="hub-card" href="01-landing.html"><span class="n">01</span><h3>Landing</h3> <span class="rt">/</span>
+        <p>Product claim, CTAs, sovereign-mode explainer, demo unlock, live/demo indicator.</p></a>
+    </div>
+  </section>
+
+  <section class="hub-group">
+    <h2>Build — the 0–7 pipeline</h2>
+    <div class="lead">Turning a plain-language request into a certified, quoted, built, QA'd, delivered automation.</div>
+    <div class="hub-cards">
+      <a class="hub-card" href="02-build-jobs.html"><span class="n">02</span><h3>Jobs list</h3> <span class="rt">/build</span>
+        <p>All build jobs, per-stage progress, running cost; launch a new build.</p></a>
+      <a class="hub-card" href="03-build-shell.html"><span class="n">03</span><h3>Pipeline console (shell)</h3> <span class="rt">/build/:jobId</span>
+        <p>The frame that hosts the stage panels: stepper, live event stream, cost meter, abort.</p></a>
+      <a class="hub-card" href="04-stage0-intake.html"><span class="n">04</span><h3>Stage 0 · Intake</h3> <span class="rt">stage 0</span>
+        <p>Request, confidentiality policy (upload/type/dictate), context, mode &amp; boundary.</p></a>
+      <a class="hub-card" href="05-stage1-plan.html"><span class="n">05</span><h3>Stage 1 · Planning</h3> <span class="rt">stage 1</span>
+        <p>The Plan artifact: modules, waves, task-flags, model bill-of-materials.</p></a>
+      <a class="hub-card" href="06-stage2-certify.html"><span class="n">06</span><h3>Stage 2 · Certification</h3> <span class="rt">stage 2</span>
+        <p>Rehydration diff, constrained amendments, consult gate, goal statement.</p></a>
+      <a class="hub-card" href="07-stage3-quote.html"><span class="n">07</span><h3>Stage 3 · Quote</h3> <span class="rt">stage 3</span>
+        <p>Deterministic quote breakdown, budget guard, approve / decline.</p></a>
+      <a class="hub-card" href="08-stage4-build.html"><span class="n">08</span><h3>Stage 4 · Codegen waves</h3> <span class="rt">stage 4</span>
+        <p>Topological waves, capability-routed coders, conductor review between waves.</p></a>
+      <a class="hub-card" href="09-stage5-consolidate.html"><span class="n">09</span><h3>Stage 5 · Consolidation</h3> <span class="rt">stage 5</span>
+        <p>Merge / aggregate module outputs, surface conflict tickets.</p></a>
+      <a class="hub-card" href="10-stage6-qa.html"><span class="n">10</span><h3>Stage 6 · Adversarial QA</h3> <span class="rt">stage 6</span>
+        <p>Defect board, Numeric Oracle, inspector loop, goal-fulfillment check.</p></a>
+      <a class="hub-card" href="11-stage7-deliver.html"><span class="n">11</span><h3>Stage 7 · Delivery</h3> <span class="rt">stage 7</span>
+        <p>Package manifest, invoice, publish to the Operations registry.</p></a>
+    </div>
+  </section>
+
+  <section class="hub-group">
+    <h2>Operate</h2>
+    <div class="lead">Running, reviewing, versioning and refining registered processes.</div>
+    <div class="hub-cards">
+      <a class="hub-card" href="12-operations.html"><span class="n">12</span><h3>Operations registry</h3> <span class="rt">/operations</span>
+        <p>All registered processes, warranty/health, run counts, instantiate.</p></a>
+      <a class="hub-card" href="13-process-detail.html"><span class="n">13</span><h3>Process detail</h3> <span class="rt">/operations/:id</span>
+        <p>Versions + diff, runs, invoice, review queue, refine, package browser.</p></a>
+      <a class="hub-card" href="14-run-detail.html"><span class="n">14</span><h3>Run detail</h3> <span class="rt">/operations/:id · run</span>
+        <p>Units table, per-unit review, report, CSV export, next steps.</p></a>
+    </div>
+  </section>
+
+  <section class="hub-group">
+    <h2>Discover &amp; demo</h2>
+    <div class="lead">Gallery, replay, and the judge sandbox.</div>
+    <div class="hub-cards">
+      <a class="hub-card" href="15-gallery.html"><span class="n">15</span><h3>Gallery</h3> <span class="rt">/gallery</span>
+        <p>Showcase of built processes and demo seed kits; watch a replay.</p></a>
+      <a class="hub-card" href="16-replay.html"><span class="n">16</span><h3>Replay player</h3> <span class="rt">/replay/:kind/:id</span>
+        <p>Event-sourced playback: scrubber, speed, reconstructed panels.</p></a>
+      <a class="hub-card" href="17-sandbox.html"><span class="n">17</span><h3>Judge sandbox</h3> <span class="rt">/sandbox</span>
+        <p>Three synthetic companies, data browser, terms, prompt-to-automation.</p></a>
+    </div>
+  </section>
+
+  <section class="hub-group">
+    <h2>Admin &amp; observability</h2>
+    <div class="lead">Connections, seat bindings, fleet, and the boundary you can watch.</div>
+    <div class="hub-cards">
+      <a class="hub-card" href="18-config.html"><span class="n">18</span><h3>Config</h3> <span class="rt">/config</span>
+        <p>BYOK connections, model registry, seat bindings, fleet, sovereign toggle.</p></a>
+      <a class="hub-card" href="19-traces.html"><span class="n">19</span><h3>Traces &amp; egress</h3> <span class="rt">/traces</span>
+        <p>Trace list + detail, live egress/boundary monitor, tools registry.</p></a>
+    </div>
+  </section>
+
+  <section class="hub-group">
+    <h2>Backend AI &amp; routing — visualization suite</h2>
+    <div class="lead">A fresh, unified explanation of how seats, backends, zones, the boundary, the pipeline and the meter fit together. In <code>../viz-v2/</code>.</div>
+    <div class="hub-cards">
+      <a class="hub-card viz" href="../viz-v2/00-system-overview.html"><span class="n">viz 00</span><h3>System overview</h3>
+        <p>The whole system on one page — the map everything else zooms into.</p></a>
+      <a class="hub-card viz" href="../viz-v2/01-seats-and-routing.html"><span class="n">viz 01</span><h3>Seats &amp; routing</h3>
+        <p>Seat→backend binding + capability-aware selection inside pooled seats.</p></a>
+      <a class="hub-card viz" href="../viz-v2/02-data-boundary.html"><span class="n">viz 02</span><h3>Data boundary</h3>
+        <p>RAW vs SANITIZED, zones, sanitization gates, Sovereign Mode.</p></a>
+      <a class="hub-card viz" href="../viz-v2/03-pipeline-orchestrator.html"><span class="n">viz 03</span><h3>Orchestrator</h3>
+        <p>Event-sourced engine, waves, conductor, replay/resumability.</p></a>
+      <a class="hub-card viz" href="../viz-v2/04-economics-metering.html"><span class="n">viz 04</span><h3>Economics &amp; metering</h3>
+        <p>Meter events, GPU-second attribution, quote engine, invoice.</p></a>
+    </div>
+  </section>
+</main>
+</body>
+</html>

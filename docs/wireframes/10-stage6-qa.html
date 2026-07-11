@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Stage 6 · Adversarial QA + Goal Check</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ================= page-scoped one-offs (stage6 only) =============== */
+#wf-stage6 .s6-goal{background:linear-gradient(180deg,var(--accent-wash),transparent); border:1px solid var(--accent-mid); border-radius:var(--r-lg); padding:var(--sp5)}
+#wf-stage6 .s6-goal .lbl{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:var(--sp2)}
+#wf-stage6 .s6-goal .txt{color:var(--text); font-size:.95rem; line-height:1.55; max-width:74ch}
+#wf-stage6 .s6-verdict{display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:var(--r-pill); font-size:var(--fs-sm); font-weight:700}
+#wf-stage6 .s6-verdict.fulfilled{color:var(--ok); background:var(--ok-wash); border:1px solid var(--ok)}
+#wf-stage6 .s6-verdict.partial{color:var(--warn); background:var(--warn-wash); border:1px solid var(--warn)}
+#wf-stage6 .s6-metric{display:flex; align-items:baseline; gap:6px}
+#wf-stage6 .s6-metric .big{font-size:1.7rem; font-weight:700; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+#wf-stage6 .s6-metric .big.ok{color:var(--ok)} #wf-stage6 .s6-metric .big.warn{color:var(--warn)}
+#wf-stage6 .s6-metric .u{color:var(--text-faint); font-size:var(--fs-sm)}
+#wf-stage6 .s6-sev{display:inline-block; width:8px; height:8px; border-radius:2px; flex:none}
+#wf-stage6 .s6-sev.disagreement{background:var(--warn)} #wf-stage6 .s6-sev.blocker{background:var(--danger)}
+#wf-stage6 .s6-sev.probe{background:var(--accent)} #wf-stage6 .s6-sev.caveat{background:var(--text-faint)}
+#wf-stage6 .s6-life{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-pill); border:1px solid}
+#wf-stage6 .s6-life.verified{color:var(--ok); border-color:var(--ok); background:var(--ok-wash)}
+#wf-stage6 .s6-life.fix_applied{color:var(--accent-strong); border-color:var(--accent-mid); background:var(--accent-wash)}
+#wf-stage6 .s6-life.in_fix{color:var(--warn); border-color:var(--warn); background:var(--warn-wash)}
+#wf-stage6 .s6-life.human_review{color:var(--danger); border-color:var(--danger); background:var(--danger-wash)}
+#wf-stage6 .s6-life.opened{color:var(--text-muted); border-color:var(--hairline)}
+#wf-stage6 .s6-probe{display:grid; grid-template-columns:14px 1fr auto; gap:10px; align-items:center; padding:9px 12px; border-bottom:1px solid var(--hairline-soft)}
+#wf-stage6 .s6-probe:last-child{border-bottom:0}
+#wf-stage6 .s6-dot{width:8px; height:8px; border-radius:50%; flex:none}
+#wf-stage6 .s6-dot.pass{background:var(--ok); box-shadow:0 0 6px var(--ok)}
+#wf-stage6 .s6-dot.fail{background:var(--danger); box-shadow:0 0 6px var(--danger)}
+#wf-stage6 .s6-dot.running{background:var(--accent); box-shadow:0 0 6px var(--accent)}
+#wf-stage6 .s6-pst{font-size:var(--fs-micro); text-transform:uppercase; letter-spacing:.08em; font-weight:700}
+#wf-stage6 .s6-pst.pass{color:var(--ok)} #wf-stage6 .s6-pst.fail{color:var(--danger)} #wf-stage6 .s6-pst.running{color:var(--accent-strong)}
+#wf-stage6 .s6-vote{display:inline-block; font-family:var(--font-mono); font-size:var(--fs-micro); padding:2px 6px; border-radius:var(--r-xs); border:1px solid var(--hairline); color:var(--text-muted); margin:2px 3px 0 0}
+#wf-stage6 .s6-orow{display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:9px 0; border-bottom:1px solid var(--hairline-soft)}
+#wf-stage6 .s6-orow:last-child{border-bottom:0}
+#wf-stage6 .s6-ok{color:var(--ok); font-weight:700} #wf-stage6 .s6-mis{color:var(--warn); font-weight:700} #wf-stage6 .s6-uncertain{color:var(--text-faint); font-weight:700}
+#wf-stage6 .s6-seatline{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+#wf-stage6 .s6-seatcard{display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--hairline-soft); border-radius:var(--r-md); background:var(--surface-raised)}
+#wf-stage6 .s6-seatcard .av{width:30px; height:30px; border-radius:8px; flex:none; display:grid; place-items:center; font-weight:800; color:#04141b; background:linear-gradient(135deg,var(--accent-strong),var(--seal))}
+</style>
+</head>
+<body>
+
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a class="active" href="02-build-jobs.html">Build</a>
+      <a href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START stage6-->
+<section class="wf-page" id="wf-stage6">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Build Pipeline</b> · Wireframe</div>
+    <h1 class="wf-title">Stage 6 — Adversarial QA + Goal Check &nbsp;<span class="wf-route">/build/:jobId · stage 6</span></h1>
+    <p class="wf-sub">The last gate before delivery. Inspectors probe the deployed-to-staging process, the Numeric Oracle recomputes the certifier's vectors blind, disagreements and failed probes file tickets to <code>coder</code>, and a final goal-fulfillment check verifies the deliverable against the customer's original ask. Watched by the presenter on the Build cockpit.</p>
+
+    <!-- legend: always include, verbatim -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- ==== THE WIREFRAME ==== -->
+
+    <!-- pipeline stepper -->
+    <div class="row between wrap" style="gap:var(--sp3)">
+      <div class="wf-eyebrow" style="margin:0">Job <code>job_kyc_8f21</code> · build mode · KYC/AML onboarding screen</div>
+      <span class="wf-badge stub">Stub · presenter stepper</span>
+    </div>
+    <div class="wf-steps">
+      <div class="wf-step done"><span class="n">0</span> Intake</div>
+      <div class="wf-step done"><span class="n">1</span> Plan</div>
+      <div class="wf-step done"><span class="n">2</span> Certify</div>
+      <div class="wf-step done"><span class="n">3</span> Quote</div>
+      <div class="wf-step done"><span class="n">4</span> Codegen</div>
+      <div class="wf-step done"><span class="n">5</span> Consolidate</div>
+      <div class="wf-step active"><span class="n">6</span> Adversarial QA</div>
+      <div class="wf-step"><span class="n">7</span> Deliver</div>
+    </div>
+
+    <!-- goal statement + D10 verdict -->
+    <div class="s6-goal" data-wf="fn" style="margin:var(--sp5) 0">
+      <div class="row between wrap" style="margin-bottom:var(--sp3)">
+        <div class="lbl">The goal — what we promised <span class="wf-tag fn">FN</span></div>
+        <div class="row" style="gap:8px">
+          <span class="wf-chip seat">certifier</span>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+      </div>
+      <p class="txt">Screen every new individual onboarding against the current <b>OFAC SDN</b> and <b>EU consolidated</b> sanctions lists plus a PEP source, tolerate name transliteration variants, compute a three-band risk level (<b>green / amber / red</b>) with the amber-requires-review rule, and route any hit to a human queue with the matched entry and score attached. No raw applicant PII leaves the boundary.</p>
+      <div class="wf-hr"></div>
+      <div class="row between wrap">
+        <div class="row" style="gap:var(--sp4)">
+          <span class="s6-verdict fulfilled">◎ Goal fulfilled — 2 caveats</span>
+          <span class="muted" style="font-size:var(--fs-sm)">D10 check runs after the fix loop settles, before <code>qa.passed</code>.</span>
+        </div>
+        <span class="mono faint" style="font-size:var(--fs-xs)">event · qa.goal_check</span>
+      </div>
+    </div>
+
+    <!-- summary metric row -->
+    <div class="wf-grid cols-3" style="margin-bottom:var(--sp5)">
+      <div class="wf-card">
+        <div class="wf-eyebrow">Oracle adjudication</div>
+        <div class="s6-metric"><span class="big ok">11</span><span class="u">adjudicated · <span class="s6-mis">1</span> flagged</span></div>
+        <div class="wf-hint">12 vectors · match ⇒ green, mismatch ⇒ human review</div>
+      </div>
+      <div class="wf-card">
+        <div class="wf-eyebrow">Inspector swarm</div>
+        <div class="s6-metric"><span class="big">31</span><span class="u">probes · 9 scenarios</span></div>
+        <div class="wf-hint">4 concurrent inspector agents · ≤15 steps each</div>
+      </div>
+      <div class="wf-card">
+        <div class="wf-eyebrow">Tickets</div>
+        <div class="s6-metric"><span class="big warn">4</span><span class="u">filed · 2 verified · 1 in fix</span></div>
+        <div class="wf-hint">Fix loop ≤3 rounds, then park for human review</div>
+      </div>
+    </div>
+
+    <!-- MAIN SPLIT: defect board (left) | oracle + goal detail (right) -->
+    <div class="wf-grid split">
+
+      <!-- === Defect board === -->
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-panel-h">
+          <h3>Adversarial QA &amp; defect board</h3>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+        <p class="muted" style="font-size:var(--fs-sm); margin-top:calc(-1 * var(--sp2))">Every instrument — inspector, oracle, consolidation gate, operate-phase warranty — files the same currency: a ticket. This board is a direct render of the <code>tickets</code> table.</p>
+
+        <!-- filter form: FUNCTIONAL, listTickets(scope,status,source) -->
+        <div class="wf-card" style="margin:var(--sp4) 0">
+          <div class="row between" style="margin-bottom:var(--sp3)">
+            <div class="wf-eyebrow" style="margin:0">Filter board <span class="wf-tag fn">FN</span></div>
+            <span class="mono faint" style="font-size:var(--fs-xs)">GET /tickets</span>
+          </div>
+          <div class="wf-grid cols-3">
+            <div class="wf-field" style="margin:0">
+              <label class="wf-label" for="f-source">Origin instrument</label>
+              <select class="wf-select" id="f-source">
+                <option>All instruments</option>
+                <option>inspector</option>
+                <option>oracle</option>
+                <option>consolidation</option>
+                <option>warranty</option>
+              </select>
+              <div class="wf-hint">Maps to <code>?source=</code></div>
+            </div>
+            <div class="wf-field" style="margin:0">
+              <label class="wf-label" for="f-status">Lifecycle status</label>
+              <select class="wf-select" id="f-status">
+                <option>Any status</option>
+                <option>opened</option>
+                <option>in_fix</option>
+                <option>fix_applied</option>
+                <option>verified</option>
+                <option>human_review</option>
+                <option>wont_fix</option>
+              </select>
+              <div class="wf-hint">Maps to <code>?status=</code></div>
+            </div>
+            <div class="wf-field" style="margin:0">
+              <label class="wf-label" for="f-scope">Job scope</label>
+              <input class="wf-input" id="f-scope" placeholder="job_kyc_8f21" value="job_kyc_8f21">
+              <div class="wf-hint">Maps to <code>?scope=</code></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ticket rows -->
+        <table class="wf-table">
+          <thead><tr><th style="width:16px"></th><th>Ticket</th><th>Origin</th><th>Severity</th><th>Lifecycle</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="s6-sev disagreement"></span></td>
+              <td><b>Oracle disagreement on V-007</b><br><span class="faint" style="font-size:var(--fs-xs)">risk score off by one band on PEP+adverse-media combo</span></td>
+              <td><span class="wf-chip seat">oracle</span></td>
+              <td>disagreement</td>
+              <td><span class="s6-life human_review">human_review</span></td>
+            </tr>
+            <tr>
+              <td><span class="s6-sev probe"></span></td>
+              <td><b>Transliteration variant slips match</b><br><span class="faint" style="font-size:var(--fs-xs)">"Aleksandr" vs "Alexander" scored 0.71, below 0.85 threshold</span></td>
+              <td><span class="wf-chip seat">inspector</span></td>
+              <td>major</td>
+              <td><span class="s6-life verified">verified</span></td>
+            </tr>
+            <tr>
+              <td><span class="s6-sev probe"></span></td>
+              <td><b>Missing DOB returns 500 not 422</b><br><span class="faint" style="font-size:var(--fs-xs)">malformed-unit probe · required-field boundary</span></td>
+              <td><span class="wf-chip seat">inspector</span></td>
+              <td>minor</td>
+              <td><span class="s6-life verified">verified</span></td>
+            </tr>
+            <tr>
+              <td><span class="s6-sev caveat"></span></td>
+              <td><b>Duplicate submission not idempotent</b><br><span class="faint" style="font-size:var(--fs-xs)">same applicant_id creates two review rows</span></td>
+              <td><span class="wf-chip seat">consolidation</span></td>
+              <td>minor</td>
+              <td><span class="s6-life in_fix">in_fix</span> · <span class="faint" style="font-size:var(--fs-xs)">attempt 2/3</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="wf-note">
+          <span class="pin">i</span>
+          <div><b>Fix loop.</b> Tickets route to <span class="wf-chip seat">coder</span> as stage-4 micro-loops scoped to <code>suspected_modules[]</code>. A fix without a retest lands <span class="s6-life fix_applied">fix_applied</span> — never <code>verified</code> — until the originating instrument re-runs green. Live in the cockpit via SSE <code>ticket.*</code> events.</div>
+        </div>
+
+        <div class="wf-btnrow" style="margin-top:var(--sp4)">
+          <span class="wf-btn ghost sm">Route to coder <sup class="wf-tag plan">PLAN</sup></span>
+          <span class="wf-btn ghost sm">Re-run originating probe <sup class="wf-tag plan">PLAN</sup></span>
+          <span class="wf-btn ghost sm">Open repro trace <sup class="wf-tag fn">FN</sup></span>
+        </div>
+      </div>
+
+      <!-- === right column: oracle + goal detail + seats === -->
+      <div class="stack g4">
+
+        <!-- Numeric Oracle -->
+        <div class="wf-panel" data-wf="fn">
+          <div class="wf-panel-h">
+            <h3>Numeric Oracle</h3>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <div class="row between" style="margin-top:calc(-1 * var(--sp2)); margin-bottom:var(--sp3)">
+            <span class="wf-chip seat">oracle · Gemma 4 31B</span>
+            <span class="wf-chip local">Local MI300X</span>
+          </div>
+          <p class="muted" style="font-size:var(--fs-sm)">Independent recomputation from the <b>sanitized rule text only</b> — never the plan's pseudocode, never generated code. Self-consistency <b>k=3</b>, majority verdict, compared to the deployed staging output.</p>
+
+          <div style="margin-top:var(--sp3)">
+            <div class="s6-orow"><span class="mono strong">V-003</span><span class="faint" style="font-size:var(--fs-xs)">NR-1 · amber+review rule</span><span class="s6-ok">match ✓</span></div>
+            <div class="s6-orow"><span class="mono strong">V-005</span><span class="faint" style="font-size:var(--fs-xs)">NR-2 · fuzzy-match ≥0.85</span><span class="s6-ok">match ✓</span></div>
+            <div class="s6-orow"><span class="mono strong">V-007</span><span class="faint" style="font-size:var(--fs-xs)">NR-3 · composite risk band</span><span class="s6-mis">mismatch ⚑</span></div>
+            <div class="s6-orow"><span class="mono strong">V-011</span><span class="faint" style="font-size:var(--fs-xs)">NR-4 · no deployed actual</span><span class="s6-uncertain">no_actual</span></div>
+          </div>
+
+          <div class="wf-hr" style="margin:var(--sp4) 0"></div>
+          <div class="wf-eyebrow">k=3 self-consistency votes · V-007</div>
+          <div>
+            <span class="s6-vote">amber</span><span class="s6-vote">red</span><span class="s6-vote">amber</span>
+            <span class="muted" style="font-size:var(--fs-xs)">→ majority <b>amber</b>; staging returned <b>red</b> → ticket <code>disagreement</code></span>
+          </div>
+          <div class="wf-note warn">
+            <span class="pin">!</span>
+            <div>Mismatch is <b>never auto-trusted in either direction</b> — a human resolves whether code or oracle is wrong. This yields the delivery stat "11 adjudicated correctly, 1 flagged for review".</div>
+          </div>
+        </div>
+
+        <!-- Goal-fulfillment detail -->
+        <div class="wf-panel sunk" data-wf="fn">
+          <div class="wf-panel-h">
+            <h3>Goal-fulfillment check · D10</h3>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <p class="muted" style="font-size:var(--fs-sm); margin-top:calc(-1 * var(--sp2))">One elevated <span class="wf-chip seat">inspector</span> scenario judges the <b>deliverable against the goal</b> in the customer's own terms — not against the plan, which may have drifted through amendments. The goal is the fixed star.</p>
+          <table class="wf-table" style="margin-top:var(--sp2)">
+            <thead><tr><th>Goal clause</th><th>Evidence</th><th>Verdict</th></tr></thead>
+            <tbody>
+              <tr><td><b>OFAC + EU screening</b></td><td class="faint">both lists loaded, 3 live probes hit</td><td><span class="s6-ok">met</span></td></tr>
+              <tr><td><b>Transliteration tolerance</b></td><td class="faint">fuzzy ≥0.85 after ticket fix</td><td><span class="s6-ok">met</span></td></tr>
+              <tr><td><b>PEP source freshness</b></td><td class="faint">source dated 2026-06; goal implied current</td><td><span class="muted">caveat</span></td></tr>
+              <tr><td><b>Bulk re-screen cadence</b></td><td class="faint">daily delta only; nightly full not built</td><td><span class="muted">caveat</span></td></tr>
+            </tbody>
+          </table>
+          <p class="wf-hint">Verdict <code>fulfilled</code> / <code>partial</code>-caveats-only → proceed. Any <code>blocker</code> gap → severity-blocker ticket; <code>unfulfilled</code> parks the job for human review.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Inspector agent loop (full width) -->
+    <div class="wf-panel" data-wf="fn" style="margin-top:var(--sp5)">
+      <div class="wf-panel-h">
+        <h3>Inspector swarm — agent probe loop</h3>
+        <div class="row" style="gap:8px">
+          <span class="wf-chip seat">inspector · Qwen3.6-35B-A3B</span>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+      </div>
+      <p class="muted" style="font-size:var(--fs-sm); margin-top:calc(-1 * var(--sp2))">4 concurrent agents, each a bounded tool loop (≤15 steps, ≤60 s). Tools: <code>http_request</code> (egress-scoped to the staging host <span class="mono">127.0.0.1:&lt;ephemeral&gt;</span>), <code>read_manifest</code>, <code>submit_finding</code>. Contract: <i>you can't see the code — try to break the claim, not fix it; every finding needs a reproducible request/response pair.</i></p>
+
+      <div class="wf-grid cols-2" style="margin-top:var(--sp3)">
+        <div class="wf-card">
+          <div class="wf-eyebrow">Scenario sources — merged &amp; deduped</div>
+          <div class="s6-probe"><span class="s6-dot pass"></span><div><b>AC-derived</b><br><span class="faint" style="font-size:var(--fs-xs)">one per acceptance criterion · verify:inspector</span></div><span class="s6-pst pass">4 pass</span></div>
+          <div class="s6-probe"><span class="s6-dot fail"></span><div><b>Generic probe suite</b><br><span class="faint" style="font-size:var(--fs-xs)">malformed unit · missing field · boundary 0/neg/max · dup submission · wrong-tenant token · needs-review path</span></div><span class="s6-pst fail">2 file</span></div>
+          <div class="s6-probe"><span class="s6-dot running"></span><div><b>Plan-aware (certifier)</b><br><span class="faint" style="font-size:var(--fs-xs)">"sanctions hit + name transliteration variant"</span></div><span class="s6-pst running">running</span></div>
+        </div>
+        <div class="wf-card">
+          <div class="wf-eyebrow">Live probe stream</div>
+          <div class="s6-probe"><span class="s6-dot pass"></span><div><b>auth-scope-misuse</b><br><span class="faint" style="font-size:var(--fs-xs)">wrong-process token → 403 as expected</span></div><span class="s6-pst pass">pass</span></div>
+          <div class="s6-probe"><span class="s6-dot fail"></span><div><b>missing-DOB-boundary</b><br><span class="faint" style="font-size:var(--fs-xs)">500 not 422 → ticket filed</span></div><span class="s6-pst fail">fail</span></div>
+          <div class="s6-probe"><span class="s6-dot fail"></span><div><b>transliteration-Aleksandr</b><br><span class="faint" style="font-size:var(--fs-xs)">score 0.71 &lt; 0.85 → miss</span></div><span class="s6-pst fail">fail</span></div>
+          <div class="s6-probe"><span class="s6-dot running"></span><div><b>oversized-payload-2MB</b><br><span class="faint" style="font-size:var(--fs-xs)">step 6/15 · awaiting response</span></div><span class="s6-pst running">step 6/15</span></div>
+        </div>
+      </div>
+
+      <div class="wf-note warn" style="margin-top:var(--sp4)">
+        <span class="pin">!</span>
+        <div><b>Gemma validation gate <sup class="wf-tag plan">PLANNED</sup></b> — go/no-go, scripted in <code>backend/tests/validation/</code>, run Day 2 before demos lock. Bars: oracle ≥90% exact-match on 40 KYC+Claims vectors (ground truth = hand-written Python, never shown to a model) and within 1 vector of the Qwen baseline; inspector ≥9/12 scenarios + ≥3/4 planted defects. No UI surface yet — a re-runnable, citable procedure. Fail ⇒ seat swap in <code>infra/seats.yaml</code>.</div>
+      </div>
+    </div>
+
+    <!-- Seat chips -->
+    <div class="wf-panel sunk" data-wf="stub" style="margin-top:var(--sp5)">
+      <div class="wf-panel-h">
+        <h3>Seats on this stage</h3>
+        <span class="wf-badge stub">Stub · presenter chips</span>
+      </div>
+      <div class="wf-grid cols-2">
+        <div class="s6-seatcard">
+          <div class="av">O</div>
+          <div>
+            <div class="row" style="gap:8px"><b>oracle</b><span class="wf-chip local">Local MI300X</span></div>
+            <div class="muted" style="font-size:var(--fs-xs)">Gemma 4 31B · AIME-tier quantitative reasoning · k=3 @ temp 0.3 · blind recompute of numeric vectors</div>
+          </div>
+        </div>
+        <div class="s6-seatcard">
+          <div class="av">I</div>
+          <div>
+            <div class="row" style="gap:8px"><b>inspector</b><span class="wf-chip local">Local MI300X</span></div>
+            <div class="muted" style="font-size:var(--fs-xs)">Qwen3.6-35B-A3B · MoE ~3B active · swapped from Gemma on 2× tool-use gap · temp 0.7 diverse probing</div>
+          </div>
+        </div>
+      </div>
+      <p class="wf-hint">Bindings resolve from <code>infra/seats.yaml</code> (see Config · <code>GET /seats</code>); chips here are presenter labels, not a live seat query.</p>
+    </div>
+
+    <!-- status ledger -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Defect board — ticket table</td><td class="ev">GET /tickets</td><td>client.ts <code>listTickets({scope,status,source})</code>; Ticket type + FastAPI economics router present (brief §3).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Defect board filters</td><td class="ev">GET /tickets?scope&amp;status&amp;source</td><td>Query params are exactly the fields listTickets accepts.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Live ticket lifecycle</td><td class="ev">GET /jobs/{id}/events (SSE)</td><td>jobStore.ts handles <code>ticket.opened / in_fix / fix_applied / verified / human_review</code>; QaPanels DefectBoard renders view.tickets.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Inspector probe stream</td><td class="ev">GET /jobs/{id}/events (SSE)</td><td>jobStore cases <code>qa.probe / qa.probe_update / qa.finding</code>; backend qa/stage6.py emits (spec 08 §2, Wave-2 note).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Numeric Oracle checks + votes</td><td class="ev">GET /jobs/{id}/events (SSE)</td><td>jobStore <code>qa.oracle_check / qa.oracle_vote</code>; k=3 majority in qa/stage6.py (spec 08 §4).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Goal statement + D10 verdict</td><td class="ev">jobs.goal · qa.goal_check</td><td>certifier emits goal at stage 2 (spec 03 §4.3); goal check event handled in jobStore (spec 08 §1.5).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Open repro trace</td><td class="ev">GET /traces · /traces/{id}</td><td>Prompt inspector endpoint present (brief §3); repro request/response pair is a trace.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Route to coder / re-run probe buttons</td><td class="ev">— (no endpoint)</td><td>Fix micro-loop + probe re-run are backend-internal (spec 08 §6); no operator POST in brief §3.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Gemma validation gate</td><td class="ev">backend/tests/validation/</td><td>Scripted go/no-go, run Day 2 (spec 08 §7); a procedure, no UI surface — deck cites the section.</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Pipeline stepper (0–7)</td><td class="ev">TopStrip.tsx</td><td>Presenter progress rail; stage derived from job view, not its own endpoint.</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Seat chips (oracle / inspector)</td><td class="ev">infra/seats.yaml</td><td>Presenter labels of static seat bindings; live query lives on Config, not this stage.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+
+</body>
+</html>

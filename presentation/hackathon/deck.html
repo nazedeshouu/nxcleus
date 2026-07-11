@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nxcleus - AMD Unicorn Track</title>
+<style>
+  /* ============================================================
+     NXCLEUS · AMD UNICORN TRACK · PITCH DECK
+     Art direction: minimalist monochrome graphite + a single
+     AMD-red accent. 1280x720 print slides. Swiss-editorial.
+     ------------------------------------------------------------
+     DESIGN TOKENS  (edit these to retune globally)
+     ============================================================ */
+  :root{
+    /* --- base --- */
+    --paper:#f8fbfd;          /* light-slide background      */
+    --paper-hi:#ffffff;
+    --ink:#0c1417;            /* primary text                */
+    --ink2:#33474f;           /* secondary text              */
+    --ink3:#5d7078;           /* tertiary / mono labels      */
+    --line:rgba(12,20,23,.14);
+    --line-soft:rgba(12,20,23,.08);
+
+    /* --- the ONE accent: cyan --- */
+    --accent:#1c7aa3;         /* headline emphasis, on light */
+    --accent-strong:#125b7d;  /* small text on light (AA)    */
+    --accent-tint:#dceff6;    /* pale cyan fill              */
+    --accent-dk:#38a6d2;      /* accent on dark slides       */
+    --accent-dk-tint:rgba(56,166,210,.14);
+
+    /* --- sealed (dark) slides --- */
+    --seal:#030a0e;
+    --seal-ink:#e9f4f8;
+    --seal-ink2:#9db8c2;
+    --seal-line:rgba(233,244,248,.16);
+
+    /* --- type scale --- */
+    --fs-display:51px;
+    --fs-h2:40px;
+    --fs-lede:16px;
+    --fs-body:13.5px;
+    --fs-kicker:11px;
+    --fs-mono:9px;
+
+    /* --- rhythm --- */
+    --pad-x:72px;
+    --pad-y:60px;
+    --gap:44px;
+    --radius:12px;
+  }
+
+  /* ---------- fonts ---------- */
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-ExtraLight.ttf"); font-weight:200; }
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-Light.ttf"); font-weight:300; }
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-Regular.ttf"); font-weight:400; }
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-Medium.ttf"); font-weight:500; }
+  @font-face { font-family:"Lenia Sans"; src:url("../../fonts/lenia-sans-serif/LeniaSans-SemiBold.ttf"); font-weight:600; }
+  @font-face { font-family:"CS Arcel Mono"; src:url("../../fonts/CS-Arcel-Mono/CSArcelMono-Regular.woff2") format("woff2"); font-weight:400; }
+
+  /* ---------- page setup ---------- */
+  @page { size: 1280px 720px; margin: 0; }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  html,body { font-family:"Lenia Sans",sans-serif; }
+
+  .slide{
+    width:1280px; height:720px; overflow:hidden; position:relative;
+    page-break-after:always; color:var(--ink);
+    background:var(--paper) center / cover no-repeat;
+    padding:var(--pad-y) var(--pad-x) 0;
+  }
+  .bg-a{ background-image:url("assets/bg-light-planes.png"); }
+  .bg-b{ background-image:url("assets/bg-light-arc.png"); }
+  .bg-c{ background-image:url("assets/bg-light.png"); }
+  .slide.dark{ background:var(--seal); color:var(--seal-ink); }
+
+  /* ---------- shared primitives ---------- */
+  .mono{ font-family:"CS Arcel Mono",monospace; }
+
+  /* topic label above the headline (no numbers, no dots) */
+  .kicker{
+    font-family:"CS Arcel Mono",monospace; font-size:var(--fs-kicker); letter-spacing:.22em;
+    text-transform:uppercase; color:var(--accent-strong); display:flex; align-items:baseline; gap:16px;
+  }
+  .dark .kicker{ color:var(--accent-dk); }
+  .kicker .rule{ flex:1; height:1px; background:var(--line-soft); align-self:center; }
+  .dark .kicker .rule{ background:var(--seal-line); }
+
+  h1.display{ font-weight:300; letter-spacing:-.015em; line-height:1.06; }
+  .slide h2{ font-weight:500; font-size:var(--fs-h2); letter-spacing:-.01em; line-height:1.12; margin-top:22px; }
+  .slide h2 em{ font-style:normal; color:var(--accent); }
+  .dark h2 em{ color:var(--accent-dk); }
+
+  .footer{
+    position:absolute; left:var(--pad-x); right:var(--pad-x); bottom:0; height:46px;
+    display:flex; justify-content:space-between; align-items:center;
+    border-top:1px solid var(--line-soft);
+    font-family:"CS Arcel Mono",monospace; font-size:var(--fs-mono); letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ink3);
+  }
+  .dark .footer{ border-top-color:var(--seal-line); color:var(--seal-ink2); }
+  .footer .pg{ color:var(--accent-strong); }
+  .dark .footer .pg{ color:var(--accent-dk); }
+
+  .lede{ font-size:var(--fs-lede); line-height:1.55; color:var(--ink2); font-weight:400; }
+  .dark .lede{ color:var(--seal-ink2); }
+
+  /* three-up column blocks */
+  .cols{ display:flex; gap:var(--gap); }
+  .col{ flex:1; min-width:0; }
+  .col .n{ font-family:"CS Arcel Mono",monospace; font-size:10px; letter-spacing:.18em; color:var(--accent-strong); }
+  .col h3{ font-size:19px; font-weight:500; margin:10px 0 8px; letter-spacing:-.005em; }
+  .col p{ font-size:var(--fs-body); line-height:1.55; color:var(--ink2); }
+  .coltop{ border-top:1px solid var(--line); padding-top:16px; }
+
+  .stat .v{ font-weight:300; font-size:44px; letter-spacing:-.02em; line-height:1; }
+  .stat .v sup{ font-size:20px; }
+  .stat .l{ font-size:12.5px; line-height:1.45; color:var(--ink3); margin-top:8px; }
+  .src{ font-family:"CS Arcel Mono",monospace; font-size:8.5px; letter-spacing:.08em; color:var(--ink3); opacity:.8; }
+
+  /* chips: clean mono pills, no decorative dots */
+  .chip{
+    display:inline-flex; align-items:center;
+    font-family:"CS Arcel Mono",monospace; font-size:10px; letter-spacing:.1em;
+    color:var(--ink2); border:1px solid var(--line); background:transparent;
+    padding:7px 14px; border-radius:100px;
+  }
+  .chip.amd{ color:var(--accent-strong); border-color:var(--accent); background:var(--accent-tint); }
+  .dark .chip{ color:var(--seal-ink2); border-color:var(--seal-line); }
+  .dark .chip.amd{ color:var(--accent-dk); border-color:var(--accent-dk); background:var(--accent-dk-tint); }
+
+  img{ display:block; }
+</style>
+</head>
+<body>
+
+<!-- ============ 01 · COVER (dark) ============ -->
+<section class="slide dark" style="padding:0;">
+  <img src="assets/bg-wall3.png" style="position:absolute; inset:0; width:1280px; height:720px; object-fit:cover; opacity:.96;">
+  <div style="position:absolute; inset:0; background:linear-gradient(100deg, rgba(3,10,14,.58) 0%, rgba(3,10,14,.28) 46%, rgba(3,10,14,0) 70%);"></div>
+  <div style="position:relative; height:100%; padding:56px var(--pad-x) 0; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+      <div class="mono" style="font-size:10.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--seal-ink2);">Nxcleus · Oxys Studio</div>
+      <div class="mono" style="font-size:10.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--seal-ink2);">AMD Developer Hackathon: ACT II · Unicorn Track</div>
+    </div>
+    <div style="margin-top:96px;">
+      <div style="font-size:26px; font-weight:600; letter-spacing:-.01em; color:var(--seal-ink);">Nxcleus</div>
+      <h1 class="display" style="font-size:var(--fs-display); font-weight:500; letter-spacing:-.02em; margin-top:26px; color:var(--seal-ink); max-width:800px;">Describe an internal process.<br>Get it running <em style="font-style:normal; color:#2f9ac6;">inside</em> <em style="font-style:normal; color:#5fc6ea;">your</em> <em style="font-style:normal; color:#a9e7ff;">walls.</em></h1>
+      <p class="lede" style="margin-top:26px; max-width:560px;">Sovereign process automation for enterprises where external AI is banned. A plain-language request becomes a planned, certified, fleet-built, adversarially-QA'd process, running on AMD GPUs you control.</p>
+    </div>
+    <div style="margin-top:36px; display:flex; align-items:center; gap:12px;">
+      <span class="chip amd">BUILT ON AMD MI300X · ROCm + vLLM</span>
+      <span class="chip">FIREWORKS AI, AMD-HOSTED FALLBACK</span>
+      <span class="chip">LIVE AT NXCLEUS.TECH</span>
+    </div>
+    <div class="footer">
+      <span>Nxcleus · Pitch deck</span>
+      <span>July 2026 &nbsp; <span class="pg">01 / 10</span></span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 · PROBLEM ============ -->
+<section class="slide bg-a">
+  <div class="kicker"><span>The problem</span><span class="rule"></span></div>
+  <h2 style="max-width:960px;">The most regulated companies are<br>the <em>least able</em> to use AI.</h2>
+  <div class="cols" style="margin-top:44px;">
+    <div class="col coltop">
+      <div class="n">PAIN 01</div>
+      <h3>Data cannot leave</h3>
+      <p>Banks, insurers, clinics and law firms are forbidden, by regulators and by their own policies, from sending customer data to external AI clouds. Frontier assistants are simply banned inside the walls.</p>
+    </div>
+    <div class="col coltop">
+      <div class="n">PAIN 02</div>
+      <h3>Processes run by hand</h3>
+      <p>KYC checks, claims triage, regulatory reporting: high-volume work still runs on consultants, spreadsheets and months-long custom software projects that are obsolete on arrival.</p>
+    </div>
+    <div class="col coltop">
+      <div class="n">PAIN 03</div>
+      <h3>Chat can't do the job</h3>
+      <p>A real process is too large for one context window, and trust requires verification against live systems and real data, not a plausible answer in a chat box.</p>
+    </div>
+  </div>
+  <div style="display:flex; gap:var(--gap); margin-top:48px; padding-top:24px; border-top:1px solid var(--line);">
+    <div class="stat" style="flex:1;">
+      <div class="v">$206<sup>B</sup></div>
+      <div class="l">spent yearly on financial-crime compliance operations alone, most of it labor <div class="src" style="margin-top:4px;">LEXISNEXIS · TRUE COST OF COMPLIANCE</div></div>
+    </div>
+    <div class="stat" style="flex:1;">
+      <div class="v">6-18<sup>mo</sup></div>
+      <div class="l">typical delivery time for one internally-built process automation <div class="src" style="margin-top:4px;">ENTERPRISE IT BENCHMARKS</div></div>
+    </div>
+    <div class="stat" style="flex:1;">
+      <div class="v">0</div>
+      <div class="l">frontier AI tools approved for raw customer data in a typical regulated enterprise <div class="src" style="margin-top:4px;">THE WEDGE WE BUILD ON</div></div>
+    </div>
+  </div>
+  <div class="footer"><span>Nxcleus · Oxys Studio</span><span>The problem &nbsp; <span class="pg">02 / 10</span></span></div>
+</section>
+
+<!-- ============ 03 · SOLUTION / BOUNDARY ============ -->
+<section class="slide bg-c">
+  <div class="kicker"><span>The solution</span><span class="rule"></span></div>
+  <h2>One brief crosses. <em>Nothing else does.</em></h2>
+  <p class="lede" style="margin-top:16px; max-width:800px;">Nxcleus splits planning from execution. A frontier model designs the work from a sanitized brief; everything that touches real data runs on AMD hardware the customer controls.</p>
+  <div class="cols" style="margin-top:34px;">
+    <div class="col coltop">
+      <div class="n">BUILD, ONCE</div>
+      <h3>Describe it, get it built</h3>
+      <p>A plain-language request plus your confidentiality policy goes in. The platform plans the work, builds it with a fleet of specialized models, attacks it with adversarial QA, and certifies it against your original goal.</p>
+    </div>
+    <div class="col coltop">
+      <div class="n">OPERATE, FOREVER</div>
+      <h3>Runs inside your walls</h3>
+      <p>The certified process re-runs on new data fully locally: zero frontier calls, metered per run, spot-checked by an independent oracle as a live warranty.</p>
+    </div>
+    <div class="col coltop">
+      <div class="n">REFINE, ON DEMAND</div>
+      <h3>Change requests, re-certified</h3>
+      <p>Every refinement ships as a versioned, diffed, re-certified upgrade. Old versions stay runnable. The process is an asset that compounds, not a project that decays.</p>
+    </div>
+  </div>
+  <div style="margin-top:44px; background:#fff; border:1px solid var(--line-soft); border-radius:var(--radius); padding:22px 28px;">
+    <p style="font-size:14.5px; line-height:1.5; color:var(--ink);">
+      <strong style="font-weight:600;">The trust boundary, in one sentence:</strong> the only external call in the entire lifecycle is one sanitized planning brief, governed by your own policy. Everything else runs on AMD GPUs you control. <strong style="font-weight:600; color:var(--accent-strong);">Sovereign Mode removes even that: zero external calls.</strong>
+    </p>
+  </div>
+  <div class="footer"><span>Nxcleus · Oxys Studio</span><span>The solution &nbsp; <span class="pg">03 / 10</span></span></div>
+</section>
+
+<!-- ============ 04 · HOW IT WORKS - STAGES 0-7 ============ -->
+<section class="slide bg-a">
+  <div class="kicker"><span>How it works</span><span class="rule"></span></div>
+  <h2>Eight stages. <em>One boundary crossing.</em></h2>
+  <p class="lede" style="margin-top:14px; max-width:820px;">A described process flows through the pipeline once. Only stage 1 leaves the building, and it only ever sees a sanitized brief.</p>
+
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:34px;">
+    <!-- stage 0 -->
+    <div style="border:1px solid var(--line-soft); border-radius:var(--radius); padding:15px 16px 14px; background:#fff;">
+      <div class="mono" style="font-size:9px; letter-spacing:.14em; color:var(--ink3);">STAGE 0 · LOCAL</div>
+      <h3 style="font-size:14.5px; font-weight:500; margin:7px 0 5px;">Intake &amp; trust layer</h3>
+      <p style="font-size:11.5px; line-height:1.45; color:var(--ink2);">Your policy plus a PII firewall mask and seal every identifier and document.</p>
+    </div>
+    <!-- stage 1 - the only external call, marked in accent -->
+    <div style="border:1.5px solid var(--accent); border-radius:var(--radius); padding:15px 16px 14px; background:var(--accent-tint);">
+      <div class="mono" style="font-size:9px; letter-spacing:.14em; color:var(--accent-strong);">STAGE 1 · THE ONE EXTERNAL CALL</div>
+      <h3 style="font-size:14.5px; font-weight:500; margin:7px 0 5px;">Frontier planning</h3>
+      <p style="font-size:11.5px; line-height:1.45; color:var(--ink2);">A frontier model sees only the sanitized brief and designs the work topology plus the model bill-of-materials.</p>
+    </div>
+    <!-- stage 2 -->
+    <div style="border:1px solid var(--line-soft); border-radius:var(--radius); padding:15px 16px 14px; background:#fff;">
+      <div class="mono" style="font-size:9px; letter-spacing:.14em; color:var(--ink3);">STAGE 2 · LOCAL</div>
+      <h3 style="font-size:14.5px; font-weight:500; margin:7px 0 5px;">Certify &amp; rehydrate</h3>
+      <p style="font-size:11.5px; line-height:1.45; color:var(--ink2);">A local model checks the plan against the raw context the frontier never saw, and pins the goal.</p>
+    </div>
+    <!-- stage 3 -->
+    <div style="border:1px solid var(--line-soft); border-radius:var(--radius); padding:15px 16px 14px; background:#fff;">
+      <div class="mono" style="font-size:9px; letter-spacing:.14em; color:var(--ink3);">STAGE 3 · LOCAL</div>
+      <h3 style="font-size:14.5px; font-weight:500; margin:7px 0 5px;">Quote</h3>
+      <p style="font-size:11.5px; line-height:1.45; color:var(--ink2);">A deterministic price from the model bill-of-materials, before a single build token is spent.</p>
+    </div>
+    <!-- stage 4 -->
+    <div style="border:1px solid var(--line-soft); border-radius:var(--radius); padding:15px 16px 14px; background:#fff;">
+      <div class="mono" style="font-size:9px; letter-spacing:.14em; color:var(--accent-strong);">STAGE 4 · LOCAL FLEET</div>
+      <h3 style="font-size:14.5px; font-weight:500; margin:7px 0 5px;">Wave build</h3>
+      <p style="font-size:11.5px; line-height:1.45; color:var(--ink2);">A parallel fleet of specialized models builds in waves, a conductor reviewing between each.</p>
+    </div>
+    <!-- stage 5 -->
+    <div style="border:1px solid var(--line-soft); border-radius:var(--radius); padding:15px 16px 14px; background:#fff;">
+      <div class="mono" style="font-size:9px; letter-spacing:.14em; color:var(--accent-strong);">STAGE 5 · LOCAL</div>
+      <h3 style="font-size:14.5px; font-weight:500; margin:7px 0 5px;">Consolidate</h3>
+      <p style="font-size:11.5px; line-height:1.45; color:var(--ink2);">Wave outputs merge into one coherent process, gated by objective tests.</p>
+    </div>
+    <!-- stage 6 -->
+    <div style="border:1px solid var(--line-soft); border-radius:var(--radius); padding:15px 16px 14px; background:#fff;">
+      <div class="mono" style="font-size:9px; letter-spacing:.14em; color:var(--accent-strong);">STAGE 6 · LOCAL</div>
+      <h3 style="font-size:14.5px; font-weight:500; margin:7px 0 5px;">Adversarial QA</h3>
+      <p style="font-size:11.5px; line-height:1.45; color:var(--ink2);">Inspectors attack the build; a lineage-independent numeric oracle re-derives the math; the goal is re-checked.</p>
+    </div>
+    <!-- stage 7 -->
+    <div style="border:1px solid var(--line-soft); border-radius:var(--radius); padding:15px 16px 14px; background:#fff;">
+      <div class="mono" style="font-size:9px; letter-spacing:.14em; color:var(--accent-strong);">STAGE 7 · LOCAL</div>
+      <h3 style="font-size:14.5px; font-weight:500; margin:7px 0 5px;">Operations registry</h3>
+      <p style="font-size:11.5px; line-height:1.45; color:var(--ink2);">Lands as a versioned asset: runnable forever, metered per run, refinable without starting over.</p>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:14px; margin-top:26px;">
+    <span class="chip">7 OF 8 STAGES STAY INSIDE YOUR WALLS</span>
+    <span class="chip amd">ALL LOCAL WORK RUNS ON AMD MI300X</span>
+    <span style="font-size:12px; color:var(--ink3);">Sovereign Mode moves planning on-fleet too: zero crossings.</span>
+  </div>
+  <div class="footer"><span>Nxcleus · Oxys Studio</span><span>How it works &nbsp; <span class="pg">04 / 10</span></span></div>
+</section>
+
+<!-- ============ 05 · AMD ARCHITECTURE (dark) - THE HARD GATE ============ -->
+<section class="slide dark" style="padding:0;">
+  <img src="assets/bg-dark.png" style="position:absolute; inset:0; width:1280px; height:720px; object-fit:cover; opacity:.85;">
+  <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(3,10,14,.74) 0%, rgba(3,10,14,.4) 44%, rgba(3,10,14,.6) 100%);"></div>
+  <div style="position:relative; height:100%; padding:56px var(--pad-x) 0; display:flex; flex-direction:column;">
+    <div class="kicker"><span>Built on AMD</span><span class="rule"></span></div>
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-top:16px;">
+      <h2 style="margin-top:0; color:var(--seal-ink); max-width:760px;">Inside the boundary, every token<br>runs on <em style="color:var(--accent-dk);">AMD silicon.</em></h2>
+      <p style="font-size:13px; line-height:1.5; color:var(--seal-ink2); max-width:340px; text-align:right;">Everything except one planning call runs on GPUs the customer controls. The control VM runs zero inference. It is the receptionist, not the brain.</p>
+    </div>
+
+    <!-- running today: the honest live reality (1x node + Fireworks) -->
+    <div style="margin-top:20px; display:flex; gap:12px; align-items:stretch;">
+      <div style="flex:none; display:flex; align-items:center; padding:0 16px; border:1px solid var(--accent-dk); border-radius:10px; background:var(--accent-dk-tint);">
+        <span class="mono" style="font-size:10px; letter-spacing:.14em; color:var(--accent-dk);">RUNNING TODAY</span>
+      </div>
+      <div style="flex:1; border:1px solid var(--seal-line); border-radius:10px; padding:11px 16px;">
+        <p style="font-size:11.5px; line-height:1.45; color:var(--seal-ink);">The live demo serves on <strong style="font-weight:600;">one 1× MI300X node</strong> (192 GB HBM3, ROCm + vLLM) with <strong style="font-weight:600;">Fireworks AI (AMD-hosted)</strong> as the badged fallback. The map below is the single-tenant scale target.</p>
+      </div>
+    </div>
+
+    <!-- scale-profile fleet diagram -->
+    <div style="margin-top:14px; border:1px solid var(--seal-line); border-radius:14px; padding:18px 22px; background:rgba(18,20,23,.5);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <span class="mono" style="font-size:10px; letter-spacing:.16em; color:var(--seal-ink2);">SCALE PROFILE · SINGLE-TENANT 8× MI300X DROPLET, vLLM ON ROCm</span>
+        <span class="mono" style="font-size:10px; letter-spacing:.14em; color:var(--seal-ink2);">rocm-smi telemetry live in the Build view</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1.05fr 1.35fr 1.05fr; gap:14px;">
+        <div style="border:1px solid var(--seal-line); border-radius:10px; padding:15px 16px; background:rgba(238,240,241,.04);">
+          <div class="mono" style="font-size:9.5px; letter-spacing:.14em; color:var(--seal-ink2);">NODE A · 1 GPU</div>
+          <p style="font-size:12.5px; line-height:1.5; color:var(--seal-ink); margin-top:8px; font-weight:500;">Gemma-4-31B · Gemma-4-26B · Qwen3.6-35B</p>
+          <p style="font-size:11px; line-height:1.45; color:var(--seal-ink2); margin-top:6px;">Numeric oracle, trust layer / OCR, adversarial inspector</p>
+        </div>
+        <div style="border:1.5px solid rgba(238,240,241,.28); border-radius:10px; padding:15px 16px; background:rgba(238,240,241,.08);">
+          <div class="mono" style="font-size:9.5px; letter-spacing:.14em; color:var(--seal-ink);">NODE B · 5 GPUs · bf16</div>
+          <p style="font-size:12.5px; line-height:1.5; color:var(--seal-ink); margin-top:8px; font-weight:500;">GLM-4.6, the local brain</p>
+          <p style="font-size:11px; line-height:1.45; color:var(--seal-ink2); margin-top:6px;">Certifier, wave conductor, consolidator, Sovereign-Mode planner</p>
+        </div>
+        <div style="border:1px solid var(--seal-line); border-radius:10px; padding:15px 16px; background:rgba(238,240,241,.04);">
+          <div class="mono" style="font-size:9.5px; letter-spacing:.14em; color:var(--seal-ink2);">NODES C-D · 2 GPUs</div>
+          <p style="font-size:12.5px; line-height:1.5; color:var(--seal-ink); margin-top:8px; font-weight:500;">Qwen3-Coder-Next · Qwen3.6-27B · Devstral</p>
+          <p style="font-size:11px; line-height:1.45; color:var(--seal-ink2); margin-top:6px;">Capability-routed coder pool, each model to what it is best at</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:12px; margin-top:14px;">
+        <div style="flex:1; border:1px dashed var(--seal-line); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:12px;">
+          <span class="mono" style="font-size:9.5px; letter-spacing:.14em; color:var(--seal-ink2); flex:none;">EXTERNAL · 1 CALL</span>
+          <p style="font-size:11.5px; line-height:1.4; color:var(--seal-ink2);">The stage-1 frontier planner, GPT-5.6 (via OpenRouter). Sees the sanitized brief, nothing else. Rebindable per seat; removed entirely in Sovereign Mode.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:var(--gap); margin-top:20px;">
+      <div class="stat" style="flex:1;"><div class="v" style="color:var(--seal-ink);">1×</div><div class="l" style="color:var(--seal-ink2);">MI300X node live today · 192 GB HBM3 · ROCm + vLLM</div></div>
+      <div class="stat" style="flex:1;"><div class="v" style="color:var(--seal-ink);">8×</div><div class="l" style="color:var(--seal-ink2);">MI300X single-tenant scale profile · 1.5 TB pooled</div></div>
+      <div class="stat" style="flex:1;"><div class="v" style="color:var(--seal-ink);">1</div><div class="l" style="color:var(--seal-ink2);">external call per job. All other inference is AMD-hosted</div></div>
+    </div>
+
+    <div class="footer"><span>Nxcleus · Built on AMD</span><span>AMD architecture &nbsp; <span class="pg">05 / 10</span></span></div>
+  </div>
+</section>
+
+<!-- ============ 06 · THE BOUNDARY PROOF ============ -->
+<section class="slide bg-b">
+  <div class="kicker"><span>The boundary, proven</span><span class="rule"></span></div>
+  <div style="display:flex; gap:48px; margin-top:0;">
+    <div style="flex:1; padding-top:20px;">
+      <h2 style="margin-top:0;">Not a promise.<br><em>A live receipt.</em></h2>
+      <p class="lede" style="margin-top:18px; max-width:460px;">Every outbound request from the platform passes through one wrapped client and lands in an egress ledger: host, zone, seat, bytes. The UI streams it as the build runs.</p>
+      <div style="display:flex; flex-direction:column; gap:16px; margin-top:28px; max-width:470px;">
+        <div style="border-top:1px solid var(--line); padding-top:13px;">
+          <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">Every crossing is labelled.</strong> The ledger tags each call EXTERNAL or LOCAL and proves the external ones carried only a sanitized payload.</p>
+        </div>
+        <div style="border-top:1px solid var(--line); padding-top:13px;">
+          <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">Sovereign Mode rebinds the planner</strong> to the local fleet. Any external egress during a sovereign job raises a violation and paints the run red.</p>
+        </div>
+        <div style="border-top:1px solid var(--line); padding-top:13px;">
+          <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">Operate phase shows zero.</strong> A certified process re-runs with no frontier calls at all: the exact artifact a compliance officer needs to sign off.</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:26px; flex-wrap:wrap;">
+        <span class="chip">EGRESS LEDGER · PER-JOB RECEIPT</span>
+        <span class="chip amd">0 FRONTIER CALLS AT RUN-TIME</span>
+      </div>
+    </div>
+    <!-- purpose-built egress receipt (dark panel on the light slide) -->
+    <div style="width:500px; flex:none; padding-top:22px;">
+      <div style="border-radius:14px; border:1px solid rgba(21,23,26,.14); background:var(--seal); padding:20px 22px 18px; box-shadow:0 26px 64px -30px rgba(21,23,26,.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--seal-line); padding-bottom:13px;">
+          <span class="mono" style="font-size:10px; letter-spacing:.14em; color:var(--seal-ink);">EGRESS / NETWORK MONITOR</span>
+          <span class="mono" style="font-size:9px; letter-spacing:.12em; color:var(--seal-ink2);">1 boundary crossing</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:11px; margin-top:15px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="mono" style="font-size:8.5px; letter-spacing:.1em; color:var(--accent-dk); border:1px solid var(--accent-dk); border-radius:5px; padding:3px 7px; flex:none; width:82px; text-align:center;">EXTERNAL</span>
+            <span class="mono" style="font-size:10px; color:var(--seal-ink); flex:1;">planner · gpt-5.6</span>
+            <span class="mono" style="font-size:8.5px; letter-spacing:.08em; color:var(--accent-dk);">↗ SANITIZED</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="mono" style="font-size:8.5px; letter-spacing:.1em; color:var(--seal-ink2); border:1px solid var(--seal-line); border-radius:5px; padding:3px 7px; flex:none; width:82px; text-align:center;">LOCAL · A</span>
+            <span class="mono" style="font-size:10px; color:var(--seal-ink); flex:1;">certifier · glm-4.6</span>
+            <span class="mono" style="font-size:8.5px; letter-spacing:.08em; color:var(--seal-ink2);">SEALED · MI300X</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="mono" style="font-size:8.5px; letter-spacing:.1em; color:var(--seal-ink2); border:1px solid var(--seal-line); border-radius:5px; padding:3px 7px; flex:none; width:82px; text-align:center;">LOCAL · C</span>
+            <span class="mono" style="font-size:10px; color:var(--seal-ink); flex:1;">coder pool · qwen</span>
+            <span class="mono" style="font-size:8.5px; letter-spacing:.08em; color:var(--seal-ink2);">SEALED · MI300X</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="mono" style="font-size:8.5px; letter-spacing:.1em; color:var(--seal-ink2); border:1px solid var(--seal-line); border-radius:5px; padding:3px 7px; flex:none; width:82px; text-align:center;">LOCAL · A</span>
+            <span class="mono" style="font-size:10px; color:var(--seal-ink); flex:1;">oracle · gemma-4-31b</span>
+            <span class="mono" style="font-size:8.5px; letter-spacing:.08em; color:var(--seal-ink2);">SEALED · MI300X</span>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:17px; padding-top:15px; border-top:1px solid var(--seal-line);">
+          <div>
+            <div class="mono" style="font-size:9.5px; letter-spacing:.12em; color:var(--seal-ink);">SOVEREIGN MODE</div>
+            <div style="font-size:10.5px; color:var(--seal-ink2); margin-top:3px;">planner rebinds on-fleet, 0 crossings</div>
+          </div>
+          <div style="width:42px; height:23px; border-radius:100px; background:rgba(238,240,241,.1); border:1px solid var(--seal-line); position:relative; flex:none;">
+            <div style="width:17px; height:17px; border-radius:50%; background:var(--seal-ink2); position:absolute; top:2px; left:2px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mono" style="font-size:8.5px; letter-spacing:.14em; color:var(--ink3); margin-top:11px; text-transform:uppercase;">The per-job receipt: exactly one call out, all sanitized. Streamed live at nxcleus.tech</div>
+    </div>
+  </div>
+  <div class="footer"><span>Nxcleus · Oxys Studio</span><span>The boundary, proven &nbsp; <span class="pg">06 / 10</span></span></div>
+</section>
+
+<!-- ============ 07 · LIVE & PROVEN ============ -->
+<section class="slide bg-c">
+  <div class="kicker"><span>Live &amp; proven</span><span class="rule"></span></div>
+  <div style="display:flex; gap:48px; margin-top:0;">
+    <div style="flex:1; padding-top:20px;">
+      <h2 style="margin-top:0;">Working today.<br><em>Not a mock-up.</em></h2>
+      <div style="display:flex; flex-direction:column; gap:16px; margin-top:30px; max-width:470px;">
+        <div style="border-top:1px solid var(--line); padding-top:13px;">
+          <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">Full live build, stages 0 to 7.</strong> A KYC / AML onboarding process was planned, certified, fleet-built, QA'd and delivered to the registry in a single session on the MI300X cluster.</p>
+        </div>
+        <div style="border-top:1px solid var(--line); padding-top:13px;">
+          <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">136 of 138 planted patterns caught.</strong> An insurer sandbox run flagged the seeded anomalies on real synthetic data. The adversarial QA layer earning its place.</p>
+        </div>
+        <div style="border-top:1px solid var(--line); padding-top:13px;">
+          <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">Live GPU telemetry in every build.</strong> Per-node rocm-smi utilization, VRAM and tokens/sec stream straight into the cockpit. The AMD fleet is visible, not asserted.</p>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:18px; margin-top:26px; background:#fff; border:1px solid var(--line-soft); border-radius:var(--radius); padding:15px 18px; max-width:470px;">
+        <img src="assets/qr.svg" style="width:80px; height:80px; flex:none; filter:grayscale(1);">
+        <div>
+          <div class="mono" style="font-size:11px; letter-spacing:.16em; color:var(--accent-strong);">NXCLEUS.TECH</div>
+          <p style="font-size:12px; line-height:1.5; color:var(--ink2); margin-top:6px;">The MVP is live: build cockpit, operations registry, judge sandbox with three synthetic companies, and a Sovereign Mode toggle.</p>
+        </div>
+      </div>
+    </div>
+    <div style="width:520px; flex:none; padding-top:24px;">
+      <div style="border-radius:var(--radius); overflow:hidden; border:1px solid var(--line); height:340px; box-shadow:0 24px 60px -30px rgba(21,23,26,.4);">
+        <img src="../../frontend/screenshots/redesign-cockpit.png" style="width:100%; object-position:0 0;">
+      </div>
+      <div class="mono" style="font-size:8.5px; letter-spacing:.14em; color:var(--ink3); margin-top:10px; text-transform:uppercase;">The build cockpit: stages 0 to 7, goal anchor, AMD MI300X telemetry &amp; live egress ledger</div>
+      <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+        <span class="chip amd">KYC 0→7 LIVE ON MI300X</span>
+        <span class="chip">136/138 CAUGHT</span>
+        <span class="chip">EVENT-SOURCED · REPLAYABLE</span>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>Nxcleus · Oxys Studio</span><span>Live &amp; proven &nbsp; <span class="pg">07 / 10</span></span></div>
+</section>
+
+<!-- ============ 08 · ECONOMICS ============ -->
+<section class="slide bg-a">
+  <div class="kicker"><span>Economics</span><span class="rule"></span></div>
+  <h2>Frontier intelligence is a <em>capital expense</em>,<br>not a marginal cost.</h2>
+  <p class="lede" style="margin-top:16px; max-width:820px;">Paid once, at plan time, on a sanitized brief. Every run after certification is local AMD compute: cheap and owned. Competitors pay frontier tokens <em style="font-style:italic;">and</em> surrender data on every single run.</p>
+
+  <div style="display:flex; gap:40px; margin-top:40px; align-items:stretch;">
+    <div style="flex:1; border:1px solid var(--accent); border-radius:14px; padding:24px 26px; background:var(--accent-tint);">
+      <div class="mono" style="font-size:10px; letter-spacing:.16em; color:var(--accent-strong);">THE LIVE NUMBERS · NXCLEUS.TECH/OPERATIONS</div>
+      <div style="display:flex; gap:28px; margin-top:16px;">
+        <div>
+          <div style="font-weight:300; font-size:48px; letter-spacing:-.02em; color:var(--ink); line-height:1;">$0.54</div>
+          <div style="font-size:12px; color:var(--ink3); margin-top:6px;">to build, 1 frontier call ever</div>
+        </div>
+        <div style="width:1px; background:var(--line);"></div>
+        <div>
+          <div style="font-weight:300; font-size:48px; letter-spacing:-.02em; color:var(--ink); line-height:1;">$0.009</div>
+          <div style="font-size:12px; color:var(--ink3); margin-top:6px;">per applicant to run, 0 frontier calls</div>
+        </div>
+      </div>
+      <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2); margin-top:16px;">One live KYC / AML process: plan, certify, fleet-build, QA and register ($1.26 at full corpus), then batch-run new applicants. A quote before the build; an exact per-token invoice after.</p>
+      <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+        <span class="chip amd">QUOTE, THEN METERED INVOICE</span>
+        <span class="chip amd">VERIFY LIVE AT /OPERATIONS</span>
+      </div>
+    </div>
+    <div style="flex:1; border:1px solid var(--line); border-radius:14px; padding:24px 26px; background:#fff;">
+      <div class="mono" style="font-size:10px; letter-spacing:.16em; color:var(--ink3);">THE ALTERNATIVE</div>
+      <div style="display:flex; align-items:baseline; gap:8px; margin-top:14px;">
+        <span style="font-weight:300; font-size:56px; letter-spacing:-.02em; color:var(--ink);">$100k<span style="font-size:26px;">+</span></span>
+        <span style="font-size:14px; color:var(--ink3);">and months</span>
+      </div>
+      <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2); margin-top:14px;">A consultancy or SI to implement the same internal process: a custom software project that decays the day the team leaves, and still can't run frontier AI on the data.</p>
+      <div style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;">
+        <span class="chip">ONE-OFF, THEN DECAYS</span>
+        <span class="chip">DATA STILL LEAVES</span>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:24px; padding:18px 26px; background:#fff; border-radius:var(--radius); border:1px solid var(--line-soft); display:flex; align-items:center; gap:22px;">
+    <div style="font-size:20px; font-weight:600; color:var(--accent-strong); line-height:1.12; flex:none;">Zero frontier<br>calls per run.</div>
+    <p style="font-size:13.5px; line-height:1.55; color:var(--ink2);">Frontier intelligence is bought once, at plan time, on a sanitized brief. Every run after certification is local AMD compute, forever, against a $100k+ consultant build that decays. The consultant becomes a line item.</p>
+  </div>
+  <div class="footer"><span>Nxcleus · Oxys Studio</span><span>Economics &nbsp; <span class="pg">08 / 10</span></span></div>
+</section>
+
+<!-- ============ 09 · MARKET & MOAT ============ -->
+<section class="slide bg-b">
+  <div class="kicker"><span>Market &amp; moat</span><span class="rule"></span></div>
+  <h2>A large market, and a <em>widening</em> regulatory wedge.</h2>
+  <div style="display:flex; gap:52px; margin-top:38px;">
+    <div style="flex:1.1;">
+      <div style="display:flex; flex-direction:column; gap:22px;">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span class="mono" style="font-size:10px; letter-spacing:.18em; color:var(--ink3);">TAM</span>
+            <span style="font-size:20px; font-weight:500;">$46B <span style="font-size:12px; color:var(--ink3); font-weight:400;">by 2030</span></span>
+          </div>
+          <div style="height:13px; border-radius:7px; background:var(--ink); margin-top:7px; width:100%;"></div>
+          <div style="font-size:12px; color:var(--ink2); margin-top:7px;">Intelligent process automation, global, growing ≈21% a year. <span class="src">GRAND VIEW RESEARCH, EST.</span></div>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span class="mono" style="font-size:10px; letter-spacing:.18em; color:var(--ink3);">SAM</span>
+            <span style="font-size:20px; font-weight:500;">$20B <span style="font-size:12px; color:var(--ink3); font-weight:400;">by 2030</span></span>
+          </div>
+          <div style="height:13px; border-radius:7px; background:#9a9ea2; margin-top:7px; width:44%;"></div>
+          <div style="font-size:12px; color:var(--ink2); margin-top:7px;">Automation spend inside regulated industries: banking, insurance, healthcare, legal.</div>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span class="mono" style="font-size:10px; letter-spacing:.18em; color:var(--accent-strong);">SOM</span>
+            <span style="font-size:20px; font-weight:500;">$120M <span style="font-size:12px; color:var(--ink3); font-weight:400;">year 3</span></span>
+          </div>
+          <div style="height:13px; border-radius:7px; background:var(--accent); margin-top:7px; width:9%;"></div>
+          <div style="font-size:12px; color:var(--ink2); margin-top:7px;">Sovereign AI automation for mid-size regulated firms. CIS, EU &amp; MENA beachhead.</div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1; border-left:1px solid var(--line); padding-left:48px;">
+      <div class="mono" style="font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink3); margin-bottom:16px;">Why this stays defensible</div>
+      <div style="display:flex; flex-direction:column; gap:13px;">
+        <p style="font-size:13px; line-height:1.5; color:var(--ink2);"><strong style="font-weight:500; color:var(--ink);">The boundary architecture.</strong> Policy-governed sanitization with a local certifier that checks the plan against data the frontier never saw. An architecture, not a feature toggle.</p>
+        <p style="font-size:13px; line-height:1.5; color:var(--ink2);"><strong style="font-weight:500; color:var(--ink);">The goal anchor.</strong> Delivery is verified against the customer's original ask, not the plan's drift. Trust that copilots can't retrofit.</p>
+        <p style="font-size:13px; line-height:1.5; color:var(--ink2);"><strong style="font-weight:500; color:var(--ink);">Capability-aware routing on AMD.</strong> Each model routed to what it is measurably best at, on a fleet whose GPU allocation is justified line-by-line by the plan's bill-of-materials.</p>
+        <p style="font-size:13px; line-height:1.5; color:var(--ink2);"><strong style="font-weight:500; color:var(--ink);">Compounding switching costs.</strong> Every delivered process lands in the registry as a versioned asset. Leaving means abandoning a growing library.</p>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex; gap:16px; margin-top:30px; padding-top:20px; border-top:1px solid var(--line); align-items:center;">
+    <div class="mono" style="font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink3); flex:none;">The wedge sentence</div>
+    <div style="font-size:15px; color:var(--ink); font-weight:500;">"We operate where external AI is banned."</div>
+  </div>
+  <div class="footer"><span>Nxcleus · Oxys Studio</span><span>Market &amp; moat &nbsp; <span class="pg">09 / 10</span></span></div>
+</section>
+
+<!-- ============ 10 · CLOSE (dark) ============ -->
+<section class="slide dark" style="padding:0;">
+  <img src="assets/bg-planes.png" style="position:absolute; inset:0; width:1280px; height:720px; object-fit:cover; opacity:.95;">
+  <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(3,10,14,.66) 0%, rgba(3,10,14,0) 40%), linear-gradient(100deg, rgba(3,10,14,.82) 0%, rgba(3,10,14,.42) 46%, rgba(3,10,14,0) 74%);"></div>
+  <div style="position:relative; height:100%; padding:56px var(--pad-x) 0; display:flex; flex-direction:column;">
+    <div class="kicker"><span>What's next</span><span class="rule"></span></div>
+    <div style="display:flex; gap:40px; margin-top:34px;">
+      <div style="flex:1;">
+        <div class="mono" style="font-size:10px; letter-spacing:.18em; color:var(--accent-dk);">NOW</div>
+        <p style="font-size:13px; line-height:1.55; color:var(--seal-ink2); margin-top:10px;">A working MVP on a live URL: full 0 to 7 builds, egress ledger, judge sandbox, Sovereign Mode. Every local seat on AMD MI300X.</p>
+      </div>
+      <div style="flex:1; border-left:1px solid var(--seal-line); padding-left:36px;">
+        <div class="mono" style="font-size:10px; letter-spacing:.18em; color:var(--accent-dk);">H2 2026</div>
+        <p style="font-size:13px; line-height:1.55; color:var(--seal-ink2); margin-top:10px;">Two paid design-partner pilots in regulated firms; security posture &amp; audit packaging; the sovereign appliance spec.</p>
+      </div>
+      <div style="flex:1; border-left:1px solid var(--seal-line); padding-left:36px;">
+        <div class="mono" style="font-size:10px; letter-spacing:.18em; color:var(--accent-dk);">2027</div>
+        <p style="font-size:13px; line-height:1.55; color:var(--seal-ink2); margin-top:10px;">A sovereign AMD appliance offering and a cross-customer library of certified process templates.</p>
+      </div>
+    </div>
+    <div style="margin-top:auto; margin-bottom:78px;">
+      <h1 class="display" style="font-size:47px; font-weight:500; color:var(--seal-ink); max-width:960px;">A hundred processes in every enterprise,<br>waiting to run <em style="font-style:normal; color:var(--accent-dk);">inside the walls.</em></h1>
+      <div style="display:flex; align-items:center; gap:14px; margin-top:26px; flex-wrap:wrap;">
+        <span style="font-size:20px; font-weight:600; color:var(--seal-ink); margin-right:6px;">Nxcleus</span>
+        <span class="chip amd">BUILT ON AMD MI300X · ROCm + vLLM</span>
+        <span class="chip">NXCLEUS.TECH</span>
+        <span class="mono" style="font-size:10px; letter-spacing:.18em; color:var(--seal-ink2); margin-left:6px;">OXYS STUDIO · YARASUL BYCHOK · KAZBEK ANSAR</span>
+      </div>
+    </div>
+    <div class="footer"><span>Nxcleus · Pitch deck</span><span>AMD Developer Hackathon: ACT II · Unicorn Track &nbsp; <span class="pg">10 / 10</span></span></div>
+  </div>
+</section>
+
+</body>
+</html>

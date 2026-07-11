@@ -3,7 +3,8 @@
 The FastAPI control plane + event-sourced orchestrator for the adaptive sovereign process platform.
 It hosts the API + SSE event streams, the SQLite ledger, and the asyncio pipeline engine. **It runs
 zero LLM inference** — all model calls go out to the MI300X fleet (vLLM/ROCm), the Fireworks fallback
-(AMD-hosted), or the Anthropic planner; only the sanitized planner brief ever leaves the boundary.
+(AMD-hosted), or the external frontier planner (GPT-5.6 via OpenRouter); only the sanitized planner
+brief ever leaves the boundary.
 
 Specs are the source of truth: `../docs/specs/` (start at `00-INDEX.md`).
 
@@ -11,8 +12,8 @@ Specs are the source of truth: `../docs/specs/` (start at `00-INDEX.md`).
 
 - Python **3.12** (pinned via `.python-version`), managed with **uv** (project rooted here).
 - FastAPI + Uvicorn, SQLAlchemy Core over aiosqlite (SQLite WAL, single writer), Pydantic v2.
-- Anthropic SDK + OpenAI-compatible httpx clients for vLLM/Fireworks; a deterministic `MockClient`
-  backs dev/CI so the whole pipeline runs with zero keys.
+- OpenAI-compatible httpx clients for vLLM / Fireworks / OpenRouter (the planner) + an Anthropic SDK
+  client for BYOK; a deterministic `MockClient` backs dev/CI so the whole pipeline runs with zero keys.
 
 ## Boot (zero config)
 

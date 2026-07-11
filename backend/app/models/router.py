@@ -40,6 +40,14 @@ _HOST = {
     "mock": "mock.local",
 }
 
+# ponytail: local vLLM instances each serve ONE model on a fixed port (infra/fleet.yaml),
+# addressed by the models.yaml KEY (== served_model_name), NOT the hf_id. Default 8000 = node-B
+# brain. Extend this map when a profile adds local instances on new ports.
+_LOCAL_PORTS: dict[str, int] = {
+    "gemma-4-31b": 8011, "gemma-4-26b-a4b": 8012, "qwen36-35b-a3b": 8013,
+    "glm-46": 8000,
+}
+
 # per-scope budget caps (sandbox runs register one; None = uncapped) — 07 §5.4
 _scope_caps: dict[str, float] = {}
 
@@ -338,8 +346,10 @@ class Router:
                                          temperature=temp, max_tokens=max_tokens, timeout=r.timeout_s, stream=stream)
         if r.backend == "local":
             ip = health.node_ip(r.node or "") or "127.0.0.1"
-            client = VllmClient(f"http://{ip}:8000")
-            return await client.complete(messages, model=wire, schema=schema, seat=seat,
+            port = _LOCAL_PORTS.get(r.model, 8000)
+            # local vLLM is addressed by the served_model_name (== models.yaml key r.model), not hf_id.
+            client = VllmClient(f"http://{ip}:{port}")
+            return await client.complete(messages, model=r.model, schema=schema, seat=seat,
                                          temperature=temp, max_tokens=max_tokens, timeout=r.timeout_s, stream=stream)
         if r.backend == "custom":
             base = (conn_attrs or {}).get("base_url", "")

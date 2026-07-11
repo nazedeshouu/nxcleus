@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Build Pipeline Console (shell)</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ================= Page-scoped one-offs (#wf-build-shell only) ======= */
+#wf-build-shell .bs-jobhead{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:var(--sp5);
+  padding:var(--sp5); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  background:linear-gradient(180deg,var(--surface),var(--surface-sunk));
+}
+#wf-build-shell .bs-jobmeta{display:flex; flex-wrap:wrap; gap:var(--sp2); margin-top:var(--sp3); align-items:center}
+#wf-build-shell .bs-jobid{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-faint)}
+#wf-build-shell .bs-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--seal); border:1px solid var(--seal); background:rgba(63,216,196,.08); padding:3px 9px; border-radius:var(--r-pill)}
+#wf-build-shell .bs-conn{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--ok); font-family:var(--font-mono)}
+#wf-build-shell .bs-conn i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+
+#wf-build-shell .bs-cockpit{display:grid; grid-template-columns:260px 1fr 300px; gap:var(--sp4); margin-top:var(--sp4)}
+@media(max-width:980px){#wf-build-shell .bs-cockpit{grid-template-columns:1fr}}
+
+#wf-build-shell .bs-slot{
+  border:1.5px dashed var(--accent-mid); border-radius:var(--r-md);
+  background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(56,166,210,.035) 9px,rgba(56,166,210,.035) 18px);
+  padding:var(--sp6) var(--sp5); text-align:center;
+}
+#wf-build-shell .bs-slot .lbl{font-size:var(--fs-micro); letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:var(--sp2)}
+#wf-build-shell .bs-slot h3{font-size:var(--fs-h3); margin-bottom:var(--sp2)}
+#wf-build-shell .bs-slotmap{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:var(--sp4)}
+#wf-build-shell .bs-slotmap a{font-size:var(--fs-xs); font-family:var(--font-mono); color:var(--text-muted); border:1px solid var(--hairline); background:var(--surface-sunk); padding:4px 9px; border-radius:var(--r-pill)}
+#wf-build-shell .bs-slotmap a.active{color:var(--accent-strong); border-color:var(--accent); background:var(--accent-wash)}
+
+#wf-build-shell .bs-stream{display:flex; flex-direction:column; gap:2px; max-height:340px; overflow:auto; font-family:var(--font-mono); font-size:var(--fs-xs)}
+#wf-build-shell .bs-ev{display:grid; grid-template-columns:64px 150px 1fr; gap:10px; padding:5px 8px; border-radius:var(--r-xs); align-items:baseline}
+#wf-build-shell .bs-ev:hover{background:var(--surface-raised)}
+#wf-build-shell .bs-ev .seq{color:var(--text-faint)}
+#wf-build-shell .bs-ev .type{color:var(--accent-strong)}
+#wf-build-shell .bs-ev .txt{color:var(--text-muted)}
+#wf-build-shell .bs-ev.viol .type{color:var(--danger)}
+
+#wf-build-shell .bs-meter-cost{font-size:1.9rem; font-weight:680; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+#wf-build-shell .bs-meter-quote{font-size:var(--fs-xs); color:var(--text-faint)}
+#wf-build-shell .bs-track{height:8px; border-radius:var(--r-pill); background:var(--surface-sunk); border:1px solid var(--hairline); overflow:hidden; margin:var(--sp3) 0 var(--sp2)}
+#wf-build-shell .bs-fill{height:100%; width:41%; background:linear-gradient(90deg,var(--accent-mid),var(--accent))}
+#wf-build-shell .bs-metsub{display:flex; justify-content:space-between; font-size:var(--fs-xs); color:var(--text-faint); font-variant-numeric:tabular-nums}
+#wf-build-shell .bs-bom{margin-top:var(--sp4); display:flex; flex-direction:column; gap:6px}
+#wf-build-shell .bs-bomrow{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:var(--fs-xs); padding:6px 0; border-top:1px solid var(--hairline-soft)}
+#wf-build-shell .bs-bomrow .why{color:var(--text-faint); font-size:var(--fs-micro)}
+#wf-build-shell .bs-goal{display:flex; gap:10px; align-items:flex-start; padding:var(--sp4); border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk); margin-top:var(--sp4)}
+#wf-build-shell .bs-goal .ic{color:var(--seal); flex:none; font-size:1.1rem; line-height:1}
+#wf-build-shell .bs-goal-lbl{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:4px}
+#wf-build-shell .bs-railcard{margin-bottom:var(--sp3)}
+#wf-build-shell .bs-amend{border:1px solid var(--hairline-soft); border-radius:var(--r-sm); padding:8px 10px; margin-top:8px; background:var(--surface-sunk)}
+#wf-build-shell .bs-amend .top{display:flex; gap:6px; align-items:center; font-size:var(--fs-micro); text-transform:uppercase; letter-spacing:.06em; color:var(--accent)}
+#wf-build-shell .bs-amend .hash{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint); margin-top:4px}
+</style>
+</head>
+<body>
+
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a class="active" href="02-build-jobs.html">Build</a>
+      <a href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START build-shell-->
+<section class="wf-page" id="wf-build-shell">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Build Pipeline</b> · Wireframe</div>
+    <h1 class="wf-title">Build — Pipeline Console (shell) &nbsp;<span class="wf-route">/build/:jobId</span></h1>
+    <p class="wf-sub">The cockpit container for one build job. It streams a job's 0–7 pipeline live and hosts the per-stage panels — each stage renders its own panel (wireframes 04–11). The customer watches their automation get planned, certified, quoted, built, QA'd, and delivered here.</p>
+
+    <!-- legend: always include, verbatim -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- ==== THE WIREFRAME ==== -->
+
+    <!-- ── Job header ─────────────────────────────────────────── -->
+    <div class="bs-jobhead" data-wf="fn">
+      <div style="min-width:0">
+        <div class="row wrap" style="gap:8px; margin-bottom:6px">
+          <span class="wf-eyebrow" style="margin:0">Job header <span class="wf-badge stub" style="margin-left:6px">Stub-fallback</span></span>
+        </div>
+        <h2 style="font-size:var(--fs-h2)">KYC / AML customer onboarding</h2>
+        <div class="bs-jobmeta">
+          <span class="wf-chip sanitized" style="text-transform:none; letter-spacing:0">mode&nbsp;·&nbsp;build</span>
+          <span class="wf-chip local">Local MI300X</span>
+          <span class="wf-chip amd">AMD Fireworks</span>
+          <span class="wf-chip external">External · planner brief only</span>
+          <span class="wf-chip raw">Raw PII stays local</span>
+          <span class="bs-sov">◆ Sovereign boundary held</span>
+        </div>
+        <div class="bs-jobid" style="margin-top:8px">job_01JKYCDEMO0000000000000001 · created 2026-07-10 14:22 UTC · Meridian Retail Bank (demo tenant)</div>
+      </div>
+      <div class="stack g2" style="align-items:flex-end; flex:none">
+        <span class="bs-conn"><i></i> streaming</span>
+        <span class="faint" style="font-size:var(--fs-micro)">SSE /jobs/{id}/events</span>
+        <a class="wf-btn sm ghost" href="#" style="margin-top:6px">🔍 Inspect prompts</a>
+      </div>
+    </div>
+    <div class="wf-note">
+      <span class="pin">i</span>
+      <span><b>Header data is STUB-fallback.</b> <code>BuildView.tsx</code> never calls <code>GET /jobs/{id}</code> — the title, mode, and chips are folded from the event stream. For the well-known demo job id (<code>KYC_JOB_ID</code>) or when <code>MOCK_FORCED</code>, <code>useJobStream</code> replays the <code>KYC_EVENTS</code> fixture instead of opening SSE. Any other job id opens the real <code>/jobs/{id}/events</code> channel and the same fields become FUNCTIONAL.</span>
+    </div>
+
+    <!-- ── Stage stepper 0–7 ──────────────────────────────────── -->
+    <div class="row between" style="margin-top:var(--sp5)">
+      <div class="wf-eyebrow" style="margin:0">Pipeline stages 0–7 &nbsp;<span class="wf-badge fn">Functional</span></div>
+      <span class="faint" style="font-size:var(--fs-xs)">driven by <code>job.stage_changed</code> events on the SSE stream</span>
+    </div>
+    <div class="wf-steps" role="list" aria-label="Pipeline stages">
+      <div class="wf-step done" role="listitem"><span class="n">0</span> Intake &amp; boundary</div>
+      <div class="wf-step done" role="listitem"><span class="n">1</span> Planning</div>
+      <div class="wf-step done" role="listitem"><span class="n">2</span> Certify</div>
+      <div class="wf-step done" role="listitem"><span class="n">3</span> Quote</div>
+      <div class="wf-step active" role="listitem"><span class="n">4</span> Build (wave 2 of 2)</div>
+      <div class="wf-step" role="listitem"><span class="n">5</span> Consolidate</div>
+      <div class="wf-step" role="listitem"><span class="n">6</span> QA</div>
+      <div class="wf-step" role="listitem"><span class="n">7</span> Deliver</div>
+    </div>
+    <p class="wf-hint" style="margin-top:-4px">Done = green · Active = accent · Pending = muted. In <b>process mode</b> stages 4–5 render <i>skipped</i> (see <code>TopStrip.stageClass</code>).</p>
+
+    <!-- ── Cockpit: left rail / stage-body slot + stream / right rail ── -->
+    <div class="bs-cockpit">
+
+      <!-- LEFT RAIL — amendment / audit log -->
+      <div>
+        <div class="wf-panel" data-wf="fn" style="padding:var(--sp4)">
+          <div class="wf-panel-h" style="margin-bottom:var(--sp3)">
+            <h3 style="font-size:var(--fs-body)">Amendment log</h3>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <p class="faint" style="font-size:var(--fs-xs); margin-bottom:8px">Signed, hash-chained feed of local patches &amp; frontier consults (<code>AuditRail.tsx</code>).</p>
+          <div class="bs-amend">
+            <div class="top"><span class="wf-chip seat">certifier</span> → sanctions-screen</div>
+            <p class="muted" style="font-size:var(--fs-xs); margin:4px 0">Split input into <code>ofac_entries</code> + <code>eu_consolidated</code>; rehydrate real column names.</p>
+            <div class="hash">🔗 a1c0f2 → <b>4d8e91</b></div>
+          </div>
+          <div class="bs-amend">
+            <div class="top"><span class="wf-chip seat">conductor</span> → case-file</div>
+            <p class="muted" style="font-size:var(--fs-xs); margin:4px 0">Tighten audit schema to record the sanctions list version used.</p>
+            <div class="hash">🔗 4d8e91 → <b>9c1a4f</b></div>
+          </div>
+          <div class="bs-amend" style="border-style:dashed">
+            <div class="top" style="color:var(--zone-external)">↔ frontier consult · round 1 <span class="wf-chip sanitized" style="margin-left:auto">sanitized · 214 tok</span></div>
+            <p class="muted" style="font-size:var(--fs-xs); margin:4px 0">Interface-shape question sent to <span class="wf-chip external">External</span> planner. No raw PII in the brief.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER — stage-body slot + live event stream -->
+      <div class="stack g4">
+        <div class="bs-slot" data-wf="plan">
+          <div class="lbl">◈ Stage-body slot</div>
+          <h3>Each stage renders its own panel here</h3>
+          <p class="muted" style="font-size:var(--fs-sm); max-width:52ch; margin:0 auto">
+            The active stage's panel mounts in this slot. The panels are speced as their own wireframes (04–11) —
+            this shell only hosts them and passes the folded <code>JobView</code>.
+          </p>
+          <div class="bs-slotmap">
+            <a href="04-stage0-intake.html">04 · Intake</a>
+            <a href="05-stage1-plan.html">05 · Plan</a>
+            <a href="06-stage2-certify.html">06 · Certify</a>
+            <a href="07-stage3-quote.html">07 · Quote</a>
+            <a class="active" href="08-stage4-build.html">08 · Build (waves)</a>
+            <a href="09-stage5-consolidate.html">09 · Consolidate</a>
+            <a href="10-stage6-qa.html">10 · QA</a>
+            <a href="11-stage7-deliver.html">11 · Deliver</a>
+          </div>
+          <p class="wf-hint" style="margin-top:var(--sp4)">Panels present in code: <code>IntakePanel · PlanPanel · CertifyPanel · WaveBoard · ValidationWall · DefectBoard · DeliveryMoment</code> (rendered by <code>CockpitFrame</code>).</p>
+        </div>
+
+        <!-- Live event stream -->
+        <div class="wf-panel" data-wf="fn">
+          <div class="wf-panel-h">
+            <h3>Live event stream</h3>
+            <div class="row" style="gap:8px">
+              <span class="bs-conn"><i></i> open</span>
+              <span class="wf-badge fn">Functional</span>
+            </div>
+          </div>
+          <p class="faint" style="font-size:var(--fs-xs); margin-top:-8px; margin-bottom:var(--sp3)">
+            <code>GET /jobs/{id}/events</code> (SSE, named events) folded through <code>jobStore.foldEvent</code>. GPU ticks merged from <code>GET /fleet/telemetry</code>.
+          </p>
+          <div class="bs-stream" role="log" aria-label="Job event stream">
+            <div class="bs-ev"><span class="seq">#2041</span><span class="type">conductor.wave_started</span><span class="txt">wave 2 of 2 · consolidation + risk-score + case-file</span></div>
+            <div class="bs-ev"><span class="seq">#2044</span><span class="type">task.dispatch</span><span class="txt">seat=coder backend=local:A/qwen3-coder-next · risk-score</span></div>
+            <div class="bs-ev"><span class="seq">#2047</span><span class="type">model.call</span><span class="txt">seat=coder zone=LOCAL data_class=RAW · 3.1k→0.9k tok</span></div>
+            <div class="bs-ev"><span class="seq">#2051</span><span class="type">task.output_delta</span><span class="txt">case-file: def build_case(applicant): …</span></div>
+            <div class="bs-ev"><span class="seq">#2055</span><span class="type">task.tests</span><span class="txt">risk-score · 9 passed · 0 failed</span></div>
+            <div class="bs-ev"><span class="seq">#2058</span><span class="type">meter.tick</span><span class="txt">cost_usd=0.52 · 41.2k tok · 88s GPU</span></div>
+            <div class="bs-ev"><span class="seq">#2060</span><span class="type">egress.record</span><span class="txt">zone=LOCAL host=vllm-node-1.internal data_class=RAW</span></div>
+            <div class="bs-ev"><span class="seq">#2063</span><span class="type">conductor.review</span><span class="txt">wave 2 · verdict=green · goal_drift=0.04</span></div>
+          </div>
+          <div class="wf-note" style="margin-bottom:0">
+            <span class="pin">✓</span>
+            <span>Frontend wires <code>EventSource.addEventListener</code> per named type with a heartbeat watchdog (<code>api/sse.ts</code>). This is the one region proven live end-to-end (0→7, real models).</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT RAIL — cost / BoM meter + telemetry + abort -->
+      <div class="stack g4">
+        <div class="wf-panel" data-wf="fn" style="padding:var(--sp4)">
+          <div class="wf-panel-h" style="margin-bottom:var(--sp3)">
+            <h3 style="font-size:var(--fs-body)">Running cost / BoM</h3>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <div class="row between" style="align-items:baseline">
+            <span class="bs-meter-cost">$0.52</span>
+            <span class="bs-meter-quote">quote $0.90–$1.60</span>
+          </div>
+          <div class="bs-track"><div class="bs-fill"></div></div>
+          <div class="bs-metsub"><span>41.2k tok</span><span>88s GPU</span><span>approved $1.60</span></div>
+
+          <div class="bs-bom">
+            <div class="wf-eyebrow" style="margin:var(--sp2) 0 0">Model bill-of-materials</div>
+            <div class="bs-bomrow">
+              <div><span class="wf-chip seat">planner</span><div class="why">GLM-4.6 · module graph</div></div>
+              <span class="wf-chip external">EXT</span>
+            </div>
+            <div class="bs-bomrow">
+              <div><span class="wf-chip seat">coder</span><div class="why">Qwen3-Coder-Next · greenfield</div></div>
+              <span class="wf-chip local">LOCAL</span>
+            </div>
+            <div class="bs-bomrow">
+              <div><span class="wf-chip seat">coder</span><div class="why">Devstral-Small-2 · list-matcher</div></div>
+              <span class="wf-chip local">LOCAL</span>
+            </div>
+            <div class="bs-bomrow">
+              <div><span class="wf-chip seat">conductor</span><div class="why">GLM-4.6 · between-wave review</div></div>
+              <span class="wf-chip local">LOCAL</span>
+            </div>
+          </div>
+          <p class="wf-hint">Meter from <code>meter.tick</code> events; quote from <code>GET /jobs/{id}/quote</code>. BoM emitted by planner at stage 1.</p>
+        </div>
+
+        <!-- Goal (pinned at certify) -->
+        <div class="bs-goal" data-wf="fn">
+          <span class="ic">◎</span>
+          <div>
+            <div class="bs-goal-lbl">Goal — what we promised <span class="wf-badge fn" style="margin-left:4px">Fn</span></div>
+            <p class="muted" style="font-size:var(--fs-xs); margin:0">Per applicant: an auditable case file with an ID-verification result, sanctions / PEP / adverse-media findings that cite their source, a risk score, and an onboarding decision — without any raw PII leaving local infrastructure.</p>
+            <p class="faint" style="font-size:var(--fs-micro); margin:6px 0 0">pinned at certification · <code>certify.goal_set</code></p>
+          </div>
+        </div>
+
+        <!-- MI300X telemetry -->
+        <div class="wf-panel" data-wf="fn" style="padding:var(--sp4)">
+          <div class="wf-panel-h" style="margin-bottom:var(--sp3)">
+            <h3 style="font-size:var(--fs-body)">AMD MI300X telemetry</h3>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <div class="row between" style="font-size:var(--fs-xs)"><span class="muted">node 1 · 8× MI300X</span><span class="mono">1,940 tok/s</span></div>
+          <div class="bs-track" style="margin:6px 0"><div class="bs-fill" style="width:73%"></div></div>
+          <div class="bs-metsub"><span>util 73%</span><span>vram 142/192G</span><span>612 W</span></div>
+          <p class="wf-hint">Merged from <code>GET /fleet/telemetry</code> (SSE) into the job fold.</p>
+        </div>
+
+        <!-- Abort control -->
+        <div class="wf-panel sunk" data-wf="fn" style="padding:var(--sp4)">
+          <div class="row between" style="margin-bottom:var(--sp3)">
+            <h3 style="font-size:var(--fs-body)">Job controls</h3>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <div class="wf-btnrow">
+            <button class="wf-btn danger" type="button">◼ Abort job</button>
+            <span class="faint" style="font-size:var(--fs-micro)">POST /jobs/{id}/abort</span>
+          </div>
+          <p class="wf-hint">Wired in <code>StageGate.tsx</code> → <code>api.abort(jobId)</code>. Presenter token required (<code>useDemoToken</code>); the stream carries the real <code>aborted</code> transition. At the quote gate this sits beside <b>Approve quote</b> (<code>POST /jobs/{id}/approve-quote</code>).</p>
+          <div class="wf-note warn" style="margin-bottom:0">
+            <span class="pin">!</span>
+            <span>Abort/Approve only render while the job is <b>parked</b> (status <code>quoted</code> or a drafted spec at stage 0). Mid-run there is no abort button yet — a persistent control is <b>planned</b>.</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /bs-cockpit -->
+
+    <!-- status ledger -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr>
+          <td><span class="wf-badge fn">Functional</span></td>
+          <td>Live event stream (0–7)</td>
+          <td class="ev">GET /jobs/{id}/events (SSE)</td>
+          <td>useJobStream → openEventStream folds named events via jobStore.foldEvent; proven live end-to-end on real models.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge fn">Functional</span></td>
+          <td>Stage stepper 0–7</td>
+          <td class="ev">job.stage_changed events</td>
+          <td>TopStrip.stageClass derives done/active/pending from view.stage on the same SSE fold.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge stub">Stub</span></td>
+          <td>Job header (title, mode, chips)</td>
+          <td class="ev">KYC_EVENTS fixture / SSE fold</td>
+          <td>BuildView never calls GET /jobs/{id}; header folds from stream. Demo job id (KYC_JOB_ID) or MOCK_FORCED replays fixture — STUB-fallback. Real job id → FUNCTIONAL.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge fn">Functional</span></td>
+          <td>Running cost meter</td>
+          <td class="ev">meter.tick · GET /jobs/{id}/quote</td>
+          <td>TopStrip meter reads view.cost / view.quote; quote endpoint present in §3.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge fn">Functional</span></td>
+          <td>Model BoM</td>
+          <td class="ev">plan.* events (stage 1)</td>
+          <td>PlanPanel renders the planner-emitted BoM (seat/model/zone) from the fold; values here match KYC fixture.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge fn">Functional</span></td>
+          <td>Amendment / audit log</td>
+          <td class="ev">certify.* · conductor.amendment</td>
+          <td>AuditRail.tsx renders hash-chained amendments &amp; sanitized consults from the certify fold.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge fn">Functional</span></td>
+          <td>MI300X telemetry</td>
+          <td class="ev">GET /fleet/telemetry (SSE)</td>
+          <td>useJobStream opens a second EventSource on the fleet scope and merges GPU ticks into the fold.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge fn">Functional</span></td>
+          <td>Abort / Approve quote</td>
+          <td class="ev">POST /jobs/{id}/abort · /approve-quote</td>
+          <td>StageGate.tsx calls api.abort / api.approveQuote (both endpoints in §3); gated on useDemoToken.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge plan">Planned</span></td>
+          <td>Persistent mid-run abort</td>
+          <td class="ev">POST /jobs/{id}/abort exists</td>
+          <td>Endpoint is live but no always-visible control is wired outside the parked gates in StageGate; a persistent job-control is designed, not built.</td>
+        </tr>
+        <tr>
+          <td><span class="wf-badge plan">Planned</span></td>
+          <td>Stage-body slot (04–11)</td>
+          <td class="ev">spec 03 §stages 0–7</td>
+          <td>Per-stage panels are speced as their own wireframes; this shell hosts them via CockpitFrame's panel grid.</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+
+</body>
+</html>

@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Config — Connections, Seats &amp; Fleet</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ================= page-scoped one-offs (#wf-config only) =========== */
+#wf-config .sec{margin-top:var(--sp6)}
+#wf-config .sec-h{display:flex; align-items:center; gap:var(--sp3); margin-bottom:var(--sp4); flex-wrap:wrap}
+#wf-config .sec-h h2{font-size:var(--fs-h3); font-weight:640}
+#wf-config .sec-h .note{font-size:var(--fs-xs); color:var(--text-faint)}
+#wf-config .seat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--sp3)}
+@media(max-width:980px){#wf-config .seat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){#wf-config .seat-grid{grid-template-columns:1fr}}
+#wf-config .seat-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4); display:flex; flex-direction:column; gap:var(--sp2)}
+#wf-config .seat-card .top{display:flex; align-items:center; justify-content:space-between; gap:var(--sp2)}
+#wf-config .seat-name{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong)}
+#wf-config .seat-role{font-size:var(--fs-xs); color:var(--text-faint); line-height:1.45; min-height:2.6em}
+#wf-config .seat-bind{display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-top:var(--sp2); border-top:1px solid var(--hairline-soft)}
+#wf-config .seat-bind .lbl{font-size:var(--fs-micro); text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint)}
+#wf-config .seat-bind .mdl{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text)}
+#wf-config .seat-select{margin-top:var(--sp1); font-size:var(--fs-xs); padding:6px 8px; width:100%}
+#wf-config .flags{display:flex; flex-wrap:wrap; gap:4px}
+#wf-config .flag{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-muted); padding:1px 7px; border:1px solid var(--hairline); border-radius:var(--r-pill); background:var(--surface-sunk)}
+#wf-config .flag.strong{color:var(--accent-strong); border-color:var(--accent-mid); background:var(--accent-wash)}
+#wf-config .flag.pick{cursor:default}
+#wf-config .flag.on{color:#04141b; background:var(--accent); border-color:var(--accent)}
+#wf-config .mono-id{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-faint)}
+#wf-config .conn-row{display:grid; grid-template-columns:1.4fr auto auto auto 1fr auto; gap:var(--sp3); align-items:center; padding:var(--sp3) var(--sp4); border:1px solid var(--hairline-soft); border-radius:var(--r-md); background:var(--surface-sunk); margin-bottom:var(--sp2)}
+@media(max-width:860px){#wf-config .conn-row{grid-template-columns:1fr 1fr; gap:var(--sp2)}}
+#wf-config .conn-name{font-weight:600; color:var(--text); font-size:var(--fs-sm)}
+#wf-config .conn-url{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-faint)}
+#wf-config .conn-key{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-muted); letter-spacing:.02em}
+#wf-config .attest{display:inline-flex; align-items:center; gap:4px; font-size:var(--fs-micro); font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--warn); border:1px solid var(--warn); border-radius:var(--r-xs); padding:1px 6px}
+#wf-config .form-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:0 var(--sp4)}
+@media(max-width:640px){#wf-config .form-grid{grid-template-columns:1fr}}
+#wf-config .form-grid .full{grid-column:1/-1}
+#wf-config .node-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--sp3)}
+@media(max-width:980px){#wf-config .node-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){#wf-config .node-grid{grid-template-columns:1fr}}
+#wf-config .node{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4); display:flex; flex-direction:column; gap:var(--sp2)}
+#wf-config .node .nh{display:flex; align-items:center; justify-content:space-between}
+#wf-config .node .nname{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--text)}
+#wf-config .dot-up{width:8px; height:8px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok); display:inline-block}
+#wf-config .dot-drain{width:8px; height:8px; border-radius:50%; background:var(--warn); box-shadow:0 0 8px var(--warn); display:inline-block}
+#wf-config .gpubar{height:6px; border-radius:var(--r-pill); background:var(--surface-sunk); overflow:hidden; margin-top:2px}
+#wf-config .gpubar i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-strong))}
+#wf-config .gpubar i.hot{background:linear-gradient(90deg,var(--warn),var(--danger))}
+#wf-config .meta{font-size:var(--fs-micro); color:var(--text-faint); font-family:var(--font-mono)}
+#wf-config .sov-card{display:flex; align-items:center; gap:var(--sp4); flex-wrap:wrap; justify-content:space-between}
+#wf-config .flash{font-size:var(--fs-xs); padding:8px 12px; border-radius:var(--r-sm); margin-top:var(--sp2)}
+#wf-config .flash.ok{color:var(--ok); background:var(--ok-wash); border:1px solid var(--ok)}
+#wf-config .flash.err{color:var(--danger); background:var(--danger-wash); border:1px solid var(--danger)}
+#wf-config .locked{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-faint)}
+#wf-config .tablescroll{overflow-x:auto}
+</style>
+</head>
+<body>
+
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a href="02-build-jobs.html">Build</a>
+      <a href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a class="active" href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START config-->
+<section class="wf-page" id="wf-config">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Routing Substrate</b> · Wireframe</div>
+    <h1 class="wf-title">Config — Connections, Seats &amp; Fleet &nbsp;<span class="wf-route">/config</span></h1>
+    <p class="wf-sub">The routing substrate an operator tunes before and between builds. Application code addresses <b>seats</b>, never models — bindings, BYOK endpoints, the GPU fleet, and the sovereign kill-switch live here, and every route is checked against the seat's zone and data-class ceiling before a single token moves.</p>
+
+    <!-- legend: always include, verbatim -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- ================================================================
+         REGION 1 — SEAT BINDINGS
+         ================================================================ -->
+    <div class="sec" data-wf="fn">
+      <div class="sec-h">
+        <h2>Seat bindings</h2>
+        <span class="wf-badge fn">Functional</span>
+        <span class="note">the 8 seats → their model · overriding to an ineligible model is rejected (409 zone/data-class)</span>
+      </div>
+
+      <div class="wf-note"><span class="pin">i</span><div><b>Fable 5 is the <i>default</i> planner, not a hardcode.</b> Every binding below is user-configurable via <code>PUT /seats/{seat}/binding</code>; eligibility (zone + data-class ceiling) is enforced server-side, not advisory (spec 02 §8.2). Overrides emit <code>config.seat_bound</code> and re-render in the BoM panel.</div></div>
+
+      <div class="seat-grid">
+        <!-- trust -->
+        <div class="seat-card">
+          <div class="top"><span class="seat-name">trust</span><span class="wf-chip local">Local</span></div>
+          <p class="seat-role">Front door — intake dialogue, policy capture, sanitization</p>
+          <div class="seat-bind"><span class="lbl">binding</span><span class="mdl">gemma-4-26b-a4b</span><span class="wf-chip raw">Raw</span></div>
+          <label class="wf-label" style="margin-top:6px;font-size:var(--fs-micro)" for="bind-trust">Override binding <sup class="wf-tag fn">FN</sup></label>
+          <select class="wf-select seat-select" id="bind-trust" title="Rebind — PUT /seats/trust/binding (presenter-gated)">
+            <option>override…</option><option>gemma-4-26b-a4b</option><option>qwen36-35b-a3b</option>
+          </select>
+          <span class="wf-hint">Presenter mode required. Only LOCAL / RAW-attested models offered.</span>
+        </div>
+        <!-- planner -->
+        <div class="seat-card">
+          <div class="top"><span class="seat-name">planner</span><span class="wf-chip external">External</span></div>
+          <p class="seat-role">Frontier architect — sees only the sanitized brief</p>
+          <div class="seat-bind"><span class="lbl">binding</span><span class="mdl">anthropic:claude-fable-5</span><span class="wf-chip sanitized">Sanitized</span></div>
+          <label class="wf-label" style="margin-top:6px;font-size:var(--fs-micro)" for="bind-planner">Override binding <sup class="wf-tag fn">FN</sup></label>
+          <select class="wf-select seat-select" id="bind-planner" title="Rebind — PUT /seats/planner/binding (presenter-gated)">
+            <option>override…</option><option>anthropic:claude-fable-5 (default)</option><option>glm-52-hosted (fallback ⚠)</option><option>glm-46 (sovereign)</option>
+          </select>
+          <span class="wf-hint">Default binding — <b>not</b> a hardcode. The only designed-in non-local dispatch (D7).</span>
+        </div>
+        <!-- certifier -->
+        <div class="seat-card">
+          <div class="top"><span class="seat-name">certifier</span><span class="wf-chip local">Local</span></div>
+          <p class="seat-role">Hardens the plan into checks, tests, and scope locks</p>
+          <div class="seat-bind"><span class="lbl">binding</span><span class="mdl">glm-46</span><span class="wf-chip raw">Raw</span></div>
+          <label class="wf-label" style="margin-top:6px;font-size:var(--fs-micro)" for="bind-certifier">Override binding <sup class="wf-tag fn">FN</sup></label>
+          <select class="wf-select seat-select" id="bind-certifier" title="Rebind — PUT /seats/certifier/binding (presenter-gated)">
+            <option>override…</option><option>glm-46</option><option>qwen36-35b-a3b</option>
+          </select>
+          <span class="wf-hint">Node B brain — reads RAW (D9). External models rejected (409).</span>
+        </div>
+        <!-- conductor -->
+        <div class="seat-card">
+          <div class="top"><span class="seat-name">conductor</span><span class="wf-chip local">Local</span></div>
+          <p class="seat-role">Runs the build waves, reviews between each</p>
+          <div class="seat-bind"><span class="lbl">binding</span><span class="mdl">glm-46</span><span class="wf-chip raw">Raw</span></div>
+          <label class="wf-label" style="margin-top:6px;font-size:var(--fs-micro)" for="bind-conductor">Override binding <sup class="wf-tag fn">FN</sup></label>
+          <select class="wf-select seat-select" id="bind-conductor" title="Rebind — PUT /seats/conductor/binding (presenter-gated)">
+            <option>override…</option><option>glm-46</option>
+          </select>
+          <span class="wf-hint">Same weights as certifier/consolidator — one instance, four hats.</span>
+        </div>
+        <!-- coder -->
+        <div class="seat-card">
+          <div class="top"><span class="seat-name">coder</span><span class="wf-chip local">Local</span></div>
+          <p class="seat-role">Writes the modules, fleet-parallel</p>
+          <div class="seat-bind"><span class="lbl">binding</span><span class="mdl">qwen3-coder-next</span><span class="wf-chip raw">Raw</span></div>
+          <label class="wf-label" style="margin-top:6px;font-size:var(--fs-micro)" for="bind-coder">Override binding <sup class="wf-tag fn">FN</sup></label>
+          <select class="wf-select seat-select" id="bind-coder" title="Rebind — PUT /seats/coder/binding (presenter-gated)">
+            <option>override…</option><option>qwen3-coder-next</option><option>qwen36-27b</option><option>devstral-small-2</option>
+          </select>
+          <span class="wf-hint">Pooled seat — capability-aware routing picks per task_flags (D12).</span>
+        </div>
+        <!-- consolidator -->
+        <div class="seat-card">
+          <div class="top"><span class="seat-name">consolidator</span><span class="wf-chip local">Local</span></div>
+          <p class="seat-role">Merges modules behind the validation wall</p>
+          <div class="seat-bind"><span class="lbl">binding</span><span class="mdl">glm-46</span><span class="wf-chip raw">Raw</span></div>
+          <label class="wf-label" style="margin-top:6px;font-size:var(--fs-micro)" for="bind-consolidator">Override binding <sup class="wf-tag fn">FN</sup></label>
+          <select class="wf-select seat-select" id="bind-consolidator" title="Rebind — PUT /seats/consolidator/binding (presenter-gated)">
+            <option>override…</option><option>glm-46</option>
+          </select>
+          <span class="wf-hint">merge-review is glm-46's strong flag — the brain's job.</span>
+        </div>
+        <!-- oracle -->
+        <div class="seat-card">
+          <div class="top"><span class="seat-name">oracle</span><span class="wf-chip local">Local</span></div>
+          <p class="seat-role">Lineage-independent numeric verification</p>
+          <div class="seat-bind"><span class="lbl">binding</span><span class="mdl">gemma-4-31b</span><span class="wf-chip raw">Raw</span></div>
+          <label class="wf-label" style="margin-top:6px;font-size:var(--fs-micro)" for="bind-oracle">Override binding <sup class="wf-tag fn">FN</sup></label>
+          <select class="wf-select seat-select" id="bind-oracle" title="Rebind — PUT /seats/oracle/binding (presenter-gated)">
+            <option>override…</option><option>gemma-4-31b</option><option>qwen36-35b-a3b</option>
+          </select>
+          <span class="wf-hint">Math-strong dense model (AIME 89.2). Node A tenant.</span>
+        </div>
+        <!-- inspector -->
+        <div class="seat-card">
+          <div class="top"><span class="seat-name">inspector</span><span class="wf-chip local">Local</span></div>
+          <p class="seat-role">Adversarial QA probes</p>
+          <div class="seat-bind"><span class="lbl">binding</span><span class="mdl">qwen36-35b-a3b</span><span class="wf-chip raw">Raw</span></div>
+          <label class="wf-label" style="margin-top:6px;font-size:var(--fs-micro)" for="bind-inspector">Override binding <sup class="wf-tag fn">FN</sup></label>
+          <select class="wf-select seat-select" id="bind-inspector" title="Rebind — PUT /seats/inspector/binding (presenter-gated)">
+            <option>override…</option><option>qwen36-35b-a3b</option><option>gemma-4-26b-a4b</option>
+          </select>
+          <span class="wf-hint">Extraction + long-context strong (MCPMark 37.0). Node A tenant.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         REGION 2 — MODEL REGISTRY
+         ================================================================ -->
+    <div class="sec" data-wf="fn">
+      <div class="sec-h">
+        <h2>Model registry</h2>
+        <span class="wf-badge fn">Functional</span>
+        <span class="note">9 models · builtin + BYOK, with capability flags · from <code>infra/models.yaml</code></span>
+      </div>
+      <div class="wf-panel" style="padding:0">
+        <div class="tablescroll">
+          <table class="wf-table">
+            <thead>
+              <tr><th>Model</th><th>Provider</th><th>Zone</th><th>Capability flags</th><th>Serves</th><th>Ctx / License</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>glm-46</b><div class="mono-id">zai-org/GLM-4.6 (bf16)</div></td>
+                <td><span class="wf-chip local">vLLM</span></td><td><span class="wf-chip local">Local</span></td>
+                <td><div class="flags"><span class="flag strong">math</span><span class="flag strong">agentic-tool-use</span><span class="flag strong">long-context</span><span class="flag strong">merge-review</span></div></td>
+                <td><span class="mono-id">certifier, conductor, consolidator, sovereign planner</span></td>
+                <td>200K · MIT</td>
+              </tr>
+              <tr>
+                <td><b>glm-52-hosted</b><div class="mono-id">accounts/fireworks/models/glm-5p2</div></td>
+                <td><span class="wf-chip amd">Fireworks</span></td><td><span class="wf-chip external">External</span></td>
+                <td><div class="flags"><span class="flag strong">frontier</span><span class="flag">reasoning</span><span class="flag strong">long-context</span></div></td>
+                <td><span class="mono-id">node-B fallback binding only ⚠ never RAW</span></td>
+                <td>1M · MIT</td>
+              </tr>
+              <tr>
+                <td><b>qwen3-coder-next</b><div class="mono-id">Qwen/Qwen3-Coder-Next</div></td>
+                <td><span class="wf-chip local">vLLM</span></td><td><span class="wf-chip local">Local</span></td>
+                <td><div class="flags"><span class="flag strong">greenfield-codegen</span><span class="flag strong">refactor-edit</span><span class="flag strong">test-writing</span><span class="flag strong">long-context</span></div></td>
+                <td><span class="mono-id">coder pool (node C)</span></td>
+                <td>262K · Apache 2.0</td>
+              </tr>
+              <tr>
+                <td><b>qwen36-27b</b><div class="mono-id">Qwen/Qwen3.6-27B</div></td>
+                <td><span class="wf-chip local">vLLM</span></td><td><span class="wf-chip local">Local</span></td>
+                <td><div class="flags"><span class="flag strong">greenfield-codegen</span><span class="flag strong">sql-data</span><span class="flag strong">docs-writing</span></div></td>
+                <td><span class="mono-id">coder pool (node D)</span></td>
+                <td>262K · Apache 2.0</td>
+              </tr>
+              <tr>
+                <td><b>devstral-small-2</b><div class="mono-id">mistralai/Devstral-Small-2-24B</div></td>
+                <td><span class="wf-chip local">vLLM</span></td><td><span class="wf-chip local">Local</span></td>
+                <td><div class="flags"><span class="flag strong">refactor-edit</span><span class="flag strong">agentic-tool-use</span></div></td>
+                <td><span class="mono-id">coder pool (node D — shares card)</span></td>
+                <td>256K · Apache 2.0</td>
+              </tr>
+              <tr>
+                <td><b>gemma-4-26b-a4b</b><div class="mono-id">google/gemma-4-26B-A4B-it</div></td>
+                <td><span class="wf-chip local">vLLM</span></td><td><span class="wf-chip local">Local</span></td>
+                <td><div class="flags"><span class="flag strong">docs-writing</span><span class="flag strong">extraction</span></div></td>
+                <td><span class="mono-id">trust (+ mixed-swarm inspector)</span></td>
+                <td>256K · Apache 2.0</td>
+              </tr>
+              <tr>
+                <td><b>gemma-4-31b</b><div class="mono-id">google/gemma-4-31B-it</div></td>
+                <td><span class="wf-chip local">vLLM</span></td><td><span class="wf-chip local">Local</span></td>
+                <td><div class="flags"><span class="flag strong">math</span></div></td>
+                <td><span class="mono-id">oracle</span></td>
+                <td>256K · Apache 2.0</td>
+              </tr>
+              <tr>
+                <td><b>qwen36-35b-a3b</b><div class="mono-id">Qwen/Qwen3.6-35B-A3B</div></td>
+                <td><span class="wf-chip local">vLLM</span></td><td><span class="wf-chip local">Local</span></td>
+                <td><div class="flags"><span class="flag strong">extraction</span><span class="flag strong">math</span><span class="flag strong">long-context</span></div></td>
+                <td><span class="mono-id">inspector (default)</span></td>
+                <td>262K · Apache 2.0</td>
+              </tr>
+              <tr>
+                <td><b>anthropic:claude-fable-5</b><div class="mono-id">claude-fable-5 (frontier)</div></td>
+                <td><span class="wf-chip external">Anthropic</span></td><td><span class="wf-chip external">External</span></td>
+                <td><div class="flags"><span class="flag strong">reasoning</span><span class="flag strong">long-context</span><span class="flag strong">merge-review</span></div></td>
+                <td><span class="mono-id">planner (default binding)</span></td>
+                <td>SANITIZED only</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         REGION 3 — BYOK CONNECTIONS
+         ================================================================ -->
+    <div class="sec" data-wf="fn">
+      <div class="sec-h">
+        <h2>BYOK connections</h2>
+        <span class="wf-badge fn">Functional</span>
+        <span class="note">keys stored write-only, returned masked · mutations presenter-gated</span>
+      </div>
+
+      <div class="wf-panel">
+        <!-- existing connections list -->
+        <div class="wf-eyebrow">Registered connections <sup class="wf-tag fn">GET /connections</sup></div>
+        <div class="conn-row">
+          <div>
+            <div class="conn-name">Team GLM (Z.ai)</div>
+            <div class="conn-url">https://api.z.ai/v1</div>
+          </div>
+          <span class="wf-chip custom">Custom</span>
+          <span class="mono-id">ceiling SANITIZED</span>
+          <span></span>
+          <span class="conn-key spacer">sk-••••••••3f9a</span>
+          <button class="wf-btn danger sm" title="delete — DELETE /connections/{id} (presenter-gated)">✕ remove <sup class="wf-tag fn">FN</sup></button>
+        </div>
+        <div class="conn-row">
+          <div>
+            <div class="conn-name">Fireworks (always-on)</div>
+            <div class="conn-url">https://api.fireworks.ai/inference/v1</div>
+          </div>
+          <span class="wf-chip external">External</span>
+          <span class="mono-id">ceiling SANITIZED</span>
+          <span></span>
+          <span class="conn-key spacer">fw-••••••••7c21</span>
+          <button class="wf-btn danger sm" title="delete — DELETE /connections/{id} (presenter-gated)">✕ remove <sup class="wf-tag fn">FN</sup></button>
+        </div>
+        <div class="conn-row">
+          <div>
+            <div class="conn-name">On-prem MI300X (attested)</div>
+            <div class="conn-url">https://gpu-atl1.internal:8000/v1</div>
+          </div>
+          <span class="wf-chip local">Custom</span>
+          <span class="mono-id">ceiling RAW</span>
+          <span class="attest">⚠ counts as LOCAL</span>
+          <span class="conn-key spacer">— (mTLS)</span>
+          <button class="wf-btn danger sm" title="delete — DELETE /connections/{id} (presenter-gated)">✕ remove <sup class="wf-tag fn">FN</sup></button>
+        </div>
+
+        <hr class="wf-hr">
+
+        <!-- add connection form -->
+        <div class="wf-eyebrow">Register a connection <sup class="wf-tag fn">POST /connections</sup> &nbsp;+&nbsp; <sup class="wf-tag fn">POST /connections/{id}/models</sup></div>
+        <div class="form-grid">
+          <div class="wf-field">
+            <label class="wf-label" for="conn-name">Name<span class="req">*</span></label>
+            <input class="wf-input" id="conn-name" placeholder="Team GLM (Z.ai)">
+            <div class="wf-hint">Human label shown in the seat-override list.</div>
+          </div>
+          <div class="wf-field">
+            <label class="wf-label" for="conn-url">Base URL<span class="req">*</span></label>
+            <input class="wf-input" id="conn-url" placeholder="https://api.z.ai/v1">
+            <div class="wf-hint">OpenAI-compatible <code>/v1/chat/completions</code> endpoint.</div>
+          </div>
+          <div class="wf-field">
+            <label class="wf-label" for="conn-key">API key (write-only)</label>
+            <input class="wf-input" id="conn-key" type="password" placeholder="sk-…">
+            <div class="wf-hint">Stored write-only; the server returns it masked, never in clear.</div>
+          </div>
+          <div class="wf-field">
+            <label class="wf-label" for="conn-ceiling">Data-class ceiling</label>
+            <select class="wf-select" id="conn-ceiling">
+              <option>SANITIZED — sanitized briefs only</option>
+              <option>RAW — raw data allowed (counts as local)</option>
+            </select>
+            <div class="wf-hint">Enforced at route time — a RAW seat won't dispatch to a SANITIZED-ceiling endpoint.</div>
+          </div>
+          <div class="wf-field">
+            <label class="wf-label" for="conn-model">First model id (optional)</label>
+            <input class="wf-input" id="conn-model" placeholder="glm-4.6">
+            <div class="wf-hint">Registered under this connection in the same gesture (<code>/connections/{id}/models</code>).</div>
+          </div>
+          <div class="wf-field">
+            <label class="wf-label" for="conn-flags">Capability flags</label>
+            <div class="flags" id="conn-flags" style="padding:8px 0">
+              <span class="flag pick on">code</span>
+              <span class="flag pick">json</span>
+              <span class="flag pick on">long_context</span>
+              <span class="flag pick">reasoning</span>
+              <span class="flag pick">cheap</span>
+            </div>
+            <div class="wf-hint">Drives capability-aware routing inside pooled seats (D12).</div>
+          </div>
+          <label class="wf-check full" style="margin-bottom:var(--sp3)">
+            <input type="checkbox"> Counts as local (inside the walls — raw data may be routed here)
+          </label>
+          <div class="wf-note warn full"><span class="pin">!</span><div>You are attesting this endpoint sits inside your boundary. RAW customer data may be routed to it and the egress ledger records it as a <b>LOCAL</b> zone. Only attest infrastructure you control.</div></div>
+          <div class="wf-btnrow full" style="margin-top:var(--sp3)">
+            <button class="wf-btn primary">⚡ Register connection</button>
+            <span class="locked">🔒 Unlock Presenter mode to add a connection.</span>
+          </div>
+          <div class="flash ok full">Connection registered. The key is stored write-only and returned masked. <span class="faint">(example success state)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         REGION 4 — FLEET PANEL
+         ================================================================ -->
+    <div class="sec" data-wf="plan">
+      <div class="sec-h">
+        <h2>Fleet &amp; GPU telemetry</h2>
+        <span class="wf-badge plan">Planned</span>
+        <span class="note">endpoints live backend-side; <code>Config.tsx</code> does not yet render a fleet panel</span>
+      </div>
+
+      <div class="wf-note warn"><span class="pin">!</span><div><b>Backend ready, UI not wired here.</b> <code>GET /fleet</code>, <code>GET /fleet/telemetry</code>, <code>POST /admin/nodes/register</code> and <code>/admin/nodes/{id}/drain</code> exist (<code>backend/app/api/fleet.py</code>, <code>admin.py</code>) and <code>api.fleet()</code> is in the client — but the shipping <code>Config.tsx</code> route renders Seats / Registry / Connections / Egress only. This panel is the designed target (spec 02 §5, §9).</div></div>
+
+      <div class="wf-panel">
+        <div class="row between" style="margin-bottom:var(--sp4)">
+          <div>
+            <div class="wf-eyebrow">Active profile <sup class="wf-tag plan">GET /fleet</sup></div>
+            <div class="row"><b class="mono">P2 — demo standard</b><span class="wf-chip amd">gpu-mi300x8-1536gb-devcloud</span><span class="mono-id">region atl1 · 8× MI300X (192 GB ea)</span></div>
+          </div>
+          <div class="wf-btnrow">
+            <button class="wf-btn sm" title="register — POST /admin/nodes/register (admin-gated, no frontend client yet)">+ Register node <sup class="wf-tag plan">PLAN</sup></button>
+          </div>
+        </div>
+
+        <div class="node-grid">
+          <div class="node">
+            <div class="nh"><span class="nname">node A</span><span class="dot-up" title="ready"></span></div>
+            <div class="meta">GPU 5 · A-trio · 92 GB FP8</div>
+            <div class="flags"><span class="flag">trust</span><span class="flag">oracle</span><span class="flag">inspector</span></div>
+            <div class="meta">VRAM 92 / 192 GB · 47%</div>
+            <div class="gpubar"><i style="width:47%"></i></div>
+            <div class="meta">util 61% · 512 tok/s · 58°C</div>
+            <button class="wf-btn sm ghost" style="margin-top:6px" title="drain — POST /admin/nodes/A/drain (admin-gated, no frontend client yet)">Drain <sup class="wf-tag plan">PLAN</sup></button>
+          </div>
+          <div class="node">
+            <div class="nh"><span class="nname">node B</span><span class="dot-up" title="ready"></span></div>
+            <div class="meta">GPUs 0–4 · glm-46 bf16 · ~714 GB</div>
+            <div class="flags"><span class="flag strong">certifier</span><span class="flag strong">conductor</span><span class="flag strong">consolidator</span><span class="flag">sov-planner</span></div>
+            <div class="meta">VRAM 714 / 960 GB · 74%</div>
+            <div class="gpubar"><i class="hot" style="width:74%"></i></div>
+            <div class="meta">util 88% · 143 tok/s · 71°C</div>
+            <button class="wf-btn sm ghost" style="margin-top:6px" title="drain — POST /admin/nodes/B/drain (admin-gated, no frontend client yet)">Drain <sup class="wf-tag plan">PLAN</sup></button>
+          </div>
+          <div class="node">
+            <div class="nh"><span class="nname">node C</span><span class="dot-up" title="ready"></span></div>
+            <div class="meta">GPU 6 · qwen3-coder-next · 80 GB</div>
+            <div class="flags"><span class="flag">coder</span></div>
+            <div class="meta">VRAM 80 / 192 GB · 42%</div>
+            <div class="gpubar"><i style="width:42%"></i></div>
+            <div class="meta">util 54% · 690 tok/s · 55°C</div>
+            <button class="wf-btn sm ghost" style="margin-top:6px" title="drain — POST /admin/nodes/C/drain (admin-gated, no frontend client yet)">Drain <sup class="wf-tag plan">PLAN</sup></button>
+          </div>
+          <div class="node">
+            <div class="nh"><span class="nname">node D</span><span class="dot-drain" title="draining"></span></div>
+            <div class="meta">GPU 7 · qwen36-27b + devstral · 51 GB</div>
+            <div class="flags"><span class="flag">coder</span></div>
+            <div class="meta">VRAM 51 / 192 GB · 27% · draining</div>
+            <div class="gpubar"><i style="width:27%"></i></div>
+            <div class="meta">util 12% · 88 tok/s · 49°C</div>
+            <button class="wf-btn sm ghost" style="margin-top:6px" title="drain — POST /admin/nodes/D/drain (admin-gated, no frontend client yet)">Draining… <sup class="wf-tag plan">PLAN</sup></button>
+          </div>
+        </div>
+        <div class="wf-hint" style="margin-top:var(--sp3)">Telemetry stream: node-agent <code>GET /telemetry</code> → <code>rocm-smi --json</code> + vLLM <code>/metrics</code>, polled 2s → <code>telemetry.gpu</code> events (spec 02 §9). SSE channel <code>/fleet/telemetry</code> present; no live subscriber in <code>Config.tsx</code> yet.</div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         REGION 5 — SOVEREIGN MODE
+         ================================================================ -->
+    <div class="sec" data-wf="fn">
+      <div class="sec-h">
+        <h2>Sovereign Mode</h2>
+        <span class="wf-badge fn">Functional</span>
+        <span class="note">presenter-gated kill-switch · <code>api.setSovereign()</code> wired</span>
+      </div>
+      <div class="wf-panel sunk">
+        <div class="sov-card">
+          <div style="max-width:60ch">
+            <div class="row" style="margin-bottom:var(--sp2)"><b>Zero non-local dispatch</b><span class="wf-chip local">Local</span></div>
+            <p class="muted" style="margin:0">When engaged, even the stage-1 planner call is pinned to <code>local:B/glm-46</code> — the platform dispatches <b>nothing</b> off-fleet. A planner call attempted under sovereign against an EXTERNAL binding fails closed with <code>SovereignViolation</code> (the demo proves this by showing the red egress row).</p>
+            <div class="wf-hint">Global default toggle here; per-job override lives on the Build intake. Applies from the next dispatch, not retroactively.</div>
+          </div>
+          <div class="stack g2" style="align-items:flex-end">
+            <label class="wf-check" style="gap:12px"><span>Sovereign Mode</span><span class="wf-toggle" title="POST /admin/sovereign (presenter-gated)"></span></label>
+            <span class="locked">🔒 Presenter token required <sup class="wf-tag fn">POST /admin/sovereign</sup></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         REGION 6 — EGRESS LEDGER (present on the real screen)
+         ================================================================ -->
+    <div class="sec" data-wf="fn">
+      <div class="sec-h">
+        <h2>Egress ledger</h2>
+        <span class="wf-badge fn">Functional</span>
+        <span class="note">1 sanitized crossing · 1 blocked · polled every 5s</span>
+      </div>
+      <div class="wf-panel" style="padding:0">
+        <div class="tablescroll">
+          <table class="wf-table">
+            <thead>
+              <tr><th>Zone</th><th>Host</th><th>Seat</th><th>Scope</th><th>Bytes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="wf-chip external">External</span></td>
+                <td class="conn-key">api.anthropic.com</td>
+                <td class="mono-id">planner</td>
+                <td class="mono-id">job:kyc-onboarding-remediation · sanitized brief</td>
+                <td class="mono-id">18,204</td>
+              </tr>
+              <tr style="background:var(--danger-wash)">
+                <td><span class="wf-chip" style="color:var(--danger);border-color:var(--danger);background:var(--danger-wash)">⊘ blocked</span></td>
+                <td class="conn-key">api.anthropic.com</td>
+                <td class="mono-id">planner</td>
+                <td class="mono-id">SovereignViolation — sovereign on, EXTERNAL binding</td>
+                <td class="mono-id">0</td>
+              </tr>
+              <tr>
+                <td><span class="wf-chip local">Local</span></td>
+                <td class="conn-key">gpu-atl1.internal:8000</td>
+                <td class="mono-id">certifier</td>
+                <td class="mono-id">job:kyc-onboarding-remediation · RAW plan hardening</td>
+                <td class="mono-id">241,880</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         STATUS LEDGER — auditable evidence for every label
+         ================================================================ -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Seat bindings — the 8 seats</td><td class="ev">PUT /seats/{seat}/binding</td><td>Config.tsx SeatCards calls api.bindSeat(); 409 on ineligible zone/data-class. Fable 5 = default planner, not hardcode (02 §8.2).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Model registry</td><td class="ev">GET /models</td><td>Config.tsx ModelRegistry renders modelsQ = api.listModels(); flags from infra/models.yaml (spec 11 §1–2).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>BYOK — list</td><td class="ev">GET /connections</td><td>Config.tsx connsQ = api.listConnections(); keys returned masked.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>BYOK — add + register model</td><td class="ev">POST /connections · /connections/{id}/models</td><td>api.addConnection() then api.addConnectionModel() in one gesture; presenter-gated via useDemoToken.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>BYOK — delete</td><td class="ev">DELETE /connections/{id}</td><td>api.removeConnection(); disabled unless Presenter mode unlocked.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Sovereign Mode toggle</td><td class="ev">POST /admin/sovereign</td><td>api.setSovereign() wired (client.ts:346); admin.py handler present; presenter/admin-gated. (No toggle in Config.tsx itself — lives on topbar/intake.)</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Egress ledger</td><td class="ev">GET /egress</td><td>Config.tsx EgressLedger polls api.egress() every 5s; flags sovereign_violation rows.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Fleet nodes + telemetry</td><td class="ev">GET /fleet · /fleet/telemetry</td><td>fleet.py routes + api.fleet() exist, but Config.tsx renders no fleet panel; /fleet/telemetry SSE has no subscriber. Designed target: 02 §5 (P2 profile), §9 (telemetry).</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Node register / drain</td><td class="ev">POST /admin/nodes/register · /admin/nodes/{id}/drain</td><td>admin.py handlers exist (admin-gated), but no frontend client method — UI controls unwired.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+</body>
+</html>

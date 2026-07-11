@@ -1,0 +1,790 @@
+<!-- Nxcleus Backend AI & Routing — Visualization Suite · Page 03 -->
+<!-- The event-sourced engine: stage machine 0–7, stage-4 waves, the conductor, replay. -->
+<title>Nxcleus · The Event-Sourced Engine</title>
+<style>
+/* =====================================================================
+   INLINED VERBATIM from docs/wireframes/_kit.css (shared visual language)
+   ===================================================================== */
+:root{
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10);
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);
+  --wf-pin:#38a6d2;
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* =====================================================================
+   Page-specific diagram CSS — scoped under #viz-pipeline-orchestrator
+   ===================================================================== */
+#viz-pipeline-orchestrator{--eng:var(--accent); --amend:var(--seal); --consult:var(--zone-external);}
+#viz-pipeline-orchestrator .sec{margin-top:var(--sp7)}
+#viz-pipeline-orchestrator .sec-eyebrow{font-size:var(--fs-micro); letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:var(--sp2)}
+#viz-pipeline-orchestrator .sec-h{font-size:var(--fs-h2); margin-bottom:var(--sp3)}
+#viz-pipeline-orchestrator .lead{color:var(--text-muted); max-width:74ch; margin-bottom:var(--sp5)}
+#viz-pipeline-orchestrator .cite{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--accent); background:var(--accent-wash); border:1px solid var(--hairline); border-radius:var(--r-xs); padding:1px 6px; white-space:nowrap}
+#viz-pipeline-orchestrator .decision{font-family:var(--font-mono); font-size:var(--fs-micro); font-weight:700; color:var(--seal); background:rgba(63,216,196,.09); border:1px solid var(--seal); border-radius:var(--r-xs); padding:1px 6px}
+
+/* three-role banner: mind / hands / eyes */
+#viz-pipeline-orchestrator .roles{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sp4)}
+@media(max-width:860px){#viz-pipeline-orchestrator .roles{grid-template-columns:1fr}}
+#viz-pipeline-orchestrator .role{background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg); padding:var(--sp5); position:relative; overflow:hidden}
+#viz-pipeline-orchestrator .role .glyph{font-size:1.4rem; margin-bottom:var(--sp2)}
+#viz-pipeline-orchestrator .role h4{font-size:var(--fs-h3); margin-bottom:var(--sp1)}
+#viz-pipeline-orchestrator .role .who{font-size:var(--fs-xs); color:var(--accent-strong); margin-bottom:var(--sp3); font-family:var(--font-mono)}
+#viz-pipeline-orchestrator .role p{font-size:var(--fs-sm); color:var(--text-muted); margin:0}
+#viz-pipeline-orchestrator .role::before{content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--accent); opacity:.7}
+#viz-pipeline-orchestrator .role.eyes::before{background:var(--seal)}
+#viz-pipeline-orchestrator .role.hands::before{background:var(--text-faint)}
+
+/* stage state-machine spine */
+#viz-pipeline-orchestrator .machine{background:var(--surface-sunk); border:1px solid var(--hairline); border-radius:var(--r-lg); padding:var(--sp5); overflow-x:auto}
+#viz-pipeline-orchestrator .spine{display:flex; align-items:stretch; gap:0; min-width:920px}
+#viz-pipeline-orchestrator .st{flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; position:relative; padding:0 6px}
+#viz-pipeline-orchestrator .st .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-family:var(--font-mono); font-weight:700; font-size:var(--fs-sm); background:var(--surface-raised); border:1px solid var(--hairline); color:var(--text); z-index:2}
+#viz-pipeline-orchestrator .st.local .dot{border-color:var(--zone-local); color:var(--zone-local); box-shadow:0 0 0 3px var(--zone-local-wash)}
+#viz-pipeline-orchestrator .st.ext .dot{border-color:var(--zone-external); color:var(--zone-external); box-shadow:0 0 0 3px var(--zone-external-wash)}
+#viz-pipeline-orchestrator .st.det .dot{border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+#viz-pipeline-orchestrator .st .nm{font-size:var(--fs-xs); font-weight:600; color:var(--text); margin-top:var(--sp2); line-height:1.25}
+#viz-pipeline-orchestrator .st .seat-mini{margin-top:6px; font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--accent-strong)}
+#viz-pipeline-orchestrator .st .status-mini{margin-top:4px; font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint)}
+#viz-pipeline-orchestrator .st::after{content:""; position:absolute; top:17px; left:50%; width:100%; height:2px; background:var(--hairline); z-index:1}
+#viz-pipeline-orchestrator .st:last-child::after{display:none}
+#viz-pipeline-orchestrator .st.pause .dot{border-style:dashed}
+#viz-pipeline-orchestrator .pausebar{display:flex; gap:var(--sp3); flex-wrap:wrap; margin-top:var(--sp4); font-size:var(--fs-xs); color:var(--text-muted)}
+#viz-pipeline-orchestrator .pausebar .pz{display:inline-flex; align-items:center; gap:6px}
+#viz-pipeline-orchestrator .pausebar .pz b{color:var(--warn); font-family:var(--font-mono)}
+
+/* branch note (process vs build) */
+#viz-pipeline-orchestrator .branch{display:flex; gap:var(--sp3); flex-wrap:wrap; margin-top:var(--sp4)}
+#viz-pipeline-orchestrator .branch .b{flex:1; min-width:240px; background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp3) var(--sp4); font-size:var(--fs-sm); color:var(--text-muted)}
+#viz-pipeline-orchestrator .branch .b b{color:var(--text)}
+
+/* StageContext capability chips */
+#viz-pipeline-orchestrator .caps{display:grid; grid-template-columns:repeat(5,1fr); gap:var(--sp3)}
+@media(max-width:860px){#viz-pipeline-orchestrator .caps{grid-template-columns:repeat(2,1fr)}}
+#viz-pipeline-orchestrator .cap{background:var(--surface-sunk); border:1px solid var(--hairline); border-radius:var(--r-md); padding:var(--sp3); text-align:center}
+#viz-pipeline-orchestrator .cap code{display:block; color:var(--accent-strong); font-size:var(--fs-sm); margin-bottom:4px}
+#viz-pipeline-orchestrator .cap span{font-size:var(--fs-xs); color:var(--text-faint)}
+
+/* wave loop diagram */
+#viz-pipeline-orchestrator .waveloop{display:flex; flex-direction:column; gap:var(--sp3)}
+#viz-pipeline-orchestrator .wl-wave{border:1px solid var(--hairline); border-radius:var(--r-lg); background:var(--surface); overflow:hidden}
+#viz-pipeline-orchestrator .wl-head{display:flex; align-items:center; gap:var(--sp3); padding:var(--sp3) var(--sp4); background:var(--surface-raised); border-bottom:1px solid var(--hairline-soft)}
+#viz-pipeline-orchestrator .wl-head .wtag{font-family:var(--font-mono); font-size:var(--fs-xs); font-weight:700; color:var(--accent-strong); background:var(--accent-wash); border:1px solid var(--accent-mid); border-radius:var(--r-pill); padding:2px 10px}
+#viz-pipeline-orchestrator .wl-head .ev{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint)}
+#viz-pipeline-orchestrator .wl-tasks{display:flex; gap:var(--sp3); flex-wrap:wrap; padding:var(--sp4)}
+#viz-pipeline-orchestrator .tsk{flex:1; min-width:180px; background:var(--surface-sunk); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp3)}
+#viz-pipeline-orchestrator .tsk .m{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--text); font-weight:600}
+#viz-pipeline-orchestrator .tsk .flags{margin-top:6px; display:flex; gap:5px; flex-wrap:wrap}
+#viz-pipeline-orchestrator .tsk .fl{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--zone-amd); border:1px solid var(--zone-amd); background:var(--zone-amd-wash); border-radius:var(--r-xs); padding:0 5px}
+#viz-pipeline-orchestrator .tsk .route{margin-top:6px; font-size:var(--fs-micro); color:var(--text-faint)}
+#viz-pipeline-orchestrator .tsk .route b{color:var(--zone-local)}
+#viz-pipeline-orchestrator .wl-review{padding:var(--sp4); border-top:1px dashed var(--seal); background:rgba(63,216,196,.05)}
+#viz-pipeline-orchestrator .wl-review .rh{display:flex; align-items:center; gap:var(--sp2); margin-bottom:var(--sp2)}
+#viz-pipeline-orchestrator .wl-review .rh .glyph{font-size:1rem}
+#viz-pipeline-orchestrator .wl-review .rh b{color:var(--seal); font-size:var(--fs-sm)}
+#viz-pipeline-orchestrator .wl-review p{font-size:var(--fs-sm); color:var(--text-muted); margin:0 0 var(--sp2)}
+#viz-pipeline-orchestrator .lever{display:flex; gap:var(--sp2); margin-top:var(--sp2); font-size:var(--fs-xs)}
+#viz-pipeline-orchestrator .lever .lv{flex:1; border-radius:var(--r-sm); padding:var(--sp2) var(--sp3); border:1px solid}
+#viz-pipeline-orchestrator .lever .lv.amend{border-color:var(--seal); background:rgba(63,216,196,.07)}
+#viz-pipeline-orchestrator .lever .lv.rework{border-color:var(--warn); background:var(--warn-wash)}
+#viz-pipeline-orchestrator .lever .lv .t{font-weight:700; color:var(--text); display:block; margin-bottom:2px}
+#viz-pipeline-orchestrator .greenflag{display:inline-flex; align-items:center; gap:6px; margin-top:var(--sp3); font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--ok); font-weight:700}
+#viz-pipeline-orchestrator .greenflag::before{content:""; width:9px; height:9px; border-radius:2px; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+#viz-pipeline-orchestrator .wl-arrow{text-align:center; color:var(--seal); font-size:1.1rem; line-height:1}
+
+/* event timeline (worked example + replay) */
+#viz-pipeline-orchestrator .tl{position:relative; margin-left:10px; padding-left:var(--sp5); border-left:2px solid var(--hairline)}
+#viz-pipeline-orchestrator .tl .ev-row{position:relative; padding:var(--sp2) 0 var(--sp4)}
+#viz-pipeline-orchestrator .tl .ev-row::before{content:""; position:absolute; left:calc(-1 * var(--sp5) - 6px); top:12px; width:10px; height:10px; border-radius:50%; background:var(--accent); border:2px solid var(--paper); box-shadow:0 0 0 2px var(--accent-wash)}
+#viz-pipeline-orchestrator .tl .ev-row.amend::before{background:var(--seal); box-shadow:0 0 0 2px rgba(63,216,196,.2)}
+#viz-pipeline-orchestrator .tl .ev-row.flag::before{background:var(--ok); box-shadow:0 0 0 2px var(--ok-wash)}
+#viz-pipeline-orchestrator .tl .ev-row.warn::before{background:var(--warn); box-shadow:0 0 0 2px var(--warn-wash)}
+#viz-pipeline-orchestrator .tl .seq{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint)}
+#viz-pipeline-orchestrator .tl .etype{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); font-weight:600}
+#viz-pipeline-orchestrator .tl .ev-row.amend .etype{color:var(--seal)}
+#viz-pipeline-orchestrator .tl .ev-row.flag .etype{color:var(--ok)}
+#viz-pipeline-orchestrator .tl .edesc{font-size:var(--fs-sm); color:var(--text-muted); margin-top:2px}
+#viz-pipeline-orchestrator .tl .edesc .k{font-family:var(--font-mono); color:var(--text); font-size:var(--fs-xs)}
+
+/* amend vs consult comparison */
+#viz-pipeline-orchestrator .vs{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp4)}
+@media(max-width:860px){#viz-pipeline-orchestrator .vs{grid-template-columns:1fr}}
+#viz-pipeline-orchestrator .vs .col{border-radius:var(--r-lg); border:1px solid var(--hairline); padding:var(--sp5); background:var(--surface)}
+#viz-pipeline-orchestrator .vs .col.amend{border-color:var(--seal)}
+#viz-pipeline-orchestrator .vs .col.consult{border-color:var(--zone-external)}
+#viz-pipeline-orchestrator .vs h4{font-size:var(--fs-h3); margin-bottom:var(--sp1); display:flex; align-items:center; gap:var(--sp2)}
+#viz-pipeline-orchestrator .vs .col.amend h4{color:var(--seal)}
+#viz-pipeline-orchestrator .vs .col.consult h4{color:var(--zone-external)}
+#viz-pipeline-orchestrator .vs ul{margin:var(--sp3) 0 0; padding-left:1.1em; font-size:var(--fs-sm); color:var(--text-muted)}
+#viz-pipeline-orchestrator .vs ul li{margin-bottom:var(--sp2)}
+#viz-pipeline-orchestrator .vs ul li b{color:var(--text)}
+
+/* resumability diagram */
+#viz-pipeline-orchestrator .resume{display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--sp3)}
+@media(max-width:860px){#viz-pipeline-orchestrator .resume{grid-template-columns:1fr}}
+#viz-pipeline-orchestrator .resume .rc{background:var(--surface-sunk); border:1px solid var(--hairline); border-radius:var(--r-md); padding:var(--sp4)}
+#viz-pipeline-orchestrator .resume .rc .step{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--accent); margin-bottom:6px}
+#viz-pipeline-orchestrator .resume .rc h5{font-size:var(--fs-sm); color:var(--text); margin-bottom:var(--sp1)}
+#viz-pipeline-orchestrator .resume .rc p{font-size:var(--fs-xs); color:var(--text-muted); margin:0}
+
+#viz-pipeline-orchestrator .guardrow{display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--sp3)}
+@media(max-width:860px){#viz-pipeline-orchestrator .guardrow{grid-template-columns:1fr}}
+#viz-pipeline-orchestrator .guard{background:var(--surface-sunk); border:1px solid var(--hairline); border-left:3px solid var(--danger); border-radius:var(--r-md); padding:var(--sp4)}
+#viz-pipeline-orchestrator .guard h5{font-size:var(--fs-sm); color:var(--text); margin-bottom:4px}
+#viz-pipeline-orchestrator .guard code{color:var(--danger); font-size:var(--fs-xs)}
+#viz-pipeline-orchestrator .guard p{font-size:var(--fs-xs); color:var(--text-muted); margin:6px 0 0}
+</style>
+
+<div class="wf-topbar">
+  <div class="brand"><span class="mark"></span> Nxcleus</div>
+  <nav class="wf-nav">
+    <a href="00-system-overview.html">00 · Overview</a>
+    <a href="01-seats-and-routing.html">01 · Seats &amp; Routing</a>
+    <a href="02-data-boundary.html">02 · Data Boundary</a>
+    <a href="03-pipeline-orchestrator.html" class="active">03 · Pipeline &amp; Orchestrator</a>
+    <a href="04-economics-metering.html">04 · Economics</a>
+  </nav>
+  <div class="right"><span class="wf-pill-live"><i></i> engine live</span></div>
+</div>
+
+<section id="viz-pipeline-orchestrator" class="wf-shell">
+<div class="wf-page">
+
+  <div class="wf-crumb">Backend AI &amp; Routing · <b>03 / Pipeline &amp; Orchestrator</b></div>
+  <h1 class="wf-title">The event-sourced engine</h1>
+  <p class="wf-sub">
+    One custom asyncio engine drives every job through a nine-state machine. It <b>dispatches, retries, and
+    resumes</b> — it never decides. The deciding lives in artifacts (the certified plan) and two bounded review
+    points: the certifier before the build, and the <span class="wf-chip seat">conductor</span> between the
+    topological <b>waves</b> of stage 4. Every transition is an append-only event, so the same log gives you the
+    live UI, replay, and crash-resume for free. This page traces that machine end to end and walks a two-wave
+    KYC/AML build where the conductor amends wave 2 before green-flagging it.
+  </p>
+
+  <div class="wf-legend">
+    <span class="k"><span class="wf-chip local">local</span> MI300X fleet</span>
+    <span class="k"><span class="wf-chip external">external</span> Anthropic planner</span>
+    <span class="k"><span class="decision">D3</span> custom asyncio engine</span>
+    <span class="k"><span class="decision">D8</span> conductor waves</span>
+    <span class="k"><b style="color:var(--seal)">▮</b> amendment (local, hash-chained)</span>
+    <span class="k"><b style="color:var(--zone-external)">▮</b> consult (crosses boundary, sanitized)</span>
+    <span class="k"><span class="cite">cite ##</span> spec section</span>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SECTION 1 — division of labor -->
+  <!-- ============================================================= -->
+  <div class="sec">
+    <div class="sec-eyebrow">Why it's built this way</div>
+    <h2 class="sec-h">Mind, hands, eyes — the engine never decides</h2>
+    <p class="lead">
+      The temptation is to hand orchestration to an LLM agent that loops and improvises. Nxcleus deliberately
+      does not (<span class="decision">D3</span>): an improvising orchestrator can't be replayed, resumed after a
+      crash, or audited. Instead intelligence is <em>placed</em> — the frontier planner authors a plan, a local
+      certifier completes and certifies it, and a local conductor reviews between waves. The engine in the middle
+      is boring on purpose. <span class="cite">spec 07 §intro</span>
+    </p>
+    <div class="roles">
+      <div class="role hands">
+        <div class="glyph">✋</div>
+        <h4>The hands — the engine</h4>
+        <div class="who">app/orchestrator/engine.py</div>
+        <p>A deterministic asyncio loop: <code>while stage := next_stage(job)</code>. It dispatches each stage,
+          retries on failure, parks on pause points, and resumes after a crash. It holds no opinions — it can't
+          improvise, so it can always be replayed.</p>
+      </div>
+      <div class="role">
+        <div class="glyph">🧠</div>
+        <h4>The mind — the certified plan</h4>
+        <div class="who">planner (external) → certifier (local)</div>
+        <p>The frontier planner designs the work topology from a sanitized brief; the local certifier completes it
+          against RAW context, amends what sanitization blurred, and pins the <b>goal</b>. The plan <em>is</em> the
+          decision, made once, up front.</p>
+      </div>
+      <div class="role eyes">
+        <div class="glyph">👁</div>
+        <h4>The eyes — the conductor</h4>
+        <div class="who">conductor (local, same GLM as certifier)</div>
+        <p>Between stage-4 waves it reads what was just built against the plan + goal and may issue
+          <b>bounded amendments</b> to regions not yet built, or order rework of a finished module — then
+          green-flags the next wave. <span class="decision">D8</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SECTION 2 — stage state machine -->
+  <!-- ============================================================= -->
+  <div class="sec">
+    <div class="sec-eyebrow">The state machine</div>
+    <h2 class="sec-h">Nine states, two pause points, 0–7</h2>
+    <p class="lead">
+      Every job walks the same machine. Each transition is written to <code>jobs.status</code> <b>and</b> emitted as
+      <code>job.stage_changed</code> <em>in the same DB transaction</em> — materialized state and the event log
+      can never diverge. <span class="cite">spec 07 §2</span> The zone chip under each stage shows where its seat
+      runs: only stage 1 (planning) ever leaves the walls, and only with a sanitized brief.
+      <span class="cite">spec 03 §1</span>
+    </p>
+
+    <div class="machine">
+      <div class="spine">
+        <div class="st local"><div class="dot">0</div><div class="nm">Intake &amp; boundary</div><div class="seat-mini">trust</div><div class="status-mini">intake</div></div>
+        <div class="st ext"><div class="dot">1</div><div class="nm">Planning</div><div class="seat-mini">planner</div><div class="status-mini">planning</div></div>
+        <div class="st local"><div class="dot">2</div><div class="nm">Certify + rehydrate</div><div class="seat-mini">certifier</div><div class="status-mini">certifying</div></div>
+        <div class="st det pause"><div class="dot">3</div><div class="nm">Quote ⏸</div><div class="seat-mini">deterministic</div><div class="status-mini">quoted</div></div>
+        <div class="st local"><div class="dot">4</div><div class="nm">Build in waves</div><div class="seat-mini">coder + conductor</div><div class="status-mini">building</div></div>
+        <div class="st local"><div class="dot">5</div><div class="nm">Consolidate</div><div class="seat-mini">consolidator</div><div class="status-mini">consolidating</div></div>
+        <div class="st local"><div class="dot">6</div><div class="nm">Adversarial QA + goal</div><div class="seat-mini">inspector · oracle</div><div class="status-mini">qa</div></div>
+        <div class="st local"><div class="dot">7</div><div class="nm">Deliver → registry</div><div class="seat-mini">trust</div><div class="status-mini">delivering</div></div>
+      </div>
+      <div class="pausebar">
+        <span class="pz"><b>⏸ quoted</b> — engine parks, no task running; <code>POST /approve-quote</code> re-submits</span>
+        <span class="pz"><b>⏸ awaiting_input</b> — stage-0 clarifications (≤3); <code>POST /jobs/{id}/answers</code> resumes</span>
+        <span class="pz"><b>⏸ blocked</b> — human input needed (consult / QA caps hit); a ticket resolution re-submits</span>
+        <span class="pz">any stage → <b style="color:var(--danger)">aborted</b></span>
+      </div>
+      <div class="branch">
+        <div class="b"><b>Build mode</b> — <code>intake → planning → certifying → quoted ⏸ → building → consolidating → qa → delivering → done</code>. Stages 4–5 generate and assemble code.</div>
+        <div class="b"><b>Process mode</b> skips build/consolidate: <code>quoted ⏸ → running fan-out → delivering</code>. Stage 4′ streams a corpus through per-unit seats instead of writing modules. <span class="cite">spec 03 §8</span></div>
+      </div>
+    </div>
+
+    <div class="wf-note"><span class="pin">i</span>
+      <div>Pause points (<code>⏸</code>) are not threads sleeping — the engine <em>parks</em> the job (no task in
+        memory) and an inbound API call re-submits it. That's why a deploy restart mid-quote costs nothing:
+        there was nothing running to lose. <span class="cite">spec 07 §2</span></div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SECTION 3 — engine anatomy -->
+  <!-- ============================================================= -->
+  <div class="sec">
+    <div class="sec-eyebrow">Engine anatomy</div>
+    <h2 class="sec-h">One asyncio loop, no queues, no workers-as-processes</h2>
+    <p class="lead">
+      The whole engine lives inside the API process. No Celery, no Temporal, no IPC — SQLite has one writer and the
+      fan-out is network-bound LLM calls, which asyncio handles at any concurrency this workload reaches.
+      <span class="decision">D3</span> <span class="cite">spec 07 §1</span> Every stage receives the same
+      <code>StageContext</code> — five capabilities, nothing else:
+    </p>
+    <div class="caps">
+      <div class="cap"><code>emit()</code><span>append to <b>events</b> + fan out to SSE subscribers in-process</span></div>
+      <div class="cap"><code>router.complete()</code><span>dispatch to a seat → backend (02 §2), metered</span></div>
+      <div class="cap"><code>dao</code><span>typed DAO access to materialized tables</span></div>
+      <div class="cap"><code>meter</code><span>token &amp; GPU-second accounting per dispatch (10 §1)</span></div>
+      <div class="cap"><code>checkpoint()</code><span>job-scoped scratch — backs resumability</span></div>
+    </div>
+    <div class="wf-note"><span class="pin">i</span>
+      <div>Because <code>emit()</code> writes the event <em>and</em> is the SSE source, there is exactly one path
+        from "something happened" to both the database and the browser. The UI state for a job is literally a
+        fold of its events; the DB rows are just a materialized cache for queries. <span class="cite">spec 05 §1</span></div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SECTION 4 — stage 4 wave loop -->
+  <!-- ============================================================= -->
+  <div class="sec">
+    <div class="sec-eyebrow">Stage 4 · the heart of the engine</div>
+    <h2 class="sec-h">Topological waves &amp; the conductor loop</h2>
+    <p class="lead">
+      Stage 4 is where <span class="decision">D8</span> lives. The engine partitions the plan's DAG into
+      <b>topological waves</b> (Kahn levels: wave 1 = tasks with no unbuilt deps, wave 2 = tasks unblocked by wave 1,
+      …). Independent-parallelism plans collapse to a single wave; interdependent plans get the
+      develop → review → develop rhythm. Within a wave, tasks dispatch in parallel to the <span class="wf-chip seat">coder</span>
+      pool; between waves the conductor reviews. <span class="cite">spec 03 §6</span>
+      <span class="cite">spec 07 §3.1</span> Real loop below (<code>fleet/stage4.py</code> · <code>seats/conductor.py</code>):
+    </p>
+
+    <div class="waveloop">
+      <div class="wl-wave">
+        <div class="wl-head"><span class="wtag">WAVE 1 / 2</span><span class="ev">conductor.wave_started {wave:1, tasks:[…]}</span></div>
+        <div class="wl-tasks">
+          <div class="tsk"><div class="m">t_sanctions</div><div class="flags"><span class="fl">extraction</span><span class="fl">sql-data</span></div><div class="route">→ <b>local:A/qwen3-coder</b> · capability argmax</div></div>
+          <div class="tsk"><div class="m">t_pep</div><div class="flags"><span class="fl">extraction</span><span class="fl">sql-data</span></div><div class="route">→ <b>local:A/qwen3-coder</b> · least-loaded tie-break</div></div>
+        </div>
+        <div class="wl-review">
+          <div class="rh"><span class="glyph">👁</span><b>conductor.review</b> — verdict: <span style="color:var(--seal)">amend</span></div>
+          <p>Reads wave-1 files, test results, worker notes + the certified plan + goal + the <b>remaining</b> DAG.
+            Sees that <code>mod_sanctions</code> emits a <code>match_confidence</code> (0–1), but the unbuilt
+            <code>mod_risk</code> plan still assumes a boolean hit. Two levers, strict limits on each:</p>
+          <div class="lever">
+            <div class="lv amend"><span class="t">▮ amendment → unbuilt region only</span>RFC-6902 patch to <code>modules.mod_risk</code> + <code>if_sanctions_result</code> — in the remaining DAG, so scope-lock passes. Hash-chained, <code>origin: conductor</code>.</div>
+            <div class="lv rework"><span class="t">↺ rework → finished module</span>≤1 per module per wave. Used only if a <em>built</em> module is wrong — reruns it as a micro-loop. Never a silent plan edit under finished work.</div>
+          </div>
+          <div class="greenflag">conductor.green_flag {amendments:1, rework:0} → wave 2</div>
+        </div>
+      </div>
+
+      <div class="wl-arrow">↓</div>
+
+      <div class="wl-wave">
+        <div class="wl-head"><span class="wtag">WAVE 2 / 2</span><span class="ev">conductor.wave_started {wave:2, tasks:[…]}</span></div>
+        <div class="wl-tasks">
+          <div class="tsk"><div class="m">t_risk</div><div class="flags"><span class="fl">greenfield-codegen</span><span class="fl">math</span></div><div class="route">→ <b>local:A/qwen3-coder</b> · builds against the <span style="color:var(--seal)">amended</span> spec (now consumes confidence)</div></div>
+          <div class="tsk"><div class="m">t_report</div><div class="flags"><span class="fl">docs-writing</span></div><div class="route">→ <b>local:A/gemma</b> · prose routes to Gemma (D12)</div></div>
+        </div>
+        <div class="wl-review">
+          <div class="rh"><span class="glyph">👁</span><b>conductor.review</b> — verdict: <span style="color:var(--ok)">proceed</span></div>
+          <p>Final wave. No unbuilt regions remain, so amendments would be out-of-scope by construction. Work
+            converges on the goal, no drift. Green-flag → stage 5 consolidation.</p>
+          <div class="greenflag">conductor.green_flag {amendments:0, rework:0} → consolidating</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-note warn"><span class="pin">!</span>
+      <div><b>Proceed-without-review is a hard rule.</b> If the conductor call fails (2 router retries + 1 stage
+        retry) or blows its 90 s timeout, the engine emits <code>system.notice</code> ("wave N unreviewed") and
+        <em>proceeds</em>. A missing reviewer degrades quality, never availability. Scope-lock violations in an
+        amendment are rejected and logged as <code>plan.scope_violation</code>, not applied — the same discipline
+        as a constrained re-plan. <span class="cite">spec 07 §3.1</span></div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SECTION 5 — amendments vs consults -->
+  <!-- ============================================================= -->
+  <div class="sec">
+    <div class="sec-eyebrow">Two ways a plan changes</div>
+    <h2 class="sec-h">Amendment vs consult — one stays home, one crosses the wall</h2>
+    <p class="lead">
+      Both edit the plan, but they are fundamentally different trust events. An <b>amendment</b> is a local seat
+      patching the plan directly and immediately. A <b>consult</b> is an escalation back to the
+      <em>external</em> planner — so it re-crosses the data boundary and must be sanitized first.
+      The conductor has <em>no</em> consult lever; consults only exist at stage 2. <span class="cite">spec 03 §5</span>
+    </p>
+    <div class="vs">
+      <div class="col amend">
+        <h4>▮ Amendment</h4>
+        <div class="muted" style="font-size:var(--fs-sm)">A local patch to the plan. Never leaves LOCAL.</div>
+        <ul>
+          <li><b>Who</b> — <span class="wf-chip seat">certifier</span> (stage 2) or <span class="wf-chip seat">conductor</span> (between stage-4 waves). Both local, both RAW-access.</li>
+          <li><b>What</b> — an RFC-6902 patch applied <em>immediately</em>; certifier patches anywhere, conductor patches only <b>not-yet-built</b> regions (scope-locked to the remaining DAG).</li>
+          <li><b>Audit</b> — one <code>amendments</code> row, <b>hash-chained</b> <code>sha256(prev_hash + patch + rationale)</code>, with <code>origin</code>. One chain, one seq, both origins. <span class="cite">spec 05 §2</span></li>
+          <li><b>Boundary</b> — <span class="wf-chip local">local</span> <span class="wf-chip raw">raw</span> — no egress event.</li>
+        </ul>
+      </div>
+      <div class="col consult">
+        <h4>◇ Consult</h4>
+        <div class="muted" style="font-size:var(--fs-sm)">An escalation to the external planner. Re-crosses the wall.</div>
+        <ul>
+          <li><b>Who</b> — <span class="wf-chip seat">certifier</span> only, at stage 2, when a finding needs the plan's <em>author</em> to re-think a region.</li>
+          <li><b>What</b> — a scope-locked constrained re-plan request sent <b>back to the planner</b> (external); returned patch is rehydrated on application. Hard cap <b>3 rounds</b>.</li>
+          <li><b>Gate</b> — outbound payload re-masked against the boundary vault + swept by <span class="wf-chip seat">trust</span> for residuals before dispatch. <span class="cite">spec 03 §4.2</span></li>
+          <li><b>Boundary</b> — <span class="wf-chip external">external</span> <span class="wf-chip sanitized">sanitized</span> — appears in the egress ledger.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="wf-note"><span class="pin">i</span>
+      <div>Both are <b>best-effort</b> by policy: a consult that fails against a real planner (out-of-scope
+        re-plan, timeout, refusal) is caught, emits <code>system.notice</code>, and certification <em>continues</em>
+        on the certifier's already-applied local amendments — mirroring the conductor's proceed-without-review rule.
+        A bounded escalation must never hard-block the pipeline. <span class="cite">spec 03 §4 (Wave-2 deviation)</span></div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SECTION 6 — worker pool + fleet + budget guards -->
+  <!-- ============================================================= -->
+  <div class="sec">
+    <div class="sec-eyebrow">Under stage 4</div>
+    <h2 class="sec-h">Worker pool, fleet manager &amp; budget guards</h2>
+    <p class="lead">
+      Concurrency is not a queue — it's a semaphore. The <code>coder</code> <b>SeatPool</b> is built from the seat's
+      bindings, the live node registry, and <code>models.yaml</code> capability flags. Each DAG-ready task is submitted
+      with its plan <code>task_flags</code>; the pool picks the member by deterministic <b>capability argmax</b>
+      (ties → least-loaded → round-robin; no flag match → round-robin — routing never blocks). The chosen backend
+      lands in the <code>task.started</code> payload for the BoM panel. <span class="cite">spec 07 §5.3</span>
+      <span class="cite">spec 02 §7.4</span>
+    </p>
+
+    <div class="wf-grid split">
+      <div class="wf-panel sunk">
+        <div class="wf-panel-h"><h3>Fleet manager</h3><span class="wf-chip local">local · MI300X</span></div>
+        <p class="muted" style="font-size:var(--fs-sm); margin-top:0">
+          Nodes are cattle-by-registration: a booted droplet self-registers via
+          <code>POST /api/admin/nodes/register</code> and whatever heartbeats is schedulable. The control plane polls
+          <code>node:/telemetry</code> every 2 s; <b>3 missed beats → status=down → <code>fleet.node_down</code></b> →
+          seats fail over to their fallback binding (badge on), the stage continues. <span class="cite">spec 07 §5.1</span>
+        </p>
+        <p class="muted" style="font-size:var(--fs-sm)">
+          If the BoM requests profile P3 but only P1 is registered, the engine emits
+          <code>fleet.profile_requested</code> ("plan requests 3 nodes — provision or continue with fallback") and
+          proceeds — demos never dead-end on missing GPUs. <span class="cite">spec 07 §5.2</span>
+        </p>
+      </div>
+      <div class="wf-panel sunk">
+        <div class="wf-panel-h"><h3>Worker pool</h3></div>
+        <div class="stack g2" style="font-size:var(--fs-sm)">
+          <div class="row"><code class="mono" style="color:var(--accent-strong)">slots</code><span class="muted">semaphore, default 4 / vLLM instance; backpressure is the semaphore, queue depth renders from <code>meter.tick</code></span></div>
+          <hr class="wf-hr" style="margin:var(--sp2) 0">
+          <div class="row"><code class="mono" style="color:var(--accent-strong)">submit()</code><span class="muted">member = capability-score argmax over <em>healthy</em> members, bounded by total slots</span></div>
+          <hr class="wf-hr" style="margin:var(--sp2) 0">
+          <div class="row"><code class="mono" style="color:var(--accent-strong)">stage 4</code><span class="muted">DAG-ready tasks → coder pool; process-mode fan-out → per-unit seats, same mechanism</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:var(--fs-h3); margin:var(--sp5) 0 var(--sp3)">Budget guards — a pre-check on every dispatch</h3>
+    <p class="lead" style="margin-bottom:var(--sp3)">
+      The router runs a guard <em>before</em> every LLM call; over-budget raises a <code>429</code>-style refusal
+      upward rather than spending. <span class="cite">spec 07 §5.4</span> (real: <code>models/router.py</code> <code>_budget_guard</code>)
+    </p>
+    <div class="guardrow">
+      <div class="guard">
+        <h5>Fireworks daily cap</h5>
+        <code>fireworks_spend_today() ≥ FIREWORKS_DAILY_BUDGET_USD</code>
+        <p>→ <code>BudgetExceeded</code> + <code>system.notice</code> "Fireworks daily budget reached". Protects the always-on fallback URL's spend.</p>
+      </div>
+      <div class="guard">
+        <h5>Per-run sandbox cap</h5>
+        <code>run_spend ≥ SANDBOX_RUN_BUDGET_USD</code>
+        <p>→ refusal; the sandbox run is marked <code>aborted (budget)</code>. Judge runs can't burn the credit.</p>
+      </div>
+      <div class="guard">
+        <h5>Idle watchdog</h5>
+        <code>nodes registered + no job/run 30 min</code>
+        <p>→ Discord webhook "fleet idle, $/hr burning" (auto-destroy behind the O5 fleet API flag). <span class="cite">spec 07 §5.4</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SECTION 7 — worked example timeline -->
+  <!-- ============================================================= -->
+  <div class="sec">
+    <div class="sec-eyebrow">Worked example · KYC/AML onboarding</div>
+    <h2 class="sec-h">A two-wave build, replayed from the event log</h2>
+    <p class="lead">
+      A bank onboards applicants: OCR the ID documents, screen against sanctions &amp; PEP lists, score risk, write
+      an audit narrative. The certified plan is build mode with four modules and a DAG that partitions into two
+      waves. Below is the actual event stream the engine appended — the <em>same</em> rows that drove the live UI,
+      and the <em>same</em> rows a replay reads back. <span class="cite">spec 05 §1</span> Watch
+      <span style="color:var(--seal)">seq 118</span>: the conductor amends wave 2 before green-flagging it.
+    </p>
+
+    <div class="wf-panel">
+      <div class="wf-panel-h">
+        <h3>Goal <span class="wf-tag" style="color:var(--seal);border-color:var(--seal)">pinned</span></h3>
+        <span class="wf-chip raw">raw · derived from original request</span>
+      </div>
+      <p class="muted" style="margin-top:0; font-size:var(--fs-sm)">
+        "Given an applicant's ID documents and details, decide <b>approve / refer / reject</b> by screening against
+        current sanctions and PEP lists and computing a risk score, and produce a reviewer-readable audit trail for
+        every decision." <span class="cite">spec 03 §4.3 · D10</span> — the conductor checks every wave against this line.
+      </p>
+    </div>
+
+    <div style="margin-top:var(--sp5)" class="tl">
+      <div class="ev-row">
+        <span class="seq">seq 097</span> · <span class="etype">job.stage_changed</span>
+        <div class="edesc">status <span class="k">quoted → building</span>. Quote was approved; engine re-submits the parked job.</div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 098</span> · <span class="etype">fleet.profile_requested</span>
+        <div class="edesc"><span class="k">{profile:"P2", nodes:1, parallel_width:2}</span> — BoM fleet request; 1 node ready, proceeds.</div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 099</span> · <span class="etype">conductor.wave_started</span>
+        <div class="edesc"><span class="k">{wave:1, of:2, tasks:["t_sanctions","t_pep"]}</span> — Kahn level 1: both depend only on the applicant interface, so they run in parallel.</div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 100</span> · <span class="etype">task.started</span>
+        <div class="edesc"><span class="k">{module:"mod_sanctions", backend:"local:A/qwen3-coder", routing:{reason:"capability argmax", flags:["extraction","sql-data"]}}</span></div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 101</span> · <span class="etype">task.started</span>
+        <div class="edesc"><span class="k">{module:"mod_pep", backend:"local:A/qwen3-coder", routing:{reason:"least-loaded tie"}}</span></div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 108</span> · <span class="etype">task.tests</span>
+        <div class="edesc"><span class="k">{module:"mod_sanctions", passed:9, failed:0, total:9}</span> — module micro-loop passed in the <code>--network none</code> sandbox.</div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 109</span> · <span class="etype">task.completed</span>
+        <div class="edesc"><span class="k">mod_sanctions</span> → files written to <code>agents/mod_sanctions/</code>. Note: "emits match_confidence 0–1 per hit against OFAC/EU lists."</div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 112</span> · <span class="etype">task.completed</span>
+        <div class="edesc"><span class="k">mod_pep</span> → PEP screening built. Wave 1 settles.</div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 115</span> · <span class="etype">conductor.review</span>
+        <div class="edesc">Reviews wave-1 outputs + goal + remaining DAG <span class="k">[mod_risk, mod_report]</span>. Finds the plan's unbuilt <code>mod_risk</code> assumes a <em>boolean</em> sanctions hit — but the built module emits graded confidence. Verdict: <b style="color:var(--seal)">amend</b>.</div>
+      </div>
+      <div class="ev-row amend">
+        <span class="seq">seq 118</span> · <span class="etype">conductor.amendment</span>
+        <div class="edesc"><span class="k">{plan_ref:"modules.mod_risk", origin:"conductor", hash:"c3a9…"}</span> — RFC-6902 patch: <code>mod_risk</code> now consumes <code>if_sanctions_result.match_confidence</code> and weights it into the score. <b>In the remaining DAG → scope-lock passes.</b> Hash-chains onto the certifier's chain.</div>
+      </div>
+      <div class="ev-row flag">
+        <span class="seq">seq 119</span> · <span class="etype">conductor.green_flag</span>
+        <div class="edesc"><span class="k">{verdict:"amend", amendments:1, rework:0}</span> — UI renders "wave 1/2 green-flagged · 1 amendment". Proceed to wave 2.</div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 120</span> · <span class="etype">conductor.wave_started</span>
+        <div class="edesc"><span class="k">{wave:2, of:2, tasks:["t_risk","t_report"]}</span> — <code>mod_risk</code> now builds against the <span style="color:var(--seal)">amended</span> spec.</div>
+      </div>
+      <div class="ev-row">
+        <span class="seq">seq 121</span> · <span class="etype">task.started</span>
+        <div class="edesc"><span class="k">{module:"mod_report", backend:"local:A/gemma"}</span> — <code>docs-writing</code> flag routes the audit narrative to Gemma, not the coder model. <span class="cite">D12</span></div>
+      </div>
+      <div class="ev-row flag">
+        <span class="seq">seq 131</span> · <span class="etype">conductor.green_flag</span>
+        <div class="edesc"><span class="k">{verdict:"proceed", amendments:0, rework:0}</span> — final wave, no unbuilt regions, no drift. → <code>consolidating</code>.</div>
+      </div>
+    </div>
+
+    <div class="wf-note"><span class="pin">✓</span>
+      <div><b>Why this matters.</b> The frontier planner never saw that the sanctions data model carries graded
+        confidence — it planned a boolean hit from a sanitized brief. The conductor caught the mismatch <em>from
+        what the fleet actually built</em> and repaired the unbuilt downstream module before a line of it was
+        written — no re-plan round-trip to the external planner, no rework of finished code, fully audited. That's
+        model-orchestrator adaptivity without giving up replay or resumability. <span class="cite">spec 07 §3.1 · D8</span></div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- SECTION 8 — replay & resumability -->
+  <!-- ============================================================= -->
+  <div class="sec">
+    <div class="sec-eyebrow">Free from the event log</div>
+    <h2 class="sec-h">Replay &amp; crash-resume, deliberately Temporal-free</h2>
+    <p class="lead">
+      Because the log is append-only and stages are idempotent, durability is almost nothing to build. On startup
+      the engine scans for <code>jobs.status NOT IN (done, aborted, quoted, blocked)</code> and re-submits each —
+      restarting <em>from the top of the stage</em>, not mid-stage. <span class="cite">spec 07 §4</span> A restart
+      during a live demo costs seconds, not the job.
+    </p>
+    <div class="resume">
+      <div class="rc">
+        <div class="step">01 · scan</div>
+        <h5>Re-submit unfinished jobs</h5>
+        <p>Lifespan hook lists jobs not in a terminal or parked state and spawns a <code>_drive_job</code> task for each.</p>
+      </div>
+      <div class="rc">
+        <div class="step">02 · skip done work</div>
+        <h5>Idempotent re-entry</h5>
+        <p>Stage 4 skips <code>build_tasks.status = done</code>; <code>run_units</code> already written are skipped. A crash mid-build loses only in-flight modules.</p>
+      </div>
+      <div class="rc">
+        <div class="step">03 · skip green-flagged waves</div>
+        <h5>Waves remember</h5>
+        <p>Wave membership persists on <code>build_tasks.wave</code>; resume re-enters at the first wave with incomplete tasks and <b>skips conductor review for already green-flagged waves</b> — the flag is an event, so replay knows.</p>
+      </div>
+    </div>
+    <div class="wf-note"><span class="pin">i</span>
+      <div><b>Replay</b> (the judge-facing feature) and <b>resume</b> are the same substrate read two ways: replay
+        folds a completed job's events back into the UI for the gallery; resume folds an <em>interrupted</em> job's
+        events to decide where to pick up. Amendments (conductor + certifier) live in one hash-chained sequence, so a
+        replay can prove the plan's edit history was never rewritten. <span class="cite">spec 05 §1–2</span></div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- ledger -->
+  <!-- ============================================================= -->
+  <div class="wf-ledger">
+    <h4>Ground-truth ledger — every claim on this page, sourced</h4>
+    <table>
+      <tr><td>Custom event-sourced asyncio engine, no LangGraph/Temporal</td><td class="ev">D3 · spec 07 §1</td></tr>
+      <tr><td>Nine-state machine; transition + <code>job.stage_changed</code> in one txn</td><td class="ev">spec 07 §2</td></tr>
+      <tr><td>Pause points: quoted ⏸, awaiting_input ⏸, blocked ⏸; any→aborted</td><td class="ev">spec 07 §2 · 03 §9 hardening</td></tr>
+      <tr><td>StageContext five capabilities (emit/router/dao/meter/checkpoint)</td><td class="ev">spec 07 §1</td></tr>
+      <tr><td>Topological waves (Kahn levels); single-wave DAGs skip review</td><td class="ev">D8 · spec 03 §6 · fleet/stage4.py</td></tr>
+      <tr><td>Conductor: amend unbuilt regions (scope-lock) · ≤1 rework/module/wave · ≤2 rounds</td><td class="ev">D8 · spec 03 §6 · seats/conductor.py</td></tr>
+      <tr><td>Proceed-without-review; scope-lock violation → <code>plan.scope_violation</code></td><td class="ev">spec 07 §3.1 · seats/conductor.py</td></tr>
+      <tr><td>Amendments hash-chained, one chain, origins certifier|conductor</td><td class="ev">spec 03 §4 · 05 §2 amendments</td></tr>
+      <tr><td>Consults cross the boundary → sanitization gate, 3-round cap, best-effort</td><td class="ev">spec 03 §4.2 · Wave-2 deviation</td></tr>
+      <tr><td>SeatPool: capability argmax → least-loaded → round-robin; slots semaphore</td><td class="ev">spec 07 §5.3 · 02 §7.4 · fleet/pool.py</td></tr>
+      <tr><td>Fleet: self-register, 3-miss down, fallback failover, profile_requested</td><td class="ev">spec 07 §5.1–5.2</td></tr>
+      <tr><td>Budget guards: Fireworks daily + sandbox per-run + idle watchdog</td><td class="ev">spec 07 §5.4 · models/router.py</td></tr>
+      <tr><td>Resume: re-submit non-terminal jobs, idempotent, skip green-flagged waves</td><td class="ev">spec 07 §4</td></tr>
+      <tr><td>Goal statement pinned at stage 2, checked by conductor each wave</td><td class="ev">D10 · spec 03 §4.3</td></tr>
+    </table>
+  </div>
+
+</div>
+</section>

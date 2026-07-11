@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Stage 2 · Rehydration &amp; Certification</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ================= Page-scoped one-offs (#wf-stage2 only) ============ */
+#wf-stage2 .s2-seatbar{display:flex; align-items:center; gap:var(--sp3); flex-wrap:wrap; padding:var(--sp4); border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk)}
+#wf-stage2 .s2-seatbar .avatar{width:34px; height:34px; border-radius:9px; flex:none; background:linear-gradient(135deg,var(--accent-mid),var(--seal)); box-shadow:0 0 14px rgba(56,166,210,.35)}
+#wf-stage2 .s2-raw-badge{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:var(--r-xs); color:var(--raw-on); background:var(--raw); border:1px solid #26424e}
+#wf-stage2 .s2-raw-badge::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--raw-on); box-shadow:0 0 7px var(--raw-on)}
+#wf-stage2 .s2-access{display:flex; gap:6px; flex-wrap:wrap; margin-top:2px}
+#wf-stage2 .s2-access .it{font-size:var(--fs-micro); color:var(--text-muted); font-family:var(--font-mono); padding:2px 7px; border:1px solid var(--hairline-soft); border-radius:var(--r-xs); background:var(--surface-raised)}
+
+/* checklist */
+#wf-stage2 .s2-check{display:flex; align-items:flex-start; gap:10px; padding:9px 4px; border-bottom:1px solid var(--hairline-soft)}
+#wf-stage2 .s2-check:last-child{border-bottom:0}
+#wf-stage2 .s2-check .dot{width:15px; height:15px; border-radius:50%; flex:none; margin-top:3px; border:2px solid var(--text-faint)}
+#wf-stage2 .s2-check.done .dot{border-color:var(--ok); background:radial-gradient(circle,var(--ok) 45%,transparent 50%)}
+#wf-stage2 .s2-check.finding .dot{border-color:var(--warn); background:radial-gradient(circle,var(--warn) 45%,transparent 50%)}
+#wf-stage2 .s2-check.run .dot{border-color:var(--accent); border-style:dashed}
+#wf-stage2 .s2-check .nm{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--text)}
+#wf-stage2 .s2-check .fd{font-size:var(--fs-xs); color:var(--text-muted); margin-top:2px}
+#wf-stage2 .s2-check .rt{margin-left:auto; font-size:var(--fs-micro); text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint); white-space:nowrap; padding-top:3px}
+
+/* diff */
+#wf-stage2 .s2-diff{display:grid; grid-template-columns:1fr 26px 1fr; gap:0; align-items:stretch}
+@media(max-width:720px){#wf-stage2 .s2-diff{grid-template-columns:1fr}}
+#wf-stage2 .s2-diff .col{background:var(--surface-sunk); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4); font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.7}
+#wf-stage2 .s2-diff .arr{display:grid; place-items:center; color:var(--accent); font-weight:800}
+@media(max-width:720px){#wf-stage2 .s2-diff .arr{padding:6px 0}}
+#wf-stage2 .s2-diff .col.after{border-color:var(--accent-mid)}
+#wf-stage2 .s2-diff .lbl{font-family:var(--font-sans); font-size:var(--fs-micro); letter-spacing:.12em; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px; display:flex; align-items:center; gap:8px; justify-content:space-between}
+#wf-stage2 .s2-ph{color:var(--text-faint)}
+#wf-stage2 .s2-real{color:var(--raw-on)}
+#wf-stage2 .s2-del{color:var(--danger); text-decoration:line-through; opacity:.75}
+
+/* amendment log */
+#wf-stage2 .s2-amend{border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp3) var(--sp4); margin-bottom:var(--sp3); background:var(--surface-raised); border-left:3px solid var(--accent)}
+#wf-stage2 .s2-amend.conductor{border-left-color:var(--seal)}
+#wf-stage2 .s2-amend .top{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+#wf-stage2 .s2-amend .id{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--accent-strong)}
+#wf-stage2 .s2-amend .origin{font-size:var(--fs-micro); text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint); border:1px solid var(--hairline); border-radius:var(--r-pill); padding:1px 8px}
+#wf-stage2 .s2-amend .region{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-muted)}
+#wf-stage2 .s2-amend .sum{font-size:var(--fs-sm); color:var(--text); margin-top:5px}
+#wf-stage2 .s2-amend .hash{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint); margin-top:6px; display:flex; align-items:center; gap:5px}
+#wf-stage2 .s2-amend .hash b{color:var(--seal)}
+
+/* consult gate */
+#wf-stage2 .s2-gate{display:grid; grid-template-columns:1fr 30px 1fr; gap:0; align-items:center}
+@media(max-width:720px){#wf-stage2 .s2-gate{grid-template-columns:1fr}}
+#wf-stage2 .s2-gate .side{border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4); background:var(--surface-sunk)}
+#wf-stage2 .s2-gate .side.out{border-color:var(--zone-external)}
+#wf-stage2 .s2-gate .side.in{border-color:var(--zone-local)}
+#wf-stage2 .s2-gate .wall{display:grid; place-items:center; color:var(--accent); font-size:18px}
+@media(max-width:720px){#wf-stage2 .s2-gate .wall{padding:8px 0}}
+#wf-stage2 .s2-gate pre{margin:8px 0 0; font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.7; white-space:pre-wrap; color:var(--text-muted)}
+#wf-stage2 .s2-mask{color:var(--sanitized); background:var(--accent-wash); border-radius:3px; padding:0 3px}
+#wf-stage2 .s2-leak{color:var(--danger)}
+
+/* goal */
+#wf-stage2 .s2-goal{border:1px solid var(--accent-mid); border-radius:var(--r-md); padding:var(--sp5); background:linear-gradient(180deg,var(--accent-wash),transparent)}
+#wf-stage2 .s2-goal .q{font-size:1.02rem; line-height:1.65; color:var(--text)}
+#wf-stage2 .s2-goal .q b{color:var(--accent-strong); font-weight:600}
+#wf-stage2 .s2-goal .meta{display:flex; gap:var(--sp3); flex-wrap:wrap; margin-top:var(--sp4); font-size:var(--fs-xs); color:var(--text-faint)}
+</style>
+</head>
+<body>
+
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a class="active" href="02-build-jobs.html">Build</a>
+      <a href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START stage2-->
+<section class="wf-page" id="wf-stage2">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Build Pipeline · Stage 2</b> · Wireframe</div>
+    <h1 class="wf-title">Rehydration &amp; Certification &nbsp;<span class="wf-route">/build/:jobId · stage 2</span></h1>
+    <p class="wf-sub">The pass the frontier could never do: the local <code>certifier</code> reads the raw context the planner never saw, checks and completes Plan&nbsp;v1, rehydrates it to production values, and pins the <b>goal</b> the whole job is judged against. Everything on this screen is LOCAL — nothing here can leak.</p>
+
+    <!-- legend -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- pipeline stepper -->
+    <div class="wf-steps" aria-label="Build pipeline stages">
+      <span class="wf-step done"><span class="n">0</span> Intake</span>
+      <span class="wf-step done"><span class="n">1</span> Plan</span>
+      <span class="wf-step active"><span class="n">2</span> Certify</span>
+      <span class="wf-step"><span class="n">3</span> Quote</span>
+      <span class="wf-step"><span class="n">4</span> Codegen</span>
+      <span class="wf-step"><span class="n">5</span> Consolidate</span>
+      <span class="wf-step"><span class="n">6</span> QA + Goal</span>
+      <span class="wf-step"><span class="n">7</span> Deliver</span>
+    </div>
+
+    <!-- job context strip -->
+    <div class="row between wrap" style="margin-bottom:var(--sp5)">
+      <div class="row wrap" style="gap:var(--sp3)">
+        <span class="mono" style="color:var(--text)">job_01J8KYC7F3PZ0R</span>
+        <span class="muted">KYC/AML customer onboarding</span>
+        <span class="wf-chip local">Local zone · D7</span>
+      </div>
+      <div class="row" style="gap:var(--sp2)">
+        <span class="wf-badge fn">Live · certify.* SSE</span>
+        <span class="faint mono" style="font-size:var(--fs-xs)">GET /jobs/&#123;id&#125;/events</span>
+      </div>
+    </div>
+
+    <!-- ========================= THE WIREFRAME ========================= -->
+
+    <!-- Certifier seat chip + RAW-access badge -->
+    <div class="wf-panel" data-wf="fn" style="margin-bottom:var(--sp4)">
+      <div class="wf-panel-h">
+        <h3>Certifier seat <span class="wf-badge fn">Functional</span></h3>
+        <span class="wf-chip local">Runs local · MI300X</span>
+      </div>
+      <div class="s2-seatbar">
+        <span class="avatar" aria-hidden="true"></span>
+        <div class="stack g2" style="min-width:180px">
+          <div class="row" style="gap:8px"><span class="wf-chip seat">certifier</span><span class="s2-raw-badge">RAW access</span></div>
+          <span class="faint" style="font-size:var(--fs-xs)">bound: <b class="mono" style="color:var(--text-muted)">Qwen2.5-Coder-32B</b> · seat <code>certifier</code></span>
+        </div>
+        <div class="spacer"></div>
+        <div class="stack g2">
+          <span class="wf-eyebrow" style="margin:0">Reads (D9) — never crosses the wall</span>
+          <div class="s2-access">
+            <span class="it">original request (verbatim)</span>
+            <span class="it">uploaded files</span>
+            <span class="it">raw code map</span>
+            <span class="it">real DB schemas</span>
+            <span class="it">boundary_vault</span>
+            <span class="it">RedactionPolicy</span>
+          </div>
+        </div>
+      </div>
+      <div class="wf-note"><span class="pin">i</span><div>Seat activity, checks, and the RAW-access set are folded live from <code>certify.check_started/completed</code> events. The certifier's raw inputs are backend-only (D9) — the badge presents that fact; the raw values themselves are never sent to the browser. <b>Evidence:</b> <code>GET /jobs/&#123;id&#125;/events</code> · <code>PUT /seats/certifier/binding</code>.</div></div>
+    </div>
+
+    <div class="wf-grid split">
+      <!-- LEFT COLUMN -->
+      <div class="stack g4">
+
+        <!-- Checklist suite -->
+        <div class="wf-panel" data-wf="fn">
+          <div class="wf-panel-h">
+            <h3>Checklist suite &nbsp;<span class="muted" style="font-size:var(--fs-sm);font-weight:400">7 checks · one focused pass each</span></h3>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <div class="stack">
+            <div class="s2-check done"><span class="dot"></span><div><div class="nm">interface-compat</div><div class="fd">every <code>consumes</code> matched by a schema-compatible <code>provides</code></div></div><span class="rt">clean</span></div>
+            <div class="s2-check done"><span class="dot"></span><div><div class="nm">data-completeness</div><div class="fd">every field read by a module is produced somewhere</div></div><span class="rt">clean</span></div>
+            <div class="s2-check finding"><span class="dot"></span><div><div class="nm">error-coverage</div><div class="fd"><b style="color:var(--warn)">F-041</b> · <code>mod_risk</code> divides sanctions weight by list count — no zero branch</div></div><span class="rt">→ amend</span></div>
+            <div class="s2-check done"><span class="dot"></span><div><div class="nm">pattern-consistency</div><div class="fd">rounding &amp; locale uniform after amendment A-119</div></div><span class="rt">clean</span></div>
+            <div class="s2-check done"><span class="dot"></span><div><div class="nm">ac-coverage</div><div class="fd">6 acceptance criteria → 9 test/probe/vector mappings</div></div><span class="rt">clean</span></div>
+            <div class="s2-check finding"><span class="dot"></span><div><div class="nm">bom-sanity</div><div class="fd"><b style="color:var(--warn)">F-043</b> · <code>mod_pep</code> edits existing screening code, missing <code>refactor-edit</code> flag (D12)</div></div><span class="rt">→ amend</span></div>
+            <div class="s2-check run"><span class="dot"></span><div><div class="nm">production-fit</div><div class="fd">verifying planner assumptions vs raw schema — <code>sql</code> steps executing read-only against bound corpus…</div></div><span class="rt">running</span></div>
+          </div>
+          <div class="wf-note"><span class="pin">2</span><div>Rendered by <code>CertifyPanel.tsx</code> from <code>certify.check_started / check_completed / finding</code> events. Production-fit executes each <code>kind:"sql"</code> topology step read-only, with one <code>certifier.repair_sql</code> round (03 §4, 2026-07-10 hardening).</div></div>
+        </div>
+
+        <!-- Rehydration diff -->
+        <div class="wf-panel" data-wf="plan">
+          <div class="wf-panel-h">
+            <h3>Rehydration diff <span class="wf-tag plan">planned view</span></h3>
+            <div class="row" style="gap:8px"><span class="wf-chip sanitized">v1 · Sanitized</span><span class="faint">→</span><span class="wf-chip raw">certified · Raw</span></div>
+          </div>
+          <p class="muted" style="font-size:var(--fs-sm);margin:0 0 var(--sp4)">Placeholders whose real values the build needs are resolved from <code>boundary_vault</code> + raw context. The certified plan becomes <b>data-class RAW</b> — legal everywhere in LOCAL, illegal to serialize outward.</p>
+          <div class="s2-diff">
+            <div class="col">
+              <div class="lbl"><span>Plan v1 — planner brief</span><span class="wf-chip external">External-safe</span></div>
+              <div>module <span class="s2-ph">mod_sanctions</span></div>
+              <div>&nbsp;&nbsp;table &nbsp;<span class="s2-ph">«TABLE_A»</span></div>
+              <div>&nbsp;&nbsp;key &nbsp;&nbsp;<span class="s2-ph">«FIELD_1»</span> <span class="faint">(assumed unique)</span></div>
+              <div>&nbsp;&nbsp;list &nbsp;<span class="s2-ph">«DATASET_2»</span></div>
+              <div>output <span class="s2-ph">«FIELD_7»</span>: decimal</div>
+            </div>
+            <div class="arr">→</div>
+            <div class="col after">
+              <div class="lbl"><span>Certified plan — rehydrated</span><span class="wf-chip raw">Raw · Local</span></div>
+              <div>module <span class="s2-real">mod_sanctions</span></div>
+              <div>&nbsp;&nbsp;table &nbsp;<span class="s2-real">applicants</span></div>
+              <div>&nbsp;&nbsp;key &nbsp;&nbsp;<span class="s2-real">applicant_id</span> <span style="color:var(--ok)">✓ unique</span></div>
+              <div>&nbsp;&nbsp;list &nbsp;<span class="s2-real">ofac_sdn + eu_consolidated</span></div>
+              <div>output <span class="s2-real">risk_score</span>: decimal</div>
+            </div>
+          </div>
+          <div class="wf-note warn"><span class="pin">3</span><div>Live today: the <b>count</b> — "12 identifiers rehydrated locally" (<code>certify.rehydrated</code> event → <code>CertifyPanel</code>). The <b>side-by-side value diff</b> above is <b>PLANNED</b>: per D9 §4.1 raw values are <b>not shown in the UI by default</b>; no endpoint returns the vault resolution map. Plan bodies are fetchable via <code>GET /jobs/&#123;id&#125;/plan</code>.</div></div>
+        </div>
+
+        <!-- Consult sanitization gate -->
+        <div class="wf-panel" data-wf="fn">
+          <div class="wf-panel-h">
+            <h3>Consult sanitization gate <span class="wf-badge fn">Functional</span></h3>
+            <span class="mono faint" style="font-size:var(--fs-xs)">round 1 / 3</span>
+          </div>
+          <p class="muted" style="font-size:var(--fs-sm);margin:0 0 var(--sp4)">A <b>consult</b> re-crosses the boundary to the EXTERNAL <code>planner</code> (a scope-locked re-plan). Outbound is mechanically re-masked against the vault, then swept by <code>trust</code> for residuals before dispatch — an <b>amendment</b> never leaves the box.</p>
+          <div class="s2-gate">
+            <div class="side in">
+              <div class="lbl" style="font-family:var(--font-sans);font-size:var(--fs-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px">Certifier's raw scope note <span class="wf-chip raw">Raw</span></div>
+              <pre><span class="s2-leak">mod_risk</span>: multi-list hit weighting
+undefined. Applicant <span class="s2-leak">"Ivanov, D."</span>
+scored on <span class="s2-leak">ofac_sdn</span>+<span class="s2-leak">eu_consolidated</span>
+via key <span class="s2-leak">applicant_id</span>.</pre>
+            </div>
+            <div class="s2-gate-wall wall" aria-hidden="true">⇢</div>
+            <div class="side out">
+              <div class="lbl" style="font-family:var(--font-sans);font-size:var(--fs-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px">Dispatched to planner <span class="wf-chip external">External</span> <span class="wf-chip sanitized">Sanitized</span></div>
+              <pre><span class="s2-mask">«MODULE_R»</span>: multi-list hit weighting
+undefined. Applicant <span class="s2-mask">«PERSON_1»</span>
+scored on <span class="s2-mask">«DATASET_2»</span>+<span class="s2-mask">«DATASET_3»</span>
+via key <span class="s2-mask">«FIELD_1»</span>.</pre>
+            </div>
+          </div>
+          <div class="row wrap" style="gap:var(--sp2);margin-top:var(--sp4)">
+            <span class="wf-chip external">EXTERNAL</span><span class="wf-chip sanitized">SANITIZED</span>
+            <span class="faint mono" style="font-size:var(--fs-xs)">trust residual sweep: 0 hits · scope lock: {mod_risk, if_risk_result}</span>
+          </div>
+          <div class="wf-note"><span class="pin">4</span><div>Consult lifecycle is live: <code>certify.consult_requested</code> (shows "sanitizing…") → <code>consult_opened</code> → resolved, folded into the audit rail; each appears on the egress ledger as <code>EXTERNAL / SANITIZED</code> (<code>GET /egress</code>, <code>/egress/stream</code> SSE). Best-effort per Wave-2 note — a failing consult emits <code>system.notice</code> and certification continues on local amendments. The masked-text preview itself is <b class="s2-mask" style="background:none">presenter-only</b>.</div></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="stack g4">
+
+        <!-- Amendment log -->
+        <div class="wf-panel sunk" data-wf="fn">
+          <div class="wf-panel-h">
+            <h3>Amendment log <span class="wf-badge fn">Functional</span></h3>
+            <span class="mono faint" style="font-size:var(--fs-xs)">3 · hash-chained</span>
+          </div>
+          <div class="wf-field" style="margin-bottom:var(--sp3)">
+            <label class="wf-label" for="s2-amendq">Filter amendments</label>
+            <input class="wf-input" id="s2-amendq" type="text" placeholder="e.g. mod_risk, error-coverage, conductor…">
+            <div class="wf-hint">Client-side filter over the folded amendment list <sup class="wf-tag stub">stub</sup> — no query endpoint; the list itself is live.</div>
+          </div>
+
+          <div class="s2-amend">
+            <div class="top"><span class="id">A-118</span><span class="origin">certifier</span><span class="region">→ modules.mod_sanctions</span></div>
+            <div class="sum">Resolved <code>«TABLE_A»</code> → <code>applicants</code>; confirmed <code>applicant_id</code> is the unique key the plan assumed (production-fit vs raw schema).</div>
+            <div class="hash">7d1c9a…→<b>a4f0e2</b> · sha256(prev+patch+rationale)</div>
+          </div>
+          <div class="s2-amend">
+            <div class="top"><span class="id">A-119</span><span class="origin">certifier</span><span class="region">→ modules.mod_risk.algorithm</span></div>
+            <div class="sum">Banker's rounding (<code>ROUND_HALF_EVEN</code>) on <code>risk_score</code> per spec §1.4; added divide-by-zero branch when no sanctions weight applies. Covers F-041.</div>
+            <div class="hash">a4f0e2…→<b>b98307</b> · spec_ref AC-3</div>
+          </div>
+          <div class="s2-amend">
+            <div class="top"><span class="id">A-120</span><span class="origin">certifier</span><span class="region">→ modules.mod_pep</span></div>
+            <div class="sum">Added missing <code>refactor-edit</code> task_flag — module edits existing screening code (D12 bom-sanity). Covers F-043.</div>
+            <div class="hash">b98307…→<b>c15be9</b> · origin certifier</div>
+          </div>
+          <div class="wf-note"><span class="pin">5</span><div>Rendered by <code>AuditRail.tsx</code> from <code>certify.amendment</code> / <code>conductor.amendment</code> events — each carries <code>id, origin, region, hash, prev_hash</code>. <b>Amendment</b> = local patch applied immediately; <b>consult</b> = escalation that crosses the wall (shown left). Both hash-chain into this one log.</div></div>
+        </div>
+
+        <!-- Goal statement -->
+        <div class="wf-panel" data-wf="fn">
+          <div class="wf-panel-h">
+            <h3>Goal statement <span class="muted" style="font-size:var(--fs-sm);font-weight:400">D10</span></h3>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <div class="s2-goal">
+            <div class="wf-eyebrow" style="margin-bottom:var(--sp3)">What must exist when this job is done · read-only</div>
+            <p class="q">An operator can submit a new applicant — <b>legal name, government ID, date of birth, residential address, and declared source of funds</b> — and the process must screen them against the <b>OFAC SDN</b> and <b>EU consolidated</b> sanctions lists and a <b>PEP</b> dataset, compute a <b>risk score</b> from the declared weights with banker's rounding, assign a <b>RED / AMBER / GREEN</b> band, and emit a reviewer-ready decision record citing every hit. Anything <b>AMBER or above</b> is queued for human review, never auto-cleared.</p>
+            <div class="meta">
+              <span>derived from the <b style="color:var(--text-muted)">original raw request</b> + certified plan</span>
+              <span>·</span>
+              <span>persisted <code>jobs.goal</code></span>
+              <span>·</span>
+              <span>event <code>certify.goal_set</code></span>
+            </div>
+          </div>
+          <div class="wf-note"><span class="pin">6</span><div>Read-only by design (D10) — carried on the job, pinned on the Build view, and consumed by the conductor (stage 4), the goal-fulfillment check (stage 6) and the package manifest (stage 7). Events carry it, so <b>Functional</b>; also readable via <code>GET /jobs/&#123;id&#125;</code> and <code>GET /jobs/&#123;id&#125;/plan</code>. No dedicated goal endpoint — no edit control exists.</div></div>
+        </div>
+
+        <!-- Certification gate -->
+        <div class="wf-panel sunk" data-wf="plan">
+          <div class="wf-panel-h"><h3>Stage gate</h3><span class="wf-badge plan">Planned</span></div>
+          <div class="stack g3">
+            <div class="row between"><span class="muted">certified plan (v2, rehydrated)</span><span class="wf-chip raw">Raw</span></div>
+            <div class="row between"><span class="muted">IntegrationTestSpec[]</span><span class="mono" style="color:var(--text)">9</span></div>
+            <div class="row between"><span class="muted">OracleVector[] (inputs only)</span><span class="mono" style="color:var(--text)">3</span></div>
+            <div class="row between"><span class="muted">consults remaining</span><span class="mono" style="color:var(--ok)">0 / cap 3</span></div>
+          </div>
+          <hr class="wf-hr" style="margin:var(--sp4) 0">
+          <div class="wf-btnrow">
+            <button class="wf-btn" type="button">View certified plan <sup class="wf-tag fn">fn</sup></button>
+            <button class="wf-btn primary" type="button">Proceed to Quote → <sup class="wf-tag plan">plan</sup></button>
+          </div>
+          <div class="wf-field" style="margin:var(--sp4) 0 0">
+            <label class="wf-label" for="s2-review">Escalate to human review</label>
+            <textarea class="wf-textarea" id="s2-review" placeholder="Reason for pausing certification (e.g. irreducible structural finding after 3 consult rounds)…"></textarea>
+            <div class="wf-hint">Fires only after the 3-round cap when structural findings remain (<code>certify.blocked</code>). No resolve/unblock endpoint yet <sup class="wf-tag plan">planned</sup>.</div>
+          </div>
+          <div class="wf-note warn"><span class="pin">7</span><div>Certification auto-advances on <code>certify.certified</code>; there is no manual "certify" endpoint (unlike <code>/confirm-spec</code>, <code>/approve-quote</code>). "View certified plan" reads <code>GET /jobs/&#123;id&#125;/plan</code> <b>(Functional)</b>; proceed &amp; escalate controls are <b>Planned</b>.</div></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================= /WIREFRAME ========================= -->
+
+    <!-- status ledger -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Certifier seat + activity</td><td class="ev">GET /jobs/{id}/events (SSE)</td><td>CertifyPanel.tsx folds certify.check_started/completed; seat binding via PUT /seats/certifier/binding. RAW inputs are backend-only (D9).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Checklist suite (7 checks)</td><td class="ev">certify.check_* · finding</td><td>jobStore.ts case "certify.check_started/completed/finding" → view.certify.checks; production-fit runs sql steps read-only (03 §4, 07-10 hardening).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Rehydration count</td><td class="ev">certify.rehydrated</td><td>jobStore case "certify.rehydrated" → "N identifiers rehydrated locally" in CertifyPanel.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Rehydration value diff (v1→raw)</td><td class="ev">GET /jobs/{id}/plan</td><td>D9 §4.1: raw values not shown in UI by default; no vault-resolution-map endpoint. Only the count is live; the side-by-side is speced, not built.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Amendment log (hash-chained)</td><td class="ev">certify.amendment · conductor.amendment</td><td>AuditRail.tsx renders id/origin/region/hash/prev_hash from folded events; tag "N · hash-chained".</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Amendment filter input</td><td class="ev">— client-side</td><td>No query endpoint; filters the already-folded list in memory. Presenter-only control.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Consult sanitization gate</td><td class="ev">certify.consult_requested/opened · /egress/stream</td><td>jobStore folds consult lifecycle; egress ledger shows EXTERNAL/SANITIZED. Best-effort (Wave-2 note) — failure → system.notice, continues.</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Masked-payload preview text</td><td class="ev">— presenter-only</td><td>Raw↔placeholder text is illustrative; the vault map never serializes to the browser (D9). Concept lifted from spec §4.2.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Goal statement (D10)</td><td class="ev">certify.goal_set · GET /jobs/{id}</td><td>jobStore case sets view.certify.goal; also on jobs.goal. Read-only — no edit control, no dedicated goal endpoint by design.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Stage gate: proceed / escalate</td><td class="ev">— no endpoint</td><td>Certification auto-advances on certify.certified; no manual certify/unblock route (contrast /confirm-spec, /approve-quote). Escalate fires on certify.blocked only.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>View certified plan</td><td class="ev">GET /jobs/{id}/plan</td><td>Endpoint present (§3); returns the rehydrated plan body.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+
+</body>
+</html>

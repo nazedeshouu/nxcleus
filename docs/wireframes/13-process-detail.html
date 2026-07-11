@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Operations · Process Detail</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ===================================================================
+   Page-scoped one-offs (scoped under #wf-process-detail only)
+   =================================================================== */
+#wf-process-detail .pd-back{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); margin-bottom:var(--sp4)}
+#wf-process-detail .pd-head{display:flex; justify-content:space-between; gap:var(--sp5); flex-wrap:wrap; align-items:flex-start}
+#wf-process-detail .pd-head h2{font-size:var(--fs-h2); letter-spacing:-.02em}
+#wf-process-detail .pd-goal{margin-top:var(--sp3); max-width:76ch; font-size:var(--fs-sm); color:var(--text)}
+#wf-process-detail .pd-metarow{display:flex; align-items:center; gap:var(--sp2); margin-top:var(--sp3); flex-wrap:wrap}
+#wf-process-detail .pd-mchip{font-family:var(--font-mono); font-size:var(--fs-micro); padding:3px 9px; border-radius:var(--r-pill); background:var(--surface-sunk); color:var(--text-muted)}
+#wf-process-detail .pd-mchip.accent{background:var(--accent-wash); color:var(--accent-strong)}
+#wf-process-detail .pd-mchip.ok{background:var(--ok-wash); color:var(--ok)}
+#wf-process-detail .pd-selwrap{min-width:230px}
+#wf-process-detail .pd-actions{display:flex; flex-direction:column; gap:var(--sp2); align-items:flex-end; min-width:260px}
+#wf-process-detail .pd-verrow{display:flex; align-items:center; gap:var(--sp3); padding:11px 12px; border-radius:var(--r-sm); border:1px solid transparent}
+#wf-process-detail .pd-verrow.sel{background:var(--accent-wash); border-color:var(--hairline)}
+#wf-process-detail .pd-verrow:hover{background:var(--surface-sunk)}
+#wf-process-detail .pd-vertag{font-family:var(--font-mono); font-size:var(--fs-sm); font-weight:700; color:var(--accent-strong); min-width:32px}
+#wf-process-detail .pd-vermeta{flex:1; min-width:0}
+#wf-process-detail .pd-vermeta .t{font-size:var(--fs-sm); color:var(--text)}
+#wf-process-detail .pd-vermeta .s{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint); margin-top:2px}
+#wf-process-detail .pd-diffgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px 18px; margin-top:var(--sp3)}
+#wf-process-detail .pd-difflbl{font-size:var(--fs-micro); color:var(--text-muted)}
+#wf-process-detail .pd-diffval{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--text)}
+#wf-process-detail .pd-triage{display:inline-block; font-family:var(--font-mono); font-size:var(--fs-micro); padding:2px 8px; border-radius:var(--r-pill); background:var(--accent-wash); color:var(--accent-strong)}
+#wf-process-detail .pd-invline{display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--hairline-soft)}
+#wf-process-detail .pd-invitem{font-size:var(--fs-sm); color:var(--text)}
+#wf-process-detail .pd-invqty{font-family:var(--font-mono); font-size:var(--fs-micro); color:var(--text-faint); margin-top:2px}
+#wf-process-detail .pd-invamt{font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:var(--fs-sm); color:var(--text); white-space:nowrap}
+#wf-process-detail .pd-invtot{display:flex; justify-content:space-between; align-items:baseline; padding-top:var(--sp3); margin-top:var(--sp1)}
+#wf-process-detail .pd-invtotnum{font-family:var(--font-mono); font-size:1.5rem; letter-spacing:-.02em; color:var(--text)}
+#wf-process-detail .pd-tree{font-family:var(--font-mono); font-size:var(--fs-xs); line-height:1.9; color:var(--text-muted)}
+#wf-process-detail .pd-tree .f{color:var(--accent-strong)}
+#wf-process-detail .pd-tree .d{color:var(--text-faint)}
+#wf-process-detail .pd-runrow{border:1px solid var(--hairline-soft); border-radius:var(--r-md); margin-bottom:10px; overflow:hidden}
+#wf-process-detail .pd-runhead{display:flex; align-items:center; gap:14px; padding:13px 16px; background:var(--surface-raised)}
+#wf-process-detail .pd-runid{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text)}
+#wf-process-detail .pd-runstat{display:flex; gap:18px; margin-left:auto; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-muted)}
+#wf-process-detail .pd-runstat b{color:var(--text)}
+#wf-process-detail .pd-runstat .good{color:var(--ok)}
+#wf-process-detail .pd-runstat .flag{color:var(--warn)}
+#wf-process-detail .pd-runbody{border-top:1px solid var(--hairline-soft); padding:var(--sp4) 16px; background:var(--surface-sunk)}
+#wf-process-detail .pd-caret{color:var(--text-faint); font-family:var(--font-mono)}
+#wf-process-detail .pd-scorebar{display:inline-block; width:44px; height:6px; border-radius:3px; background:var(--hairline); position:relative; vertical-align:middle; margin-right:6px}
+#wf-process-detail .pd-scorebar i{position:absolute; left:0; top:0; bottom:0; border-radius:3px; background:var(--ok)}
+#wf-process-detail .pd-qcount{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--warn); font-weight:700}
+</style>
+</head>
+<body>
+
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a href="02-build-jobs.html">Build</a>
+      <a class="active" href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START process-detail-->
+<section class="wf-page" id="wf-process-detail">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Operations · Process Detail</b> · Wireframe</div>
+    <a class="pd-back" href="12-operations.html">&larr; Operations</a>
+    <h1 class="wf-title">KYC Onboarding — Sanctions &amp; Adverse-Media Screen &nbsp;<span class="wf-route">/operations/:id</span></h1>
+    <p class="wf-sub">The registry detail for one delivered automation: its version lineage &amp; diff, the delivered
+      package + invoice, batch run history under warranty, the per-unit human review queue, and the refine / instantiate
+      controls. Used by an operator to re-run the process on new data and by an auditor to read the evidence trail.</p>
+
+    <!-- legend: always include, verbatim -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- ==== THE WIREFRAME ==== -->
+
+    <!-- ================= HEADER: identity, version, mode, warranty ================= -->
+    <div class="wf-panel" data-wf="fn" style="margin-bottom:var(--sp4)">
+      <div class="pd-head">
+        <div style="flex:1; min-width:280px">
+          <div class="row wrap" style="gap:10px">
+            <h2>KYC Onboarding — Sanctions &amp; Adverse-Media Screen</h2>
+            <span class="wf-badge fn">Functional</span>
+          </div>
+          <div class="pd-metarow">
+            <span class="pd-mchip accent">process mode</span>
+            <span class="pd-mchip">v3 · current</span>
+            <span class="pd-mchip ok">active</span>
+            <span class="pd-mchip">kyc-onboarding-screen</span>
+            <span class="wf-chip seat">certifier</span>
+            <span class="wf-chip seat">oracle</span>
+            <span class="wf-chip seat">inspector</span>
+          </div>
+          <p class="pd-goal"><b>Goal statement (D10):</b> For each onboarding applicant, screen name + DOB + nationality
+            against the current OFAC SDN and EU consolidated sanctions lists (fuzzy match ≥ 0.86), scan adverse-media
+            hits in English &amp; Spanish, and emit a reviewable risk decision with cited evidence — no false clear on a
+            true sanctions hit.</p>
+          <div class="row wrap" style="gap:8px; margin-top:var(--sp3)">
+            <span class="wf-chip local">Local MI300X runtime</span>
+            <span class="wf-chip external">External: 0 req / run</span>
+            <span class="wf-chip raw">Corpus: Meridian Trust Bank</span>
+          </div>
+        </div>
+
+        <div class="pd-actions">
+          <div class="pd-selwrap" style="width:100%">
+            <label class="wf-label" for="pd-version">Version selector <sup class="wf-tag fn">FN</sup></label>
+            <select class="wf-select" id="pd-version">
+              <option>v3 — current (Amendment · adverse-media Spanish)</option>
+              <option>v2 — Amendment · tighten fuzzy threshold</option>
+              <option>v1 — Initial certification</option>
+            </select>
+            <div class="wf-hint">Switching a version repins the diff view &amp; package browser below. Old versions stay runnable.</div>
+          </div>
+          <div class="pd-selwrap" style="width:100%; margin-top:var(--sp2)">
+            <span class="wf-label" style="margin-bottom:6px; display:block">Warranty status <sup class="wf-tag plan">PLAN</sup></span>
+            <div class="row wrap" style="gap:8px">
+              <span class="wf-chip" style="color:var(--ok);border-color:var(--ok);background:var(--ok-wash)">● Under warranty</span>
+              <span class="wf-chip" style="color:var(--warn);border-color:var(--warn);background:var(--warn-wash)">1 open ticket</span>
+            </div>
+            <div class="wf-hint">Ticket count from continuous assurance (spec 04 §6). No endpoint feeds it into this route yet — derived / planned.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ACTION BAR: run / instantiate / refine ================= -->
+    <div class="wf-panel" style="margin-bottom:var(--sp4)">
+      <div class="wf-panel-h">
+        <h3>Operate</h3>
+        <span class="wf-badge fn">Functional</span>
+      </div>
+
+      <div class="wf-grid split">
+        <!-- start a run -->
+        <div class="wf-card" data-wf="fn">
+          <div class="wf-eyebrow">Start a run</div>
+          <div class="wf-field">
+            <label class="wf-label" for="pd-corpus">Corpus binding <sup class="wf-tag fn">FN</sup></label>
+            <select class="wf-select" id="pd-corpus">
+              <option>Meridian Trust Bank — 4,120 applicants (bound)</option>
+              <option>Halcyon Payments Ltd — 1,880 applicants</option>
+              <option>Northwind Capital — 640 applicants</option>
+              <option>process binding (unchanged)</option>
+            </select>
+            <div class="wf-hint">Corpus list from <span class="mono">GET /sandbox/companies</span>. Sent as <span class="mono">{corpus:{company}}</span>.</div>
+          </div>
+          <div class="wf-grid cols-2" style="gap:var(--sp3)">
+            <div class="wf-field" style="margin:0">
+              <label class="wf-label" for="pd-sample">Sample <sup class="wf-tag fn">FN</sup></label>
+              <select class="wf-select" id="pd-sample">
+                <option>first — 100 units</option>
+                <option>random — 100 units</option>
+                <option>full corpus</option>
+              </select>
+              <div class="wf-hint">Passed as <span class="mono">sample:{mode,n}</span> in run params.</div>
+            </div>
+            <div class="wf-field" style="margin:0">
+              <label class="wf-label" for="pd-inputref">Input ref <sup class="wf-tag fn">FN</sup></label>
+              <input class="wf-input" id="pd-inputref" placeholder="e.g. 100" value="100">
+              <div class="wf-hint">Batch size / dataset ref for the run enqueue.</div>
+            </div>
+          </div>
+          <div class="wf-btnrow" style="margin-top:var(--sp2)">
+            <span class="wf-btn primary">⚡ Run a batch</span>
+            <span class="faint" style="font-size:var(--fs-xs)"><span class="mono">POST /processes/{id}/runs</span></span>
+          </div>
+          <div class="wf-note"><span class="pin">i</span><span>Presenter mode (top-right unlock) required — an <span class="mono">approve</span> without the demo token returns <span class="mono">401</span>; a run in the wrong state returns <span class="mono">409</span>.</span></div>
+        </div>
+
+        <!-- instantiate + refine trigger -->
+        <div class="stack g4">
+          <div class="wf-card" data-wf="fn">
+            <div class="wf-eyebrow">Instantiate a copy</div>
+            <p class="muted" style="font-size:var(--fs-xs); margin:0 0 var(--sp3)">Re-enters the pipeline at stage 4 with the certified plan as-is and new connector bindings — no planner call. New registry entry with <span class="mono">created_from</span> lineage.</p>
+            <div class="wf-field">
+              <label class="wf-label" for="pd-connectors">Connector re-binding <sup class="wf-tag plan">PLAN</sup></label>
+              <input class="wf-input" id="pd-connectors" placeholder="e.g. sanctions_list=eu_2026_07, media_feed=factiva_es">
+              <div class="wf-hint">Form is designed (spec 04 §5) but the button currently sends <span class="mono">{}</span> — re-binding UI not wired.</div>
+            </div>
+            <div class="wf-btnrow">
+              <span class="wf-btn">⧉ Instantiate copy</span>
+              <span class="faint" style="font-size:var(--fs-xs)"><span class="mono">POST /processes/{id}/instantiate</span> <sup class="wf-tag fn">FN</sup></span>
+            </div>
+          </div>
+
+          <div class="wf-card" data-wf="fn">
+            <div class="wf-eyebrow">Request a refinement</div>
+            <p class="muted" style="font-size:var(--fs-xs); margin:0 0 var(--sp3)">Opens the refine panel below. Triage decides <span class="mono">amend</span> (local) vs <span class="mono">consult</span> (frontier).</p>
+            <div class="wf-btnrow">
+              <span class="wf-btn">↻ Request refinement</span>
+              <span class="faint" style="font-size:var(--fs-xs)"><span class="mono">POST /processes/{id}/refine</span> <sup class="wf-tag fn">FN</sup></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VERSIONS + DIFF  |  PACKAGE + INVOICE ================= -->
+    <div class="wf-grid cols-2" style="margin-bottom:var(--sp4)">
+
+      <!-- versions + diff -->
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-panel-h">
+          <h3>Version history &amp; diff</h3>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+
+        <div class="stack g2">
+          <div class="pd-verrow sel">
+            <span class="pd-vertag">v3</span>
+            <div class="pd-vermeta">
+              <div class="t">Amendment · certified</div>
+              <div class="s">plan_a3f1 · flag adverse media in Spanish</div>
+            </div>
+            <span class="pd-caret">▾</span>
+          </div>
+          <div class="pd-verrow">
+            <span class="pd-vertag">v2</span>
+            <div class="pd-vermeta">
+              <div class="t">Amendment · certified</div>
+              <div class="s">plan_9c74 · tighten sanctions fuzzy threshold → 0.86</div>
+            </div>
+            <span class="pd-caret">▸</span>
+          </div>
+          <div class="pd-verrow">
+            <span class="pd-vertag">v1</span>
+            <div class="pd-vermeta">
+              <div class="t">Initial certification</div>
+              <div class="s">plan_7c2a · baseline plan, goal &amp; test vectors</div>
+            </div>
+            <span class="pd-caret">▸</span>
+          </div>
+        </div>
+
+        <hr class="wf-hr" style="border-top:1px dashed var(--hairline); background:none; margin:var(--sp4) 0">
+
+        <div class="wf-eyebrow">Diff — v2 → v3 <sup class="wf-tag fn">FN</sup></div>
+        <div class="pd-diffgrid">
+          <div>
+            <div class="pd-difflbl">Triage</div>
+            <div><span class="pd-triage">amend</span></div>
+          </div>
+          <div>
+            <div class="pd-difflbl">Frontier consult</div>
+            <div class="pd-diffval" style="color:var(--ok)">no — local only</div>
+          </div>
+          <div>
+            <div class="pd-difflbl">Modules rebuilt</div>
+            <div class="pd-diffval">adverse_media_scan</div>
+          </div>
+          <div>
+            <div class="pd-difflbl">Tests added</div>
+            <div class="pd-diffval">6</div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:var(--fs-xs); margin-top:var(--sp3)">Amended in place — a scoped patch, re-certified against the same goal. No full rebuild, no new frontier consult. Regions touched: <span class="mono">adverse_media_scan</span>, <span class="mono">risk_decision</span>.</p>
+        <div class="wf-hint" style="margin-top:var(--sp2)"><span class="mono">GET /processes/{id}/versions/{v}/diff</span> — diff payload embedded on <span class="mono">getProcess()</span> versions[].</div>
+      </div>
+
+      <!-- package + invoice + browser -->
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-panel-h">
+          <h3>Delivered package · invoice</h3>
+          <span class="wf-badge fn">Functional</span>
+        </div>
+
+        <div class="pd-invline">
+          <div>
+            <div class="pd-invitem">Frontier planning &amp; consults <span class="wf-chip external" style="margin-left:4px">External</span></div>
+            <div class="pd-invqty">≈118k tokens · sanitized brief only</div>
+          </div>
+          <span class="pd-invamt">$3.10</span>
+        </div>
+        <div class="pd-invline">
+          <div>
+            <div class="pd-invitem">Local certification &amp; build waves <span class="wf-chip local" style="margin-left:4px">Local</span></div>
+            <div class="pd-invqty">≈1.9 GPU-h · 3× MI300X</div>
+          </div>
+          <span class="pd-invamt">$3.98</span>
+        </div>
+        <div class="pd-invline">
+          <div>
+            <div class="pd-invitem">Adversarial QA · Numeric Oracle &amp; goal check</div>
+            <div class="pd-invqty">≈0.5 GPU-h</div>
+          </div>
+          <span class="pd-invamt">$1.34</span>
+        </div>
+        <div class="pd-invtot">
+          <span class="muted">Total, this build</span>
+          <span class="pd-invtotnum">$8.42</span>
+        </div>
+        <div class="row wrap" style="gap:8px; margin-top:var(--sp3)">
+          <span class="wf-chip sanitized">🛡 3 frontier calls · sanitized brief only</span>
+          <span class="wf-chip" style="color:var(--ok);border-color:var(--ok);background:var(--ok-wash)">✓ $1.28 under quote</span>
+        </div>
+
+        <hr class="wf-hr" style="border-top:1px dashed var(--hairline); background:none; margin:var(--sp4) 0">
+
+        <div class="wf-eyebrow">Package browser <sup class="wf-tag fn">FN</sup> / <sup class="wf-tag plan">PLAN</sup></div>
+        <div class="pd-tree">
+          <div><span class="f">manifest.json</span> &nbsp;<span class="d">— name, goal, model BoM, schemas</span></div>
+          <div><span class="f">invoice.json</span> &nbsp;<span class="d">— final metered invoice</span></div>
+          <div><span class="d">plan/</span> &nbsp;plan.json · amendments.jsonl · consults.jsonl · goal.json</div>
+          <div><span class="d">topology.json</span> &nbsp;<span class="d">— executable topology (process mode)</span></div>
+          <div><span class="d">tests/</span> &nbsp;integration.json · vectors.json</div>
+          <div><span class="d">docs/</span> &nbsp;README · runbook · QA report</div>
+        </div>
+        <div class="wf-btnrow" style="margin-top:var(--sp3)">
+          <span class="wf-btn sm">📄 manifest.json</span>
+          <span class="wf-btn sm">🧾 invoice.json</span>
+          <span class="wf-btn sm" style="opacity:.55">⋯ browse full tree</span>
+        </div>
+        <div class="wf-hint" style="margin-top:var(--sp2)"><span class="mono">GET /processes/{id}/package/{v}/{path}</span> serves any path <sup class="wf-tag fn">FN</sup>; UI wires only manifest.json &amp; invoice.json — full-tree browser is <sup class="wf-tag plan">PLAN</sup>.</div>
+      </div>
+    </div>
+
+    <!-- ================= REVIEW QUEUE ================= -->
+    <div class="wf-panel" data-wf="fn" style="margin-bottom:var(--sp4)">
+      <div class="wf-panel-h">
+        <h3>Review queue — units awaiting human verdict</h3>
+        <span class="wf-badge fn">Functional</span>
+      </div>
+      <p class="muted" style="font-size:var(--fs-xs); margin:0 0 var(--sp4)">Semi-automated mode: units the process returned as <span class="mono">needs_review</span>. A human <span class="mono">approve</span>/<span class="mono">reject</span> + note closes the unit and lands in the audit trace (spec 04 §6). <b>7</b> units open across recent runs.</p>
+      <div style="overflow-x:auto">
+      <table class="wf-table">
+        <thead><tr><th>Unit</th><th>Applicant</th><th>Finding</th><th>Score</th><th>Run</th><th>Review <sup class="wf-tag fn">FN</sup></th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>unit · 0042</b></td>
+            <td>Rashid Al-Mansoori</td>
+            <td>OFAC SDN fuzzy 0.88 — possible match “R. Al Mansouri”</td>
+            <td><span class="pd-scorebar"><i style="width:88%"></i></span>0.88</td>
+            <td class="mono">run · 9f31</td>
+            <td><span class="wf-btn sm">approve</span> <span class="wf-btn sm danger">reject</span></td>
+          </tr>
+          <tr>
+            <td><b>unit · 0061</b></td>
+            <td>Grupo Solano S.A.</td>
+            <td>Adverse media (ES) — “lavado de dinero” 2 sources</td>
+            <td><span class="pd-scorebar"><i style="width:74%"></i></span>0.74</td>
+            <td class="mono">run · 9f31</td>
+            <td><span class="wf-btn sm">approve</span> <span class="wf-btn sm danger">reject</span></td>
+          </tr>
+          <tr>
+            <td><b>unit · 0107</b></td>
+            <td>Nikolai Petrov</td>
+            <td>EU consolidated list fuzzy 0.83 — below threshold, flagged</td>
+            <td><span class="pd-scorebar"><i style="width:83%"></i></span>0.83</td>
+            <td class="mono">run · a7c0</td>
+            <td><span class="wf-btn sm">approve</span> <span class="wf-btn sm danger">reject</span></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="wf-note"><span class="pin">i</span><span>Per-unit list &amp; verdict are FUNCTIONAL: <span class="mono">GET /runs/{id}/units</span> + <span class="mono">POST /units/{id}/review</span>. The cross-run rollup shown here (aggregating <span class="mono">needs_review</span> into one per-process queue) is derived on the client — a dedicated queue endpoint is <sup class="wf-tag plan">PLAN</sup>.</span></div>
+    </div>
+
+    <!-- ================= REFINE PANEL ================= -->
+    <div class="wf-panel" data-wf="fn" style="margin-bottom:var(--sp4)">
+      <div class="wf-panel-h">
+        <h3>Refine this process</h3>
+        <span class="wf-badge fn">Functional</span>
+      </div>
+      <div class="wf-field">
+        <label class="wf-label" for="pd-refine">What should change?<span class="req">*</span> <sup class="wf-tag fn">FN</sup></label>
+        <textarea class="wf-textarea" id="pd-refine" placeholder="e.g. Tighten the sanctions fuzzy-match threshold; also flag adverse media in Spanish.">Tighten the sanctions fuzzy-match threshold to 0.88 and add adverse-media screening in Portuguese.</textarea>
+        <div class="wf-hint">Certifier triages the delta vs. the certified plan → <span class="mono">amend</span> (local patch + scoped rebuild) or <span class="mono">consult</span> (constrained re-plan, sanitized brief). New <span class="mono">v(n+1)</span> row with a human-readable diff; a mini-invoice shows <span class="mono">frontier consult: $0.00</span> when triage stays local.</div>
+      </div>
+      <div class="wf-btnrow">
+        <span class="wf-btn primary">↻ Start refine job</span>
+        <span class="faint" style="font-size:var(--fs-xs)"><span class="mono">POST /processes/{id}/refine</span> → new build job on the Build board</span>
+      </div>
+    </div>
+
+    <!-- ================= RUN HISTORY ================= -->
+    <div class="wf-panel" data-wf="fn">
+      <div class="wf-panel-h">
+        <h3>Run history — batch operations under warranty</h3>
+        <span class="wf-badge fn">Functional</span>
+      </div>
+
+      <!-- expanded run -->
+      <div class="pd-runrow">
+        <div class="pd-runhead">
+          <span class="pd-caret">▾</span>
+          <span class="pd-runid">run · 9f31</span>
+          <div class="pd-runstat">
+            <span><b>100</b> units</span>
+            <span class="good"><b class="good">$0.08</b></span>
+            <span>$0.0008/unit</span>
+            <span class="good"><b class="good">0</b> frontier</span>
+          </div>
+        </div>
+        <div class="pd-runbody">
+          <!-- deliverables -->
+          <div class="wf-card" style="border-color:rgba(75,203,144,.3); display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:var(--sp4)">
+            <span class="wf-eyebrow" style="margin:0">Deliverables <sup class="wf-tag fn">FN</sup></span>
+            <div class="wf-btnrow" style="margin-left:auto">
+              <span class="wf-btn sm">⧉ Open report</span>
+              <span class="wf-btn sm">⤓ Download CSV</span>
+              <span class="wf-btn sm">🖶 Print → PDF</span>
+            </div>
+          </div>
+          <div class="wf-hint" style="margin:-6px 0 var(--sp4)"><span class="mono">GET /runs/{id}/report</span> · <span class="mono">GET /runs/{id}/export.csv</span> — written on run close, announced via <span class="mono">run.artifacts_ready</span>.</div>
+
+          <!-- findings bar -->
+          <div class="row wrap between" style="margin-bottom:var(--sp3)">
+            <div class="row wrap" style="gap:8px">
+              <span class="wf-eyebrow" style="margin:0">Findings</span>
+              <span class="wf-chip" style="color:var(--accent-strong);border-color:var(--accent);background:var(--accent-wash)">all · 100</span>
+              <span class="wf-chip" style="color:var(--ok);border-color:var(--ok);background:var(--ok-wash)">ok · 96</span>
+              <span class="wf-chip" style="color:var(--warn);border-color:var(--warn);background:var(--warn-wash)">needs review · 3</span>
+              <span class="wf-chip" style="color:var(--danger);border-color:var(--danger);background:var(--danger-wash)">error · 1</span>
+            </div>
+            <a href="19-traces.html">🔍 Inspect prompts →</a>
+          </div>
+
+          <div style="overflow-x:auto">
+          <table class="wf-table">
+            <thead><tr><th>Unit</th><th>Status</th><th>Score</th><th>Review <sup class="wf-tag fn">FN</sup></th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="mono">applicant · 0038</td>
+                <td><span style="color:var(--ok)">OK</span></td>
+                <td>0.02 <span class="faint">clear</span></td>
+                <td><span class="verdictDone faint" style="font-family:var(--font-mono);font-size:var(--fs-micro)">— auto-cleared</span></td>
+              </tr>
+              <tr>
+                <td class="mono">applicant · 0042</td>
+                <td><span style="color:var(--warn)">NEEDS REVIEW</span></td>
+                <td>0.88 <span class="faint">SDN fuzzy</span></td>
+                <td><span class="wf-btn sm">approve</span> <span class="wf-btn sm danger">reject</span></td>
+              </tr>
+              <tr>
+                <td class="mono">applicant · 0061</td>
+                <td><span style="color:var(--warn)">NEEDS REVIEW</span></td>
+                <td>0.74 <span class="faint">adverse ES</span></td>
+                <td><span style="color:var(--ok);font-family:var(--font-mono);font-size:var(--fs-micro)">✓ approved</span></td>
+              </tr>
+              <tr>
+                <td class="mono">applicant · 0090</td>
+                <td><span style="color:var(--danger)">ERROR</span></td>
+                <td>—</td>
+                <td><span class="wf-btn sm">approve</span> <span class="wf-btn sm danger">reject</span></td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+          <div class="wf-hint" style="margin-top:var(--sp2)">Rows: <span class="mono">GET /runs/{id}/units</span>. Row click opens the evidence drawer (result JSON + per-step trace). Verdict: <span class="mono">POST /units/{id}/review</span>.</div>
+
+          <!-- next steps -->
+          <div class="wf-eyebrow" style="margin-top:var(--sp4)">⌖ What next <sup class="wf-tag fn">FN</sup></div>
+          <div class="wf-grid cols-3" style="margin-top:var(--sp2)">
+            <div class="wf-card">
+              <div class="row" style="gap:7px; font-weight:600; font-size:var(--fs-xs)">🔍 <span>Clear the review queue</span></div>
+              <p class="muted" style="font-size:var(--fs-micro); margin:6px 0 0">3 units flagged — a human verdict closes each and lands in the trace.</p>
+            </div>
+            <div class="wf-card">
+              <div class="row" style="gap:7px; font-weight:600; font-size:var(--fs-xs)">↻ <span>Refine: raise threshold</span></div>
+              <p class="muted" style="font-size:var(--fs-micro); margin:6px 0 0">1 false-positive pattern — tighten fuzzy match to cut review load.</p>
+            </div>
+            <div class="wf-card">
+              <div class="row" style="gap:7px; font-weight:600; font-size:var(--fs-xs)">⤓ <span>Export findings</span></div>
+              <p class="muted" style="font-size:var(--fs-micro); margin:6px 0 0">Download the CSV for the compliance file.</p>
+            </div>
+          </div>
+          <div class="wf-hint" style="margin-top:var(--sp2)"><span class="mono">GET /runs/{id}/next-steps</span> — context-aware follow-ups; actions route to refine / review / export / rerun.</div>
+        </div>
+      </div>
+
+      <!-- collapsed runs -->
+      <div class="pd-runrow">
+        <div class="pd-runhead">
+          <span class="pd-caret">▸</span>
+          <span class="pd-runid">run · a7c0</span>
+          <div class="pd-runstat">
+            <span><b>640</b> units</span>
+            <span class="good"><b class="good">$0.51</b></span>
+            <span>$0.0008/unit</span>
+            <span class="good"><b class="good">0</b> frontier</span>
+          </div>
+        </div>
+      </div>
+      <div class="pd-runrow">
+        <div class="pd-runhead">
+          <span class="pd-caret">▸</span>
+          <span class="pd-runid">run · 5b18</span>
+          <div class="pd-runstat">
+            <span><b>100</b> units</span>
+            <span class="good"><b class="good">$0.08</b></span>
+            <span>$0.0008/unit</span>
+            <span class="good"><b class="good">0</b> frontier</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-note"><span class="pin">$</span><span>Run list + per-run cost lines come from <span class="mono">GET /economics/summary</span> (money slide §6). <b>Zero frontier calls per run</b> is asserted from the egress ledger filtered to run scope — <span class="mono">EXTERNAL: 0 requests</span>. Cost-trend sparkline (capex vs flat opex) is drawn on the Operations list, not wired here <sup class="wf-tag plan">PLAN</sup>.</span></div>
+    </div>
+
+    <!-- ================= STATUS LEDGER ================= -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Header: name / mode / version / goal</td><td class="ev">GET /processes/{id}</td><td>ProcessDetail.tsx <span class="mono">api.getProcess(id)</span>; renders process.name/mode/current_version/goal.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Header: warranty status &amp; open-ticket count</td><td class="ev">(no route wiring)</td><td>Continuous assurance tickets (spec 04 §6); <span class="mono">GET /tickets</span> exists but this route never calls it — derived/planned.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Version selector → diff view</td><td class="ev">GET /processes/{id}/versions/{v}/diff</td><td>VersionsCard renders <span class="mono">v.diff</span> (triage, frontier_consult, modules_rebuilt, tests_added, regions).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Delivered package · invoice</td><td class="ev">GET /processes/{id}/package/{v}/invoice.json</td><td>PackageCard <span class="mono">api.packageFile(...invoice.json / manifest.json)</span>; lines + total + frontier-call badge.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Package artifact links (manifest / invoice)</td><td class="ev">GET /processes/{id}/package/{v}/{path}</td><td>Two <span class="mono">&lt;a&gt;</span> links to manifest.json &amp; invoice.json under the package path.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Package full-tree browser (plan/ tests/ docs/)</td><td class="ev">GET .../package/{v}/{path}</td><td>Endpoint serves any path, but UI wires only 2 files; browsing plan/, src/, tests/, docs/ is unbuilt.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Run history + per-run cost</td><td class="ev">GET /economics/summary</td><td><span class="mono">api.economics()</span> → processes[].runs (units, cost_usd, cost_per_unit, frontier_calls:0).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Per-run units &amp; evidence drawer</td><td class="ev">GET /runs/{id}/units · GET /runs/{id}</td><td>RunRow <span class="mono">api.getRunUnits / api.getRun</span>; status filter chips, score, trace.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Review verdict (approve / reject + note)</td><td class="ev">POST /units/{id}/review</td><td><span class="mono">api.reviewUnit(id, verdict, note)</span>; presenter token required (401 otherwise).</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Cross-run review queue rollup</td><td class="ev">(client-derived)</td><td>Per-process “awaiting review” queue (spec 04 §6) aggregated on client from run units; no dedicated queue endpoint.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Deliverables (report / CSV / print)</td><td class="ev">GET /runs/{id}/report · /export.csv</td><td>Artifact links from <span class="mono">run.artifacts</span>; announced via <span class="mono">run.artifacts_ready</span>.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>What-next follow-ups</td><td class="ev">GET /runs/{id}/next-steps</td><td><span class="mono">api.nextSteps(run_id)</span>; actions dispatch to refine / review / export / rerun.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Inspect prompts link</td><td class="ev">GET /traces?scope=run:{id}</td><td>Deep-links to Traces filtered to the run scope (model_traces layer, spec 10).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Start a run (corpus / sample / input)</td><td class="ev">POST /processes/{id}/runs</td><td><span class="mono">api.runBatch(id, {input_ref, version, corpus, sample})</span>; corpus list from <span class="mono">GET /sandbox/companies</span>.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Instantiate copy (button)</td><td class="ev">POST /processes/{id}/instantiate</td><td><span class="mono">api.instantiateProcess(id, {})</span> — button wired; endpoint present.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Instantiate connector re-binding form</td><td class="ev">POST .../instantiate {connectors}</td><td>Spec 04 §5 takes new connector bindings; UI currently sends <span class="mono">{}</span> — rebinding form not built.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Refine job</td><td class="ev">POST /processes/{id}/refine</td><td><span class="mono">api.refineProcess(id, request)</span>; certifier triage → amend/consult, new version + mini-invoice.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+
+</body>
+</html>

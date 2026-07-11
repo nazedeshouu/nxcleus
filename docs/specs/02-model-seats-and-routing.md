@@ -13,7 +13,7 @@ Model ids below are the **resolved picks from the catalog ([11](11-model-catalog
 | Seat | Role (stages) | Data class seen | Default binding | Sovereign binding | Fallback (fleet down) |
 |---|---|---|---|---|---|
 | `trust` | Intake dialogue, mode classification, policy distillation, PII masking, OCR post-processing, consult sanitization sweep, doc generation (0, 2-egress, 7) | **RAW** | `local:A/gemma-4-26b-a4b` | same | `fireworks:glm-5p2` ⚠️ demo-exception badge (live-verified 11 §6; `gemma-4-*` 404) |
-| `planner` | Topology + BoM authoring; constrained re-plans; refine consults (1, refine) | SANITIZED — **never anything else; enforced** | `anthropic:claude-fable-5` | `local:B/glm-46` — zero non-local calls | `fireworks:glm-5p2` ⚠️ badge |
+| `planner` | Topology + BoM authoring; constrained re-plans; refine consults (1, refine) | SANITIZED — **never anything else; enforced** | `openrouter:openai/gpt-5.6-sol` | `local:B/glm-46` — zero non-local calls | `fireworks:glm-5p2` ⚠️ badge |
 | `certifier` | Plan completion & certification against **full raw context**; rehydration; triage; goal emission; test-spec emission; refine triage (2, refine) | **RAW** (D9) | `local:B/glm-46` | same | `fireworks:glm-5p2` ⚠️ demo-exception badge |
 | `conductor` | Wave review between stage-4 waves: outputs vs plan + goal; bounded amendments to unbuilt regions; green flag (4) | **RAW** | `local:B/glm-46` (same instance as certifier, different prompt) | same | skip review (07 §3.1 proceed-without-review) |
 | `coder` (pool) | Module implementation + defect fixes (4, QA loop); capability-routed (§7) | RAW (production-specific plan) | pool: `local:C/qwen3-coder-next`, `local:D/qwen36-27b`, `local:D/devstral-small-2` | same | `fireworks:deepseek-v4-pro` ⚠️ demo-exception badge (live-verified 11 §6; `qwen3p6-*`/`devstral-*` 404) |
@@ -77,7 +77,7 @@ seats:
     data_class_max: SANITIZED          # hard ceiling — the one seat that can never see RAW
     temperature: 0.4
     bindings:
-      default:   {backend: anthropic, model: claude-fable-5}
+      default:   {backend: openrouter, model: openai/gpt-5.6-sol}
       sovereign: {backend: local,     node: B, model: glm-46}            # D7: sovereign = zero non-local calls
       fallback:  {backend: fireworks, model: accounts/fireworks/models/glm-5p2}   # demo infra only, badge on — frontier-class fallback (11 §0)
   certifier:
@@ -211,7 +211,7 @@ UI flow: **add API key → point it at the endpoint → register models under it
 
 ### 8.2 Seat rebinding
 
-Every seat's binding is user-configurable in the UI (global or per-job) — Fable 5 is the *default* planner, not a hardcode. Eligibility is enforced, not advisory: a model is offered for a seat only if its connection's zone/ceiling satisfies the seat's data class (RAW seats: LOCAL or RAW-attested connections only) and Sovereign Mode additionally requires LOCAL or `counts_as_local`. Overrides emit `config.seat_bound` and render in the BoM panel — routing stays visible.
+Every seat's binding is user-configurable in the UI (global or per-job) — GPT-5.6 is the *default* planner, not a hardcode. Eligibility is enforced, not advisory: a model is offered for a seat only if its connection's zone/ceiling satisfies the seat's data class (RAW seats: LOCAL or RAW-attested connections only) and Sovereign Mode additionally requires LOCAL or `counts_as_local`. Overrides emit `config.seat_bound` and render in the BoM panel — routing stays visible.
 
 ### 8.3 Enforcement & dev use
 

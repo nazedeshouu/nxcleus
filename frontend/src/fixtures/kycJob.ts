@@ -92,8 +92,8 @@ push("boundary.sanitized", {
 push("job.stage_changed", { status: "planning", stage: 1 }, 300);
 
 /* ---------- stage 1: planning (the one boundary crossing) ---------- */
-push("plan.started", { planner_model: "anthropic:claude-fable-5", zone: "EXTERNAL" }, 200);
-push("egress.request", { host: "api.anthropic.com", zone: "EXTERNAL", seat: "planner", data_class: "SANITIZED", bytes: 8420 });
+push("plan.started", { planner_model: "openrouter:openai/gpt-5.6-sol", zone: "EXTERNAL" }, 200);
+push("egress.request", { host: "openrouter.ai", zone: "EXTERNAL", seat: "planner", data_class: "SANITIZED", bytes: 8420 });
 const planChunks = [
   "Topology: interdependent build. ",
   "Six modules with typed interfaces. ",
@@ -107,7 +107,7 @@ const planChunks = [
   "oracle sampling at 5% on risk scores. ",
 ];
 for (const c of planChunks) push("plan.delta", { text: c }, 130);
-call("planner", "anthropic:claude-fable-5", "EXTERNAL", "SANITIZED", 1840, 2600, 0.21);
+call("planner", "openrouter:openai/gpt-5.6-sol", "EXTERNAL", "SANITIZED", 1840, 2600, 0.21);
 push("plan.completed", {
   summary: "Interdependent 6-module KYC pipeline with typed interfaces, list-matcher over public OFAC/EU data, and a weighted risk model.",
   topology: "interdependent",
@@ -134,8 +134,8 @@ push("certify.finding", { check: "OFAC/EU list fields present in mapped tables",
 amend("certifier", "Split sanctions-screen input into ofac_entries + eu_consolidated; rehydrate real column names.", "sanctions-screen");
 push("certify.finding", { check: "Risk weights sum to 1.0", finding: "Adverse-media weight missing; structural gap in the scoring contract.", severity: "structural" }, 260);
 push("certify.consult_opened", { id: "cs_1", scope: "risk-score weighting", round: 1, sanitization_receipt: { rules_applied: ["PII-01", "POL-02"], brief_tokens: 240 } }, 300);
-push("egress.request", { host: "api.anthropic.com", zone: "EXTERNAL", seat: "planner", data_class: "SANITIZED", bytes: 1120 });
-call("planner", "anthropic:claude-fable-5", "EXTERNAL", "SANITIZED", 240, 180, 0.02);
+push("egress.request", { host: "openrouter.ai", zone: "EXTERNAL", seat: "planner", data_class: "SANITIZED", bytes: 1120 });
+call("planner", "openrouter:openai/gpt-5.6-sol", "EXTERNAL", "SANITIZED", 240, 180, 0.02);
 push("certify.consult_resolved", { id: "cs_1", round: 1, resolution: "Add adverse-media weight 0.15; renormalize the other four weights." }, 320);
 amend("certifier", "Insert adverse-media into risk-score with weight 0.15; renormalize to sum 1.0.", "risk-score");
 push("certify.scenarios_emitted", { count: 12 }, 260);
@@ -147,7 +147,7 @@ push("job.stage_changed", { status: "quoted", stage: 3 }, 300);
 /* ---------- stage 3: quote ---------- */
 push("quote.issued", {
   lines: [
-    { label: "Planning (frontier, sanitized)", detail: "claude-fable-5 · 1 plan + 1 consult", amount_usd: 0.23 },
+    { label: "Planning (frontier, sanitized)", detail: "gpt-5.6-sol · 1 plan + 1 consult", amount_usd: 0.23 },
     { label: "Certification (local)", detail: "GLM-4.6 · 4 checks + 2 amendments", amount_usd: 0.08 },
     { label: "Build fleet (local MI300X)", detail: "Qwen/Devstral ×4 · ~2 waves", amount_usd: 1.10 },
     { label: "Adversarial QA (local)", detail: "2 inspectors + oracle 5%", amount_usd: 0.34 },
@@ -260,6 +260,6 @@ export function sovereignViolationEvent(seq: number): NxEvent {
     ts: new Date().toISOString(),
     scope: SCOPE,
     type: "egress.violation",
-    payload: { host: "api.anthropic.com", zone: "EXTERNAL", detail: "Sovereign Mode active: an external planner call was requested and blocked at the boundary. Zero data left the fleet." },
+    payload: { host: "openrouter.ai", zone: "EXTERNAL", detail: "Sovereign Mode active: an external planner call was requested and blocked at the boundary. Zero data left the fleet." },
   } as NxEvent;
 }

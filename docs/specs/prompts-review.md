@@ -96,7 +96,7 @@ Ground every statement in the plan and goal you are given; do not invent capabil
 Return exactly one JSON object conforming to the provided schema. No prose before or after it, no markdown fences, no commentary — the JSON object is the entire reply.
 ```
 
-## `planner` — anthropic:claude-fable-5 (sovereign: local:B/glm-46) · SANITIZED hard ceiling
+## `planner` — openrouter:openai/gpt-5.6-sol (sovereign: local:B/glm-46) · SANITIZED hard ceiling
 
 ### SYSTEM_PLAN (execution-fabric contract, 03 §3)
 

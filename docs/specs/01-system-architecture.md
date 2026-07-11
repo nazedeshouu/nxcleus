@@ -30,7 +30,7 @@ flowchart LR
     AG[node agent: rocm-smi telemetry]
   end
   FW[Fireworks AI — AMD-hosted<br/>availability fallback only, badged]
-  EXT[Anthropic API — external frontier planner<br/>sees the sanitized planner brief, nothing else]
+  EXT[OpenRouter API — external frontier planner (GPT-5.6)<br/>sees the sanitized planner brief, nothing else]
   ORCH -->|OpenAI-compatible HTTP| FLEET
   ORCH -.->|fallback only| FW
   ORCH -->|sanitized brief + sanitized consults only| EXT

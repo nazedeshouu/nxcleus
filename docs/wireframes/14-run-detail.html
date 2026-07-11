@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nxcleus WF — Operations · Run Detail</title>
+<style>
+/* =====================================================================
+   Nxcleus Wireframe Kit  —  _kit.css
+   Mid-fi themed wireframes. Sealed-midnight palette lifted verbatim from
+   frontend/src/styles/tokens.css ([data-temp="inside"] scope), promoted to
+   :root so every wireframe page is self-contained (no external deps).
+   Every page INLINES this file in a <style> block.  One accent, hairlines,
+   real type hierarchy. On top of the product palette: a wireframe-annotation
+   layer (status badges, margin callouts, field mocks, legend, status ledger).
+   ===================================================================== */
+
+:root{
+  /* ---- Sealed-midnight neutrals ---- */
+  --paper:#060f14; --surface:#0a1a21; --surface-sunk:#071319; --surface-raised:#0d2029;
+  --hairline:#163542; --hairline-soft:#112834;
+  --text:#dcebf0; --text-muted:#85a0aa; --text-faint:#567179;
+  /* ---- The one accent ---- */
+  --accent:#38a6d2; --accent-strong:#85d3f0; --accent-mid:#216f92;
+  --accent-pale:#0e2c3a; --accent-wash:rgba(56,166,210,.09);
+  /* ---- Zones (temperature vs. the wall) ---- */
+  --zone-local:#4cb4dc;  --zone-local-wash:rgba(76,180,220,.12);
+  --zone-amd:#e2a35e;    --zone-amd-wash:rgba(226,163,94,.12);
+  --zone-custom:#8fa0cd; --zone-custom-wash:rgba(143,160,205,.12);
+  --zone-external:#92a4ae;--zone-external-wash:rgba(146,164,174,.10);
+  /* ---- Data class ---- */
+  --raw:#030a0e; --raw-on:#bfe3f2; --sanitized:#38a6d2;
+  /* ---- Semantic ---- */
+  --ok:#4bcb90; --ok-wash:rgba(75,203,144,.12);
+  --warn:#e2a35e; --warn-wash:rgba(226,163,94,.12);
+  --danger:#ff5f65; --danger-wash:rgba(255,95,101,.12);
+  --seal:#3fd8c4;
+  /* ---- Wireframe-annotation layer ---- */
+  --wf-fn:#4bcb90;   --wf-fn-wash:rgba(75,203,144,.10);   /* FUNCTIONAL  */
+  --wf-plan:#e2a35e; --wf-plan-wash:rgba(226,163,94,.10); /* PLANNED     */
+  --wf-stub:#8fa0cd; --wf-stub-wash:rgba(143,160,205,.10);/* STUB / MOCK */
+  --wf-pin:#38a6d2;  /* annotation callout pins */
+  /* ---- Type ---- */
+  --font-sans:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --fs-display:clamp(2rem,3.6vw,2.9rem);
+  --fs-h1:clamp(1.5rem,2.4vw,2rem);
+  --fs-h2:clamp(1.2rem,1.7vw,1.5rem);
+  --fs-h3:1.1rem; --fs-body:15px; --fs-sm:.8125rem; --fs-xs:.72rem; --fs-micro:.66rem;
+  /* ---- Space / radius / motion ---- */
+  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px; --sp8:88px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --maxw:1200px; --nav-h:60px;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:var(--font-sans); font-size:var(--fs-body); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+/* atmospheric wash so near-black doesn't read flat */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(1200px 600px at 78% -8%, rgba(56,166,210,.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(63,216,196,.04), transparent 55%);
+}
+a{color:var(--accent-strong); text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{line-height:1.2; font-weight:640; letter-spacing:-.01em; margin:0}
+code,kbd,.mono{font-family:var(--font-mono); font-size:.92em}
+::selection{background:var(--accent-wash); color:var(--accent-strong)}
+
+/* ================= App shell (matches PlatformLayout top-bar) ========= */
+.wf-shell{position:relative; z-index:1; max-width:var(--maxw); margin:0 auto; padding:0 var(--sp5)}
+.wf-topbar{
+  position:sticky; top:0; z-index:20; height:var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp4);
+  padding:0 var(--sp5); background:rgba(6,15,20,.82); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--hairline);
+}
+.wf-topbar .brand{display:flex; align-items:center; gap:var(--sp2); font-weight:700; letter-spacing:.02em; color:var(--text)}
+.wf-topbar .brand .mark{width:16px; height:16px; border-radius:4px; background:linear-gradient(135deg,var(--accent-strong),var(--seal)); box-shadow:0 0 12px rgba(56,166,210,.5)}
+.wf-nav{display:flex; gap:var(--sp1); align-items:center}
+.wf-nav a{
+  color:var(--text-muted); font-size:var(--fs-sm); font-weight:520;
+  padding:6px 12px; border-radius:var(--r-pill); transition:color .16s,background .16s;
+}
+.wf-nav a:hover{color:var(--text); text-decoration:none}
+.wf-nav a.active{color:var(--accent-strong); background:var(--accent-wash)}
+.wf-topbar .right{display:flex; align-items:center; gap:var(--sp3)}
+.wf-pill-sov{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--text-muted); padding:5px 11px; border:1px solid var(--hairline); border-radius:var(--r-pill)}
+.wf-pill-sov.on{color:var(--seal); border-color:var(--seal); background:rgba(63,216,196,.08)}
+.wf-pill-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-muted)}
+.wf-pill-live i{width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 8px var(--ok)}
+.wf-pill-live.mock i{background:var(--warn); box-shadow:0 0 8px var(--warn)}
+
+/* ================= Page header / annotation frame ==================== */
+.wf-page{position:relative; z-index:1; padding:var(--sp6) 0 var(--sp8)}
+.wf-crumb{font-size:var(--fs-xs); color:var(--text-faint); text-transform:uppercase; letter-spacing:.14em; margin-bottom:var(--sp3)}
+.wf-crumb b{color:var(--accent)}
+.wf-title{font-size:var(--fs-h1); margin-bottom:var(--sp2)}
+.wf-route{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--accent-strong); background:var(--accent-wash); padding:2px 8px; border-radius:var(--r-xs); border:1px solid var(--hairline)}
+.wf-sub{color:var(--text-muted); max-width:70ch; margin-top:var(--sp3)}
+
+/* ================= Status badges (the whole point) =================== */
+.wf-badge{
+  display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro);
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 8px; border-radius:var(--r-pill); white-space:nowrap; vertical-align:middle;
+}
+.wf-badge::before{content:""; width:6px; height:6px; border-radius:50%}
+.wf-badge.fn{color:var(--wf-fn); background:var(--wf-fn-wash); border:1px solid var(--wf-fn)}
+.wf-badge.fn::before{background:var(--wf-fn); box-shadow:0 0 6px var(--wf-fn)}
+.wf-badge.plan{color:var(--wf-plan); background:var(--wf-plan-wash); border:1px dashed var(--wf-plan)}
+.wf-badge.plan::before{background:var(--wf-plan)}
+.wf-badge.stub{color:var(--wf-stub); background:var(--wf-stub-wash); border:1px dotted var(--wf-stub)}
+.wf-badge.stub::before{background:var(--wf-stub)}
+/* tiny inline tag to hang off any element */
+.wf-tag{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; padding:1px 6px; border-radius:var(--r-xs); vertical-align:super}
+.wf-tag.fn{color:var(--wf-fn); border:1px solid var(--wf-fn)}
+.wf-tag.plan{color:var(--wf-plan); border:1px dashed var(--wf-plan)}
+.wf-tag.stub{color:var(--wf-stub); border:1px dotted var(--wf-stub)}
+
+/* status washes the agent can lay under a whole section/panel */
+[data-wf="fn"]{--sec:var(--wf-fn)} [data-wf="plan"]{--sec:var(--wf-plan)} [data-wf="stub"]{--sec:var(--wf-stub)}
+[data-wf]{position:relative}
+[data-wf]::after{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px; background:var(--sec,transparent); opacity:.7}
+
+/* ================= Legend bar (top of every page) =================== */
+.wf-legend{
+  display:flex; flex-wrap:wrap; gap:var(--sp4); align-items:center;
+  padding:var(--sp3) var(--sp4); margin:var(--sp5) 0;
+  border:1px solid var(--hairline); border-radius:var(--r-md); background:var(--surface-sunk);
+  font-size:var(--fs-xs); color:var(--text-muted);
+}
+.wf-legend .k{display:inline-flex; align-items:center; gap:6px}
+.wf-legend .k b{color:var(--text)}
+
+/* ================= Panels, cards, grid ============================== */
+.wf-grid{display:grid; gap:var(--sp4)}
+.wf-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.wf-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.wf-grid.split{grid-template-columns:1.6fr 1fr}
+@media(max-width:860px){.wf-grid.cols-2,.wf-grid.cols-3,.wf-grid.split{grid-template-columns:1fr}}
+.wf-panel{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-lg);
+  padding:var(--sp5); position:relative;
+}
+.wf-panel.sunk{background:var(--surface-sunk)}
+.wf-panel-h{display:flex; align-items:center; justify-content:space-between; gap:var(--sp3); margin-bottom:var(--sp4)}
+.wf-panel-h h3{font-size:var(--fs-h3)}
+.wf-card{background:var(--surface-raised); border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:var(--sp4)}
+.wf-eyebrow{font-size:var(--fs-micro); letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:var(--sp2)}
+.muted{color:var(--text-muted)} .faint{color:var(--text-faint)}
+.wf-hr{height:1px; background:var(--hairline); border:0; margin:var(--sp5) 0}
+
+/* ================= Form / input mocks =============================== */
+.wf-field{margin-bottom:var(--sp4)}
+.wf-label{display:block; font-size:var(--fs-sm); font-weight:600; color:var(--text); margin-bottom:6px}
+.wf-label .req{color:var(--danger); margin-left:3px}
+.wf-hint{font-size:var(--fs-xs); color:var(--text-faint); margin-top:5px}
+.wf-input,.wf-textarea,.wf-select{
+  width:100%; background:var(--surface-sunk); color:var(--text);
+  border:1px solid var(--hairline); border-radius:var(--r-sm);
+  padding:10px 12px; font:inherit; font-size:var(--fs-sm);
+}
+.wf-input::placeholder,.wf-textarea::placeholder{color:var(--text-faint)}
+.wf-input:focus,.wf-textarea:focus,.wf-select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash)}
+.wf-textarea{min-height:96px; resize:vertical; line-height:1.5}
+.wf-inputrow{display:flex; gap:var(--sp2)}
+.wf-inputrow .wf-input{flex:1}
+.wf-radio,.wf-check{display:inline-flex; align-items:center; gap:8px; font-size:var(--fs-sm); color:var(--text); padding:8px 12px; border:1px solid var(--hairline); border-radius:var(--r-sm); cursor:default; background:var(--surface-sunk)}
+.wf-radio .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--text-faint); flex:none}
+.wf-radio.sel{border-color:var(--accent); color:var(--accent-strong)} .wf-radio.sel .dot{border-color:var(--accent); background:radial-gradient(circle,var(--accent) 40%,transparent 45%)}
+.wf-radios{display:flex; gap:var(--sp2); flex-wrap:wrap}
+.wf-toggle{width:38px; height:22px; border-radius:var(--r-pill); background:var(--hairline); position:relative; flex:none; display:inline-block}
+.wf-toggle::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--text-muted); transition:.2s}
+.wf-toggle.on{background:var(--accent)} .wf-toggle.on::after{left:18px; background:#fff}
+.wf-upload{border:1.5px dashed var(--hairline); border-radius:var(--r-md); padding:var(--sp5); text-align:center; color:var(--text-faint); font-size:var(--fs-sm); background:var(--surface-sunk)}
+
+/* ================= Buttons ========================================== */
+.wf-btn{
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:var(--fs-sm); font-weight:600;
+  padding:9px 16px; border-radius:var(--r-sm); border:1px solid var(--hairline);
+  background:var(--surface-raised); color:var(--text); cursor:default; transition:.16s;
+}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:#04141b}
+.wf-btn.ghost{background:transparent}
+.wf-btn.danger{border-color:var(--danger); color:var(--danger)}
+.wf-btn.sm{padding:6px 11px; font-size:var(--fs-xs)}
+.wf-btnrow{display:flex; gap:var(--sp3); flex-wrap:wrap; align-items:center}
+
+/* ================= Chips: zones, data-class, seats ================== */
+.wf-chip{display:inline-flex; align-items:center; gap:5px; font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+.wf-chip.local{color:var(--zone-local); background:var(--zone-local-wash); border-color:var(--zone-local)}
+.wf-chip.amd{color:var(--zone-amd); background:var(--zone-amd-wash); border-color:var(--zone-amd)}
+.wf-chip.custom{color:var(--zone-custom); background:var(--zone-custom-wash); border-color:var(--zone-custom)}
+.wf-chip.external{color:var(--zone-external); background:var(--zone-external-wash); border-color:var(--zone-external)}
+.wf-chip.raw{color:var(--raw-on); background:var(--raw); border-color:#26424e}
+.wf-chip.sanitized{color:var(--sanitized); background:var(--accent-wash); border-color:var(--accent)}
+.wf-chip.seat{color:var(--accent-strong); background:var(--accent-wash); border-color:var(--accent-mid); font-family:var(--font-mono); text-transform:none; letter-spacing:0}
+
+/* ================= Tables =========================================== */
+.wf-table{width:100%; border-collapse:collapse; font-size:var(--fs-sm)}
+.wf-table th{text-align:left; font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--hairline)}
+.wf-table td{padding:10px 12px; border-bottom:1px solid var(--hairline-soft); color:var(--text-muted); vertical-align:top}
+.wf-table tr:hover td{background:var(--surface-raised)}
+.wf-table td b,.wf-table td .strong{color:var(--text); font-weight:600}
+
+/* ================= Pipeline stepper (stages 0–7) ==================== */
+.wf-steps{display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp4) 0}
+.wf-step{display:flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--hairline); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-muted); background:var(--surface-sunk)}
+.wf-step .n{width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-micro); font-weight:700; background:var(--hairline); color:var(--text)}
+.wf-step.done{color:var(--ok)} .wf-step.done .n{background:var(--ok); color:#04141b}
+.wf-step.active{color:var(--accent-strong); border-color:var(--accent)} .wf-step.active .n{background:var(--accent); color:#04141b}
+
+/* ================= Annotation callouts (margin notes) =============== */
+.wf-note{
+  display:flex; gap:10px; align-items:flex-start; font-size:var(--fs-xs); color:var(--text-muted);
+  padding:10px 12px; border-left:2px solid var(--wf-pin); background:var(--accent-wash);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; margin:var(--sp3) 0;
+}
+.wf-note .pin{flex:none; width:18px; height:18px; border-radius:50%; background:var(--wf-pin); color:#04141b; font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+.wf-note.warn{border-left-color:var(--warn); background:var(--warn-wash)} .wf-note.warn .pin{background:var(--warn)}
+
+/* ================= Status ledger (page footer — auditable) ========== */
+.wf-ledger{margin-top:var(--sp7); padding-top:var(--sp5); border-top:1px solid var(--hairline)}
+.wf-ledger h4{font-size:var(--fs-sm); text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin-bottom:var(--sp3)}
+.wf-ledger table{width:100%; border-collapse:collapse; font-size:var(--fs-xs)}
+.wf-ledger td{padding:6px 10px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+.wf-ledger td:first-child{white-space:nowrap; color:var(--text)}
+.wf-ledger .ev{font-family:var(--font-mono); color:var(--text-faint)}
+
+/* ================= misc ============================================= */
+.wf-empty{padding:var(--sp6); text-align:center; color:var(--text-faint); border:1.5px dashed var(--hairline); border-radius:var(--r-md); font-size:var(--fs-sm)}
+.stack{display:flex; flex-direction:column} .stack.g2{gap:var(--sp2)} .stack.g3{gap:var(--sp3)} .stack.g4{gap:var(--sp4)}
+.row{display:flex; align-items:center; gap:var(--sp3)} .row.wrap{flex-wrap:wrap} .row.between{justify-content:space-between}
+.spacer{flex:1}
+
+/* ================= page-scoped one-offs (#wf-run-detail only) ======== */
+#wf-run-detail .rd-hero{display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--sp5); justify-content:space-between}
+#wf-run-detail .rd-hero .id{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-faint)}
+#wf-run-detail .rd-hero h2{font-size:var(--fs-h2); margin:4px 0}
+#wf-run-detail .rd-progress{height:8px; border-radius:var(--r-pill); background:var(--surface-sunk); border:1px solid var(--hairline-soft); overflow:hidden; margin-top:6px}
+#wf-run-detail .rd-progress i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--seal)); box-shadow:0 0 10px var(--accent)}
+#wf-run-detail .rd-stat{display:flex; flex-direction:column; gap:2px}
+#wf-run-detail .rd-stat .v{font-size:var(--fs-h3); font-weight:680; color:var(--text); font-variant-numeric:tabular-nums}
+#wf-run-detail .rd-stat .l{font-size:var(--fs-micro); letter-spacing:.12em; text-transform:uppercase; color:var(--text-faint)}
+#wf-run-detail .rd-statgrid{display:grid; grid-template-columns:repeat(5,1fr); gap:var(--sp4); margin-top:var(--sp4)}
+@media(max-width:860px){#wf-run-detail .rd-statgrid{grid-template-columns:repeat(2,1fr)}}
+#wf-run-detail .rd-live{display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--accent-strong); font-family:var(--font-mono)}
+#wf-run-detail .rd-live i{width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); animation:rdpulse 1.6s var(--ease) infinite}
+@keyframes rdpulse{0%,100%{opacity:1}50%{opacity:.35}}
+#wf-run-detail .rd-state{font-size:var(--fs-micro); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:var(--r-xs); border:1px solid}
+#wf-run-detail .rd-state.ok{color:var(--ok); border-color:var(--ok); background:var(--ok-wash)}
+#wf-run-detail .rd-state.review{color:var(--warn); border-color:var(--warn); background:var(--warn-wash)}
+#wf-run-detail .rd-state.err{color:var(--danger); border-color:var(--danger); background:var(--danger-wash)}
+#wf-run-detail .rd-state.pending{color:var(--text-muted); border-color:var(--hairline)}
+#wf-run-detail .rd-egress{display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-muted)}
+#wf-run-detail .rd-egress b{color:var(--ok)}
+#wf-run-detail .rd-review{margin-top:var(--sp3); padding:var(--sp4); border:1px solid var(--warn); border-radius:var(--r-md); background:var(--warn-wash)}
+#wf-run-detail .rd-nextstep{display:flex; gap:12px; align-items:flex-start; padding:var(--sp3) 0; border-bottom:1px solid var(--hairline-soft)}
+#wf-run-detail .rd-nextstep:last-child{border-bottom:0}
+#wf-run-detail .rd-nextstep .n{flex:none; width:22px; height:22px; border-radius:50%; background:var(--accent-wash); border:1px solid var(--accent-mid); color:var(--accent-strong); font-size:var(--fs-micro); font-weight:800; display:grid; place-items:center}
+#wf-run-detail .num{font-variant-numeric:tabular-nums; font-family:var(--font-mono)}
+#wf-run-detail .rd-sparkwrap{display:flex; align-items:flex-end; gap:3px; height:34px}
+#wf-run-detail .rd-sparkwrap i{flex:1; background:var(--accent-mid); border-radius:1px; opacity:.8}
+</style>
+</head>
+<body>
+
+<header class="wf-topbar">
+  <div class="row" style="gap:24px">
+    <span class="brand"><span class="mark"></span>Nxcleus</span>
+    <nav class="wf-nav">
+      <a href="00-index.html">Home</a>
+      <a href="02-build-jobs.html">Build</a>
+      <a class="active" href="12-operations.html">Operations</a>
+      <a href="15-gallery.html">Gallery</a>
+      <a href="17-sandbox.html">Sandbox</a>
+      <a href="18-config.html">Config</a>
+    </nav>
+  </div>
+  <div class="right">
+    <span class="wf-pill-sov">Standard</span>
+    <span class="wf-pill-live"><i></i> Live</span>
+  </div>
+</header>
+
+<!--WF:START run-detail-->
+<section class="wf-page" id="wf-run-detail">
+  <div class="wf-shell">
+    <!-- header -->
+    <div class="wf-crumb">Nxcleus · <b>Operations · Run Detail</b> · Wireframe</div>
+    <h1 class="wf-title">Operations — Run Detail &nbsp;<span class="wf-route">/operations/:id · run</span></h1>
+    <p class="wf-sub">The per-run view for one batch execution of a delivered automation process. An
+      operator watches units complete live, works the review queue for semi-automated units, pulls the
+      report / CSV, and reads the trust-seat's advisory next steps. This is the "operating with a
+      warranty" surface — the run asserts <b>EXTERNAL: 0 requests</b>, it does not narrate it.</p>
+
+    <!-- legend: always include, verbatim -->
+    <div class="wf-legend">
+      <span class="k"><span class="wf-badge fn">Functional</span> wired to a live endpoint</span>
+      <span class="k"><span class="wf-badge plan">Planned</span> speced, not built</span>
+      <span class="k"><span class="wf-badge stub">Stub</span> fixtures / presenter-only</span>
+      <span class="k">Zones: <span class="wf-chip local">Local</span><span class="wf-chip amd">AMD</span><span class="wf-chip external">External</span> · Data: <span class="wf-chip raw">Raw</span><span class="wf-chip sanitized">Sanitized</span></span>
+    </div>
+
+    <!-- ==== THE WIREFRAME ==== -->
+
+    <!-- ============ REGION 1 — RUN HEADER (live) ============ -->
+    <div class="wf-panel" data-wf="fn">
+      <div class="rd-hero">
+        <div class="stack g2">
+          <span class="id">run · run_9f3ac71b  ·  from process kyc-onboarding-review</span>
+          <div class="row wrap" style="gap:10px">
+            <h2>KYC Onboarding Review</h2>
+            <span class="wf-chip seat">v4</span>
+            <span class="rd-state review">Running · needs review</span>
+          </div>
+          <div class="row wrap" style="gap:8px; margin-top:2px">
+            <span class="muted">Corpus</span>
+            <span class="wf-chip raw">meridian-trade-fin</span>
+            <span class="muted">·</span>
+            <span class="muted">batch of</span> <b class="num" style="color:var(--text)">248</b> <span class="muted">applicants</span>
+            <span class="muted">· started 14:22:07 · started by</span> <span class="wf-chip seat">operator@meridian</span>
+          </div>
+        </div>
+        <div class="stack g3" style="align-items:flex-end">
+          <span class="rd-live"><i></i> SSE · /runs/run_9f3ac71b/events</span>
+          <span class="wf-badge fn">Functional</span>
+          <span class="rd-egress"><span class="wf-chip external">External</span> egress this run: <b>0 requests</b></span>
+        </div>
+      </div>
+
+      <div style="margin-top:var(--sp4)">
+        <div class="row between" style="font-size:var(--fs-xs)">
+          <span class="muted"><span class="num" style="color:var(--text)">201</span> / 248 units complete · <span class="num">81%</span></span>
+          <span class="faint mono">run.progress → live · avg 1.9 u/s</span>
+        </div>
+        <div class="rd-progress"><i style="width:81%"></i></div>
+      </div>
+
+      <div class="rd-statgrid">
+        <div class="rd-stat"><span class="v" style="color:var(--ok)">176</span><span class="l">✓ ok</span></div>
+        <div class="rd-stat"><span class="v" style="color:var(--warn)">19</span><span class="l">◐ needs review</span></div>
+        <div class="rd-stat"><span class="v" style="color:var(--danger)">6</span><span class="l">✕ error</span></div>
+        <div class="rd-stat"><span class="v">12</span><span class="l">oracle spot-checks</span></div>
+        <div class="rd-stat"><span class="v num">$0.41</span><span class="l">run cost · local MI300X</span></div>
+      </div>
+
+      <div class="wf-note">
+        <span class="pin">i</span>
+        <div>Header, live progress bar, unit counters and cost all stream from
+          <code>GET /runs/{id}/events</code> (SSE: <code>run.started · run.unit_completed · run.progress ·
+          run.spotcheck · run.completed</code>). <code>ProcessDetail.tsx</code> opens an <code>EventSource</code>
+          on the run scope and reduces events into this header — <b>FUNCTIONAL</b>. Cost + counts backfill from
+          <code>GET /runs/{id}</code> (<code>stats_json</code> / <code>cost_json</code>).</div>
+      </div>
+    </div>
+
+    <div class="wf-hr"></div>
+
+    <!-- ============ REGION 2 + 3 — UNITS TABLE + REVIEW ACTION ============ -->
+    <div class="wf-grid split">
+      <!-- Units table -->
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-panel-h">
+          <div class="row" style="gap:10px"><h3>Units</h3><span class="wf-badge fn">Functional</span></div>
+          <div class="row" style="gap:8px">
+            <span class="faint mono" style="font-size:var(--fs-micro)">GET /runs/{id}/units</span>
+          </div>
+        </div>
+
+        <!-- filter control -->
+        <div class="wf-field" style="margin-bottom:var(--sp3)">
+          <label class="wf-label" for="unit-filter">Filter by review state <sup class="wf-tag fn">FN</sup></label>
+          <div class="wf-inputrow">
+            <select class="wf-select" id="unit-filter" style="max-width:220px">
+              <option>All units (248)</option>
+              <option>needs_review (19)</option>
+              <option>ok (176)</option>
+              <option>error (6)</option>
+            </select>
+            <input class="wf-input" id="unit-search" type="search" placeholder="Search applicant / unit id — e.g. APP-10427">
+          </div>
+          <p class="wf-hint">Filter maps to <code>?status=</code> on <code>GET /runs/{id}/units</code> (client passes <code>status</code> through <code>getRunUnits(id, status)</code>). Search is client-side over the loaded page.</p>
+        </div>
+
+        <div style="overflow-x:auto">
+        <table class="wf-table">
+          <thead>
+            <tr><th>Unit</th><th>Applicant input</th><th>Result</th><th>Seat path</th><th>Review</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>APP-10427</b><br><span class="faint mono" style="font-size:var(--fs-micro)">u_001</span></td>
+              <td><b>Meridian Global Ltd</b><br><span class="faint">UK · corporate · UBO ×3</span></td>
+              <td><span class="rd-state ok">CLEAR</span><br><span class="faint">no sanctions hit · risk 0.12</span></td>
+              <td><span class="wf-chip seat">coder</span> <span class="wf-chip seat">oracle</span></td>
+              <td><span class="muted">auto · ok</span></td>
+            </tr>
+            <tr>
+              <td><b>APP-10431</b><br><span class="faint mono" style="font-size:var(--fs-micro)">u_005</span></td>
+              <td><b>Volga Freight OAO</b><br><span class="faint">RU · corporate · UBO ×2</span></td>
+              <td><span class="rd-state review">REVIEW</span><br><span class="faint">OFAC SDN fuzzy 0.88 · "Volga F."</span></td>
+              <td><span class="wf-chip seat">coder</span> <span class="wf-chip seat">inspector</span></td>
+              <td><span class="wf-badge plan" style="font-size:var(--fs-micro)">queued</span></td>
+            </tr>
+            <tr>
+              <td><b>APP-10444</b><br><span class="faint mono" style="font-size:var(--fs-micro)">u_018</span></td>
+              <td><b>Nour Holding FZE</b><br><span class="faint">AE · corporate · PEP flag</span></td>
+              <td><span class="rd-state review">REVIEW</span><br><span class="faint">EU consolidated PEP · adverse media ×2</span></td>
+              <td><span class="wf-chip seat">coder</span> <span class="wf-chip seat">oracle</span></td>
+              <td><span class="muted" style="color:var(--ok)">approved · reject KYC</span></td>
+            </tr>
+            <tr>
+              <td><b>APP-10452</b><br><span class="faint mono" style="font-size:var(--fs-micro)">u_026</span></td>
+              <td><b>Delta Ría S.A.</b><br><span class="faint">AR · corporate · UBO ×4</span></td>
+              <td><span class="rd-state err">ERROR</span><br><span class="faint">registry connector timeout · retry 2/3</span></td>
+              <td><span class="wf-chip seat">coder</span></td>
+              <td><span class="muted">—</span></td>
+            </tr>
+            <tr>
+              <td><b>APP-10460</b><br><span class="faint mono" style="font-size:var(--fs-micro)">u_034</span></td>
+              <td><b>Sound Capital LLC</b><br><span class="faint">US · corporate · UBO ×1</span></td>
+              <td><span class="rd-state ok">CLEAR</span><br><span class="faint">no hit · risk 0.09 · oracle ✓</span></td>
+              <td><span class="wf-chip seat">coder</span> <span class="wf-chip seat">oracle</span></td>
+              <td><span class="muted">auto · ok</span></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="wf-hint" style="margin-top:var(--sp3)">Rows render from <code>run_units</code> — one row per unit with input summary, <code>UnitResult</code> (status + output), and the per-step <code>trace</code>. Backing store is live per <code>drive_run → execute_topology</code> (spec 04 §4 hardening note). Clicking a row opens the unit trace <sup class="wf-tag plan">PLANNED</sup> (drawer not built).</p>
+      </div>
+
+      <!-- Unit review action -->
+      <div class="wf-panel sunk" data-wf="fn">
+        <div class="wf-panel-h">
+          <div class="row" style="gap:10px"><h3>Review unit</h3><span class="wf-badge fn">Functional</span></div>
+        </div>
+        <div class="rd-review">
+          <div class="row wrap" style="gap:8px; margin-bottom:8px">
+            <b style="color:var(--text)">APP-10431 · Volga Freight OAO</b>
+            <span class="rd-state review">needs_review</span>
+          </div>
+          <p class="faint" style="margin:0 0 4px">Flagged by <span class="wf-chip seat">inspector</span> — OFAC SDN fuzzy match <b class="num" style="color:var(--warn)">0.88</b> against "Volga F. LLC". Semi-automated mode (<code>status="needs_review"</code>) holds the unit for a human verdict.</p>
+        </div>
+
+        <div class="wf-field" style="margin-top:var(--sp4)">
+          <label class="wf-label">Verdict <span class="req">*</span> <sup class="wf-tag fn">FN</sup></label>
+          <div class="wf-radios">
+            <span class="wf-radio sel"><span class="dot"></span> Approve</span>
+            <span class="wf-radio"><span class="dot"></span> Reject</span>
+          </div>
+          <p class="wf-hint">Maps to <code>verdict: "approve" | "reject"</code> on <code>POST /units/{id}/review</code>.</p>
+        </div>
+
+        <div class="wf-field">
+          <label class="wf-label" for="review-note">Reviewer note <span class="req">*</span> <sup class="wf-tag fn">FN</sup></label>
+          <textarea class="wf-textarea" id="review-note" placeholder="e.g. Confirmed false positive — SDN entry is 'Volga F. LLC' (US), applicant is Volga Freight OAO (RU), no UBO overlap. Cleared.">Confirmed false positive — distinct entity, no UBO overlap.</textarea>
+          <p class="wf-hint">Sent as <code>note</code>. The verdict + note close the unit and are recorded in the unit <code>trace</code> (spec 04 §6, review queue).</p>
+        </div>
+
+        <div class="wf-btnrow">
+          <button class="wf-btn primary">Submit verdict</button>
+          <button class="wf-btn ghost">Skip to next queued</button>
+        </div>
+        <div class="wf-note">
+          <span class="pin">i</span>
+          <div><code>reviewUnit(unitId, verdict, note)</code> → <code>POST /units/{id}/review</code> exists and returns.
+            Verdict closes the unit, re-derives run counters over the next <code>run.progress</code> tick — <b>FUNCTIONAL</b>.
+            Queue navigation ("skip to next") is client-side over loaded <code>needs_review</code> rows.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-hr"></div>
+
+    <!-- ============ REGION 4 — REPORT + EXPORT ============ -->
+    <div class="wf-grid split">
+      <div class="wf-panel" data-wf="fn">
+        <div class="wf-panel-h">
+          <div class="row" style="gap:10px"><h3>Run report &amp; export</h3><span class="wf-badge fn">Functional</span></div>
+          <span class="faint mono" style="font-size:var(--fs-micro)">run.artifacts_ready</span>
+        </div>
+        <p class="muted" style="margin-top:0">Every completed run writes deliverables — a print-ready
+          <code>report.html</code> and a <code>findings.csv</code> — announced over SSE via
+          <code>run.artifacts_ready</code> and served from the run row (spec 04 §4 hardening).</p>
+
+        <div class="wf-grid cols-2" style="margin-top:var(--sp4)">
+          <div class="wf-card">
+            <div class="wf-eyebrow">Deliverable · report.html</div>
+            <b style="color:var(--text)">KYC Onboarding Review — batch findings</b>
+            <p class="faint" style="margin:6px 0 12px">Self-contained HTML: summary stats, per-applicant verdicts, sanctions-hit table, audit trail. Renders inline &amp; prints.</p>
+            <div class="wf-btnrow">
+              <button class="wf-btn primary sm">Open report</button>
+              <button class="wf-btn ghost sm">Print</button>
+            </div>
+            <p class="wf-hint"><code>GET /runs/{id}/report</code> → <code>text/html</code>. In <code>GET /runs/{id}.artifacts[]</code> as <code>{kind:"report"}</code>. <sup class="wf-tag fn">FN</sup></p>
+          </div>
+          <div class="wf-card">
+            <div class="wf-eyebrow">Deliverable · findings.csv</div>
+            <b style="color:var(--text)">248 rows · unit_id, applicant, verdict, hit, risk</b>
+            <p class="faint" style="margin:6px 0 12px">Flat CSV of every unit result — feeds the customer's case-management / SAR workflow downstream.</p>
+            <div class="wf-btnrow">
+              <button class="wf-btn sm">Export CSV</button>
+            </div>
+            <p class="wf-hint"><code>GET /runs/{id}/export.csv</code> → <code>text/csv</code> attachment. <sup class="wf-tag fn">FN</sup></p>
+          </div>
+        </div>
+
+        <div class="wf-note warn">
+          <span class="pin">!</span>
+          <div>Deliverables land only after the run closes (<code>run.completed</code> → <code>run.artifacts_ready</code>).
+            While the batch is still running (81%), buttons render but the report reflects the last-closed snapshot.
+            The endpoints themselves are <b>FUNCTIONAL</b> — the "wait for close" behavior is the honest caveat.</div>
+        </div>
+      </div>
+
+      <!-- run economics mini -->
+      <div class="wf-panel sunk" data-wf="fn">
+        <div class="wf-panel-h">
+          <div class="row" style="gap:10px"><h3>Cost trend</h3><span class="wf-badge fn">Functional</span></div>
+        </div>
+        <div class="stack g2">
+          <span class="rd-stat"><span class="v num">$0.41</span><span class="l">this run · 201 units</span></span>
+          <span class="faint">~<b style="color:var(--text)">$0.0020</b>/unit · flat-and-small (spec 10 §6)</span>
+        </div>
+        <div class="rd-sparkwrap" style="margin:var(--sp4) 0">
+          <i style="height:40%"></i><i style="height:52%"></i><i style="height:45%"></i>
+          <i style="height:60%"></i><i style="height:48%"></i><i style="height:38%"></i>
+          <i style="height:55%"></i><i style="height:42%"></i><i style="height:50%"></i>
+          <i style="height:44%"></i><i style="height:47%"></i><i style="height:41%"></i>
+        </div>
+        <p class="wf-hint" style="margin-top:0">Per-run cost line from <code>runs.cost_json</code> via <code>GET /runs/{id}</code>. Sparkline of prior runs is presenter-shaped over the same field.</p>
+        <div class="wf-hr" style="margin:var(--sp4) 0"></div>
+        <div class="rd-egress"><span class="wf-chip external">External</span> <b>0 requests</b> · <span class="wf-chip local">Local</span> MI300X only</div>
+        <p class="wf-hint">Zero-frontier is asserted from the egress ledger filtered to the run scope (spec 04 §4).</p>
+      </div>
+    </div>
+
+    <div class="wf-hr"></div>
+
+    <!-- ============ REGION 5 — NEXT STEPS ============ -->
+    <div class="wf-panel" data-wf="fn">
+      <div class="wf-panel-h">
+        <div class="row" style="gap:10px"><h3>Next steps</h3><span class="wf-badge fn">Functional</span> <span class="wf-chip seat">trust</span></div>
+        <span class="faint mono" style="font-size:var(--fs-micro)">GET · POST /runs/{id}/next-steps</span>
+      </div>
+      <p class="muted" style="margin-top:0">Trust-seat advisory generated from this run's stats — cached on
+        the run row. Advisory only; never auto-acts. The customer decides.</p>
+
+      <div class="stack" style="margin-top:var(--sp4)">
+        <div class="rd-nextstep">
+          <span class="n">1</span>
+          <div><b style="color:var(--text)">Clear the 19 review-queue units before export.</b>
+            <span class="faint"> — 6 are OFAC fuzzy matches &lt; 0.9 (likely false positives); 13 are PEP / adverse-media holds needing a documented verdict for the SAR file.</span></div>
+        </div>
+        <div class="rd-nextstep">
+          <span class="n">2</span>
+          <div><b style="color:var(--text)">Re-run the 6 errored units.</b>
+            <span class="faint"> — all are registry-connector timeouts (Delta Ría S.A. + 5). The connector recovered at 14:29; a scoped re-run on <code>status=error</code> should clear them.</span></div>
+        </div>
+        <div class="rd-nextstep">
+          <span class="n">3</span>
+          <div><b style="color:var(--text)">Consider a refinement: adverse-media in Spanish.</b>
+            <span class="faint"> — 4 LATAM applicants had thin English adverse-media coverage. Open a Refine request on the process (~2% of original build).</span></div>
+        </div>
+      </div>
+
+      <div class="wf-field" style="margin-top:var(--sp5)">
+        <label class="wf-label" for="rerun-note">Regenerate advisory <sup class="wf-tag fn">FN</sup></label>
+        <input class="wf-input" id="rerun-note" type="text" placeholder="Optional: focus the trust seat — e.g. 'weight sanctions exposure over PEP holds'">
+        <p class="wf-hint"><code>POST /runs/{id}/next-steps</code> recomputes &amp; caches; then <code>GET</code> reads it back. Extra params (sample, budget) ride opaquely through the client (<code>api/client.ts</code>).</p>
+      </div>
+      <div class="wf-btnrow">
+        <button class="wf-btn">Regenerate</button>
+        <button class="wf-btn ghost">Open Refine on process <sup class="wf-tag plan">PLANNED</sup></button>
+      </div>
+      <div class="wf-note">
+        <span class="pin">i</span>
+        <div><code>getNextSteps</code> POSTs to recompute then GETs the cached list — both endpoints present, <b>FUNCTIONAL</b>.
+          "Open Refine" deep-links to <code>POST /processes/{id}/refine</code> (a different screen); the button here is presenter-only.</div>
+      </div>
+    </div>
+
+    <!-- status ledger: auditable evidence for every label on the page -->
+    <div class="wf-ledger">
+      <h4>Functional status ledger — evidence</h4>
+      <table>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Run header · live progress</td><td class="ev">SSE GET /runs/{id}/events</td><td>ProcessDetail.tsx opens EventSource on run scope; reduces run.started / unit_completed / progress / spotcheck / completed (spec 06 event catalog). Backfill via GET /runs/{id} → getRun().</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Units table</td><td class="ev">GET /runs/{id}/units</td><td>client.getRunUnits(id, status) → req(/runs/{id}/units?status=). Rows are live run_units per drive_run → execute_topology (spec 04 §4 hardening, 2026-07-10).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Unit review action</td><td class="ev">POST /units/{id}/review</td><td>client.reviewUnit(unitId, verdict, note) posts {verdict, note}; endpoint present (§3). Verdict + note close the unit, recorded in trace (spec 04 §6).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Report deliverable</td><td class="ev">GET /runs/{id}/report</td><td>text/html print-ready report; written on run close (run.artifacts_ready), listed in GET /runs/{id}.artifacts[] (spec 04 §4, spec 06).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>CSV export</td><td class="ev">GET /runs/{id}/export.csv</td><td>findings.csv (units, verdicts) served per run; endpoint present (§3), written on close alongside report.</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Next steps advisory</td><td class="ev">GET · POST /runs/{id}/next-steps</td><td>client.getNextSteps POSTs to recompute+cache then GETs; both present (§3). Trust-seat advisory cached on run row (spec 04 §6 language rule).</td></tr>
+        <tr><td><span class="wf-badge fn">Functional</span></td><td>Zero-frontier assertion</td><td class="ev">GET /runs/{id}.cost_json</td><td>Derived from the run&#39;s cost_json (frontier_calls); the egress ledger is not called from this route.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Unit trace drawer</td><td class="ev">(row → trace)</td><td>Row-click into per-step UnitResult.trace / prompt trace not built as a drawer here; trace exists in run_units but no dedicated endpoint wired to this view. Marked PLANNED, conservative.</td></tr>
+        <tr><td><span class="wf-badge plan">Planned</span></td><td>Open Refine on process</td><td class="ev">POST /processes/{id}/refine</td><td>Endpoint exists but lives on ProcessDetail, not this run view; the button is presenter-only here → PLANNED for this screen.</td></tr>
+        <tr><td><span class="wf-badge stub">Stub</span></td><td>Cost-trend sparkline</td><td class="ev">runs.cost_json (shaped)</td><td>Current-run cost is live from cost_json; the multi-run sparkline is presenter-shaped over the same field, not a distinct history endpoint.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+<!--WF:END-->
+
+</body>
+</html>
