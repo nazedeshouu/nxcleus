@@ -168,18 +168,14 @@
     </div>
 
     <span class="cube" style="width:26px; height:26px; top:120px; right:250px; border-color:var(--accent); transform:rotate(24deg); background:var(--accent-tint);"></span>
-    <span class="cube" style="width:15px; height:15px; top:360px; left:36px; border-color:var(--ext); transform:rotate(-18deg);"></span>
 
-    <div style="margin-top:auto; margin-bottom:0;">
+    <div style="margin-top:112px;">
       <h1 class="display" style="font-size:var(--fs-display); max-width:1080px;">Describe an internal process.<br>Get it running <em>inside&nbsp;your&nbsp;walls.</em></h1>
       <p class="lede" style="margin-top:30px; max-width:640px;">A plain-language description becomes a <b>planned, certified, fleet-built, adversarially-QA'd</b> process — running forever on AMD hardware you control.</p>
       <div style="display:flex; gap:11px; margin-top:34px;">
-        <span class="chip amd"><span class="dot"></span>BUILT ON AMD MI300X · ROCm + vLLM</span>
-        <span class="chip">ONE EXTERNAL CALL PER BUILD · ZERO AT RUNTIME</span>
-        <span class="chip">LIVE AT AMD.NXCLEUS.TECH</span>
+        <span class="chip amd"><span class="dot"></span>LIVE AT AMD.NXCLEUS.TECH</span>
       </div>
     </div>
-    <div style="height:96px;"></div>
     <div class="footer">
       <span class="nx">Nxcleus.</span>
       <span class="mid">Frontier intelligence, inside the walls</span>
@@ -208,7 +204,7 @@
     <div class="rulecol">
       <div class="eyb">Pain 03</div>
       <h3>The best tools can't come inside</h3>
-      <p>A frontier harness like Claude Code could do the work — policy keeps it outside. Local models alone lack the harness to carry a real process end-to-end. The gap is architecture, not model weights.</p>
+      <p>Even a frontier harness like Claude Code can't carry this work: policy keeps it outside, and no single context window holds an enterprise process end-to-end. Local models alone lack the harness. The gap is architecture, not model weights.</p>
     </div>
   </div>
 
@@ -239,44 +235,27 @@
   <div class="kicker"><span>The architecture</span><span class="rule"></span></div>
   <h2 style="margin-top:26px; max-width:1040px;">One designed-in crossing. <em>Everything else stays.</em></h2>
 
-  <div style="display:grid; grid-template-columns:1fr 1fr; margin-top:48px; position:relative;">
-    <!-- the boundary: one luminous hairline, only the crossing touches it -->
-    <div style="position:absolute; left:50%; top:-6px; bottom:-6px; width:1px; transform:translateX(-.5px);
-                background:linear-gradient(180deg, rgba(56,166,210,0), var(--accent) 22%, var(--accent) 78%, rgba(56,166,210,0));
-                box-shadow:0 0 18px rgba(56,166,210,.5);"></div>
-    <div class="mono" style="position:absolute; left:50%; top:34%; transform:translateX(-50%) rotate(-90deg); transform-origin:center; font-size:8.5px; letter-spacing:.34em; text-transform:uppercase; color:var(--seal-ink3); background:var(--seal); padding:0 8px;">the boundary</div>
-    <!-- the single crossing node, sitting ON the line -->
-    <div style="position:absolute; left:50%; top:calc(50% - 8px); width:15px; height:15px; transform:translateX(-50%) rotate(45deg);
-                background:var(--seal); border:1.5px solid var(--ext); box-shadow:0 0 14px rgba(226,87,74,.55);"></div>
-
-    <!-- external half -->
-    <div style="padding:4px 52px 0 0;">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:80px; margin-top:60px;">
+    <!-- external half — red top rule carries the "external" semantic -->
+    <div class="rulecol" style="border-top:2px solid rgba(226,87,74,.55); padding-top:22px;">
       <div style="display:flex; align-items:center; gap:10px;">
         <span class="eyb ext">External · 1 call</span>
         <span class="chip ext" style="padding:4px 10px; font-size:8.5px;">YOUR PICK</span>
       </div>
-      <h3 style="font-size:23px; font-weight:500; margin:14px 0 12px; letter-spacing:-.01em;">The planner</h3>
-      <p style="font-size:14px; line-height:1.6; color:var(--seal-ink2); max-width:400px;">A frontier model — <b style="color:var(--seal-ink); font-weight:500;">e.g. GPT-5.6 or Claude Fable 5</b> — sees <b style="color:var(--seal-ink); font-weight:500;">only</b> a sanitized brief, governed by your own confidentiality policy. It designs the work topology and the model bill-of-materials. It never touches raw data.</p>
+      <h3 style="font-size:26px; font-weight:500; margin:16px 0 14px; letter-spacing:-.01em; color:var(--seal-ink);">The planner</h3>
+      <p style="font-size:14.5px; line-height:1.6; color:var(--seal-ink2); max-width:440px;">A frontier model — <b style="color:var(--seal-ink); font-weight:500;">e.g. GPT-5.6 or Claude Fable 5</b> — sees <b style="color:var(--seal-ink); font-weight:500;">only</b> a sanitized brief, governed by your own confidentiality policy. It designs the work topology and the model bill-of-materials. It never touches raw data.</p>
     </div>
 
-    <!-- sovereign half -->
-    <div style="padding:4px 0 0 52px;">
+    <!-- sovereign half — cyan top rule carries the "local" semantic -->
+    <div class="rulecol" style="border-top:2px solid var(--accent-line); padding-top:22px;">
       <span class="eyb">Local · everything else</span>
-      <h3 style="font-size:23px; font-weight:500; margin:14px 0 12px; letter-spacing:-.01em;">Your AMD hardware</h3>
-      <p style="font-size:14px; line-height:1.6; color:var(--seal-ink2); max-width:420px;">Intake, certification against the raw context the frontier never saw, the parallel build fleet, adversarial QA — and <b style="color:var(--seal-ink); font-weight:500;">every operate-phase run</b>. All on customer-controlled AMD compute.</p>
+      <h3 style="font-size:26px; font-weight:500; margin:16px 0 14px; letter-spacing:-.01em; color:var(--seal-ink);">Your AMD hardware</h3>
+      <p style="font-size:14.5px; line-height:1.6; color:var(--seal-ink2); max-width:460px;">Intake, certification against the raw context the frontier never saw, the parallel build fleet, adversarial QA — and <b style="color:var(--seal-ink); font-weight:500;">every operate-phase run</b>. All on customer-controlled AMD compute.</p>
     </div>
   </div>
 
-  <p style="margin-top:44px; font-size:14.5px; line-height:1.55; color:var(--seal-ink2); max-width:1040px;">
-    <b style="color:var(--accent); font-weight:500;">Sovereign Mode</b> rebinds even planning on-fleet — <b style="color:var(--seal-ink); font-weight:500;">zero external calls.</b> Any egress during a sovereign job raises a violation and paints the run red.</p>
-
-  <div style="display:flex; align-items:center; gap:12px; margin-top:26px; flex-wrap:wrap;">
-    <span class="mono" style="font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--seal-ink3);">Egress ledger · golden run</span>
-    <span class="chip ext"><span class="dot"></span>EXTERNAL 1 · planner ↗ sanitized</span>
-    <span class="chip amd">AMD-HOSTED 13 · sealed</span>
-    <span class="chip">certifier · glm-4.6</span>
-    <span class="chip">coder pool · qwen</span>
-    <span class="chip">oracle · gemma</span>
+  <div style="margin-top:56px; border-left:2px solid var(--accent); background:var(--panel); border-radius:0 10px 10px 0; padding:22px 28px; max-width:1080px;">
+    <p style="font-size:15.5px; line-height:1.55; color:var(--seal-ink2);"><b style="color:var(--accent); font-weight:500;">Sovereign Mode</b> rebinds even planning on-fleet — <b style="color:var(--seal-ink); font-weight:500;">zero external calls.</b> Any egress during a sovereign job raises a violation and paints the run red.</p>
   </div>
 
   <div class="footer"><span class="nx">nx.</span><span class="mid">Frontier intelligence, inside the walls</span><span class="rt">The architecture · <b>03</b></span></div>
@@ -286,21 +265,24 @@
 <section class="slide g-left">
   <div class="pagemark"><b>04</b> ⁄ 11</div>
   <div class="kicker"><span>Live &amp; proven</span><span class="rule"></span></div>
-  <h2 style="margin-top:26px;">Working today. <em>Not a mock-up.</em></h2>
+  <h2 style="margin-top:26px;">Fully tested and <em>live.</em></h2>
 
-  <div style="display:grid; grid-template-columns:1fr 1.14fr; gap:56px; margin-top:38px;">
-    <div style="display:flex; flex-direction:column; gap:20px;">
-      <div class="rulecol" style="padding-top:14px;">
-        <p style="font-size:var(--fs-body); line-height:1.6; color:var(--seal-ink2);"><b style="color:var(--seal-ink); font-weight:500;">Full live build, stages 0 → 7.</b> A KYC / AML onboarding process was planned, certified, fleet-built, QA'd and registered in a single session on AMD MI300X.</p>
+  <div style="display:grid; grid-template-columns:1fr 1.14fr; gap:56px; margin-top:34px;">
+    <div style="display:flex; flex-direction:column;">
+      <!-- centerpiece claim: the full-detection result, live-measured -->
+      <div style="display:flex; align-items:baseline; gap:18px;">
+        <span style="font-weight:200; font-size:68px; letter-spacing:-.03em; line-height:.86; color:var(--seal-ink);">138<span style="color:var(--accent); font-weight:300;">/</span>138</span>
+        <span style="font-size:13.5px; line-height:1.35; color:var(--accent); font-weight:500;">planted patterns<br>surfaced — every one</span>
       </div>
-      <div class="rulecol" style="padding-top:14px;">
-        <p style="font-size:var(--fs-body); line-height:1.6; color:var(--seal-ink2);"><b style="color:var(--seal-ink); font-weight:500;">All 138 planted duplicate-claim patterns surfaced as candidates.</b> The insurer sandbox plants duplicate claims for one incident — same date, amounts within 5%, different IDs — shaped to slip past regex or rule engines. Confirming them takes reasoning, not string-matching.</p>
-      </div>
-      <div class="rulecol" style="padding-top:14px;">
-        <p style="font-size:var(--fs-body); line-height:1.6; color:var(--seal-ink2);"><b style="color:var(--seal-ink); font-weight:500;">The proof streams live.</b> Per-node rocm-smi utilization, VRAM and tokens/sec render in the cockpit as the build runs. The AMD fleet is visible, not asserted.</p>
-      </div>
-      <div class="rulecol" style="padding-top:14px;">
-        <p style="font-size:var(--fs-body); line-height:1.6; color:var(--seal-ink2);"><b style="color:var(--seal-ink); font-weight:500;">Try it yourself.</b> Build cockpit, operations registry, judge sandbox with three synthetic companies, and the Sovereign Mode toggle — live at <b style="color:var(--accent); font-weight:500;">amd.nxcleus.tech</b>.</p>
+      <p style="font-size:13px; line-height:1.62; color:var(--seal-ink2); margin-top:20px; max-width:470px;">On the live golden run, <b style="color:var(--seal-ink); font-weight:500;">all 138 deliberately hard-to-spot planted duplicate-claim patterns surfaced as candidates — live-measured.</b> The insurer sandbox plants duplicates for one incident: same date, amounts within 5%, different claim IDs, shaped to slip past regex and rule engines. Confirming them takes reasoning, not string-matching.</p>
+
+      <div style="display:flex; flex-direction:column; gap:15px; margin-top:26px;">
+        <div class="rulecol" style="padding-top:13px;">
+          <p style="font-size:var(--fs-body); line-height:1.6; color:var(--seal-ink2);"><b style="color:var(--seal-ink); font-weight:500;">Full live build, stages 0 → 7.</b> A KYC / AML onboarding process planned, certified, fleet-built, QA'd and registered in a single session on AMD MI300X.</p>
+        </div>
+        <div class="rulecol" style="padding-top:13px;">
+          <p style="font-size:var(--fs-body); line-height:1.6; color:var(--seal-ink2);"><b style="color:var(--seal-ink); font-weight:500;">The proof streams live.</b> Per-node rocm-smi utilization, VRAM and tokens/sec render in the cockpit as the build runs — live at <b style="color:var(--accent); font-weight:500;">amd.nxcleus.tech</b>.</p>
+        </div>
       </div>
     </div>
 
@@ -336,7 +318,7 @@
       <p style="font-size:12px; line-height:1.5; color:var(--seal-ink2);">Prompt, files, code, DBs + your policy. A trust model strips what's forbidden, composes the sanitized brief.</p>
     </div>
     <div>
-      <div style="height:2px; background:var(--ext); border-radius:2px; box-shadow:0 0 12px rgba(226,87,74,.4);"></div>
+      <div style="height:2px; background:var(--ext); border-radius:2px;"></div>
       <div style="display:flex; align-items:center; gap:4px; margin-top:14px;"><span style="font-size:34px; font-weight:200; letter-spacing:-.02em;">1</span></div>
       <div class="eyb ext" style="margin-top:2px;">external</div>
       <h3 style="font-size:16px; font-weight:500; margin:8px 0 6px; letter-spacing:-.01em;">Planning</h3>
@@ -393,7 +375,7 @@
 <section class="slide g-left">
   <div class="pagemark"><b>06</b> ⁄ 11</div>
   <div class="kicker"><span>The model</span><span class="rule"></span></div>
-  <h2 style="margin-top:26px;">A <em>lifecycle</em>, not a factory.</h2>
+  <h2 style="margin-top:26px;">The <em>lifecycle.</em></h2>
   <p class="lede" style="margin-top:22px; max-width:960px;">A factory ships a deliverable and walks away. <b>Nxcleus builds a process and then keeps it alive</b> — owned, running, and refinable inside your walls.</p>
 
   <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:26px; margin-top:44px;">
@@ -437,7 +419,7 @@
     <div style="flex:none; display:flex; align-items:center; padding:0 18px; border-radius:10px; background:var(--accent-tint); border:1px solid var(--accent-line);">
       <span class="mono" style="font-size:10px; letter-spacing:.16em; color:var(--accent);">RUNNING TODAY</span>
     </div>
-    <p style="flex:1; align-self:center; font-size:12.5px; line-height:1.55; color:var(--seal-ink2);">The live demo serves on <b style="color:var(--seal-ink); font-weight:500;">AMD-hosted serverless MI300X</b> capacity (ROCm + vLLM), with a <b style="color:var(--seal-ink); font-weight:500;">dedicated single-tenant MI300X node</b> (192 GB HBM3) as the deploy profile. Every local token runs on AMD silicon — the map below is the single-tenant scale target.</p>
+    <p style="flex:1; align-self:center; font-size:12.5px; line-height:1.55; color:var(--seal-ink2);">Every local token runs on <b style="color:var(--seal-ink); font-weight:500;">AMD silicon</b> — no exceptions. The live demo serves on <b style="color:var(--seal-ink); font-weight:500;">AMD-hosted serverless MI300X</b> (ROCm + vLLM); a <b style="color:var(--seal-ink); font-weight:500;">dedicated single-tenant MI300X node</b> — 192 GB HBM3 — is the deploy profile. The map below is the scale target.</p>
   </div>
 
   <!-- fleet map: three roles, GLM the local brain emphasized. tonal fills, no hard boxes -->
@@ -484,15 +466,15 @@
     <div style="height:300px; display:flex; align-items:flex-end; gap:30px; padding-bottom:4px; border-bottom:1px solid var(--seal-line);">
       <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
         <div class="mono" style="font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ext); text-align:center; margin-bottom:10px;">frontier<br>every run</div>
-        <div style="width:100%; max-width:120px; height:236px; border-radius:6px 6px 0 0; background:linear-gradient(180deg, var(--ext), rgba(226,87,74,.28));"></div>
+        <div style="width:100%; max-width:120px; height:288px; border-radius:6px 6px 0 0; background:linear-gradient(180deg, var(--ext), rgba(226,87,74,.22));"></div>
       </div>
       <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
         <div class="mono" style="font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); text-align:center; margin-bottom:10px;">plan once</div>
-        <div style="width:100%; max-width:120px; height:96px; border-radius:6px 6px 0 0; background:linear-gradient(180deg, var(--accent), rgba(56,166,210,.28));"></div>
+        <div style="width:100%; max-width:120px; height:44px; border-radius:6px 6px 0 0; background:linear-gradient(180deg, var(--accent), rgba(56,166,210,.28));"></div>
       </div>
       <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;">
         <div class="mono" style="font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); text-align:center; margin-bottom:10px;">local run</div>
-        <div style="width:100%; max-width:120px; height:18px; border-radius:6px 6px 0 0; background:linear-gradient(180deg, var(--accent-2), rgba(95,198,234,.3));"></div>
+        <div style="width:100%; max-width:120px; height:8px; border-radius:6px 6px 0 0; background:linear-gradient(180deg, var(--accent-2), rgba(95,198,234,.3));"></div>
       </div>
     </div>
 
@@ -523,7 +505,7 @@
   </div>
 
   <p style="margin-top:26px; font-size:12.5px; line-height:1.55; color:var(--seal-ink2); max-width:1080px;">
-    The live KYC / AML process, measured at <b style="color:var(--accent); font-weight:500;">amdplatform.nxcleus.tech/operations</b>. Priced at a <b style="color:var(--seal-ink); font-weight:500;">modeled 3–5× over cost</b>, runs still land under a nickel per record; pilot builds price at a modeled $2–10k against ~$0.41 of live-measured compute. Software margins, priced from live meters.</p>
+    At scale the gap only widens: a frontier call on <b style="color:var(--seal-ink); font-weight:500;">every</b> run compounds with every record <b style="color:var(--seal-ink); font-weight:500;">(modeled)</b>, while a certified process reuses one sanitized plan and meters near-zero local compute. The live KYC / AML process, measured at <b style="color:var(--accent); font-weight:500;">amdplatform.nxcleus.tech/operations</b>, prices at a modeled 3–5× over cost and still lands under a nickel per record; pilot builds at a modeled $2–10k against ~$0.41 of live-measured compute.</p>
 
   <div class="footer"><span class="nx">nx.</span><span class="mid">Frontier intelligence, inside the walls</span><span class="rt">The economics · <b>08</b></span></div>
 </section>
@@ -558,7 +540,7 @@
           <span class="mono" style="font-size:10px; letter-spacing:.2em; color:var(--accent);">SOM</span>
           <span style="font-size:22px; font-weight:400;">$120M <span style="font-size:12px; color:var(--seal-ink3);">year 3</span></span>
         </div>
-        <div style="height:12px; border-radius:6px; margin-top:9px; width:12%; background:var(--accent); box-shadow:0 0 16px rgba(56,166,210,.5);"></div>
+        <div style="height:12px; border-radius:6px; margin-top:9px; width:12%; background:var(--accent);"></div>
         <p style="font-size:12px; color:var(--seal-ink2); margin-top:9px;">Sovereign AI automation for mid-size regulated firms. CIS, EU &amp; MENA beachhead.</p>
       </div>
     </div>
@@ -599,7 +581,7 @@
 <section class="slide g-left">
   <div class="pagemark"><b>10</b> ⁄ 11</div>
   <div class="kicker"><span>Defensibility</span><span class="rule"></span></div>
-  <h2 style="margin-top:26px;">What didn't exist before — and why it's <em>hard to copy.</em></h2>
+  <h2 style="margin-top:26px;">What didn't exist before, and why it's <em>hard to copy.</em></h2>
 
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:30px 64px; margin-top:44px;">
     <div style="display:flex; gap:18px;">
@@ -677,7 +659,7 @@
         <h1 class="display" style="font-size:60px; max-width:760px;">A hundred processes in every enterprise, waiting to run <em>inside the walls.</em></h1>
         <div style="display:flex; align-items:center; gap:26px; margin-top:34px;">
           <span class="chip amd" style="font-size:11px; padding:10px 18px;"><span class="dot"></span>amd.nxcleus.tech</span>
-          <span class="mono" style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--seal-ink3);">Oxys Studio · <span style="color:var(--seal-ink); text-transform:none; letter-spacing:0; font-family:'Lenia Sans'; font-size:13px; font-weight:500;">Yarasul Bychok</span> <span style="opacity:.6;">· lead</span> <span style="color:var(--seal-ink); text-transform:none; letter-spacing:0; font-family:'Lenia Sans'; font-size:13px; font-weight:500;">Ansar Kazbek</span></span>
+          <span class="mono" style="font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--seal-ink3);">Oxys Studio · <span style="color:var(--seal-ink); text-transform:none; letter-spacing:0; font-family:'Lenia Sans'; font-size:13px; font-weight:500;">Yarasul Bychok</span> <span style="opacity:.5;">·</span> <span style="color:var(--seal-ink); text-transform:none; letter-spacing:0; font-family:'Lenia Sans'; font-size:13px; font-weight:500;">Ansar Kazbek</span></span>
         </div>
       </div>
       <div style="flex:none; display:flex; align-items:center; gap:16px;">
