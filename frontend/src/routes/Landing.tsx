@@ -107,6 +107,7 @@ export function Landing() {
           {/* HERO BACKGROUND — single swap point: replace the heroImg import (top of file) */}
           <img src={heroImg} alt="" width={1600} height={1200} fetchPriority="high" />
           <div className={styles.heroDrift} />
+          <div className={styles.heroSoften} />
           <div className={styles.heroScrim} />
         </div>
         <div className={styles.heroHud} aria-hidden="true">
