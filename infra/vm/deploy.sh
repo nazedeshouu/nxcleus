@@ -37,6 +37,14 @@ if [ "${NXCLEUS_DOMAIN}" != "localhost" ] && [ -f "${HERE}/extra_hosts" ]; then
 fi
 export NXCLEUS_SITE
 
+# Dedicated landing + platform hosts (their own Caddy site blocks, separate from NXCLEUS_SITE).
+# Default = amd./amdplatform. prefix on the primary domain (=> amd.localhost in dev, internal cert,
+# no ACME). Override by exporting NXCLEUS_LANDING_HOST / NXCLEUS_PLATFORM_HOST before running.
+: "${NXCLEUS_LANDING_HOST:=amd.${NXCLEUS_DOMAIN}}"
+: "${NXCLEUS_PLATFORM_HOST:=amdplatform.${NXCLEUS_DOMAIN}}"
+export NXCLEUS_LANDING_HOST NXCLEUS_PLATFORM_HOST
+
 echo "[deploy] NXCLEUS_DOMAIN=${NXCLEUS_DOMAIN}  NXCLEUS_SITE=${NXCLEUS_SITE}"
+echo "[deploy] NXCLEUS_LANDING_HOST=${NXCLEUS_LANDING_HOST}  NXCLEUS_PLATFORM_HOST=${NXCLEUS_PLATFORM_HOST}"
 cd "${ROOT}"
 exec docker compose -f infra/vm/docker-compose.yml "$@"

@@ -1,12 +1,16 @@
-# Caddy reverse proxy (01 §5). Auto-HTTPS on ALL site hostnames. NXCLEUS_SITE is a comma-separated
-# list of hostnames (deploy.sh composes it: primary domain + the sslip host so the old URL never
-# breaks). Each host gets its own Let's Encrypt cert automatically.
+# Caddy reverse proxy (01 §5). Auto-HTTPS on every site hostname; each host gets its own Let's
+# Encrypt cert automatically and independently (a host whose DNS isn't live yet only fails its OWN
+# cert — the others still issue). Three site groups, set by deploy.sh:
+#   {$NXCLEUS_PLATFORM_HOST}  amdplatform.nxcleus.tech — the cockpit; / lands on /build.
+#   {$NXCLEUS_LANDING_HOST}   amd.nxcleus.tech         — marketing landing; platform paths bounce
+#                                                        to the platform host.
+#   {$NXCLEUS_SITE}           nxcleus.tech + the sslip host (+ localhost in dev) — everything served,
+#                                                        no redirects (the original shared-link behavior).
 # / -> frontend static, /api -> uvicorn, /processes/{slug} -> runtime containers.
 
-{$NXCLEUS_SITE:localhost} {
-	encode zstd gzip
-
-	# API + SSE (disable buffering so events stream promptly)
+# --- shared snippets ---------------------------------------------------------
+# API + SSE + process-runtime reverse proxy (disable buffering so events stream promptly).
+(api_proxy) {
 	handle /api/* {
 		reverse_proxy api:8000 {
 			flush_interval -1
@@ -18,21 +22,49 @@
 	handle /docs* {
 		reverse_proxy api:8000
 	}
-
 	# process-runtime containers, exposed read-only for inspector probes + judges (04 §3)
 	handle /processes/* {
 		reverse_proxy api:8000
 	}
+}
 
-	# frontend static build (../../frontend/dist mounted at /srv/www). SPA fallback to index.html
-	# so client-side routes (react-router) deep-link correctly; unknown asset paths 404 normally.
+# frontend static build (../../frontend/dist mounted at /srv/www). SPA fallback to index.html so
+# client-side routes (react-router) deep-link correctly; unknown asset paths 404 normally.
+(spa_static) {
 	handle {
 		root * /srv/www
 		try_files {path} /index.html
 		file_server
 	}
-
 	# never cache the SPA entry document (assets are content-hashed and cached by default)
 	@html path / /index.html
 	header @html Cache-Control "no-cache"
+}
+
+# --- platform host: full app, / lands on the cockpit -------------------------
+{$NXCLEUS_PLATFORM_HOST:amdplatform.localhost} {
+	encode zstd gzip
+	import api_proxy
+	handle / {
+		redir * /build 302
+	}
+	import spa_static
+}
+
+# --- landing host: marketing at /, platform paths bounce to the platform host -
+{$NXCLEUS_LANDING_HOST:amd.localhost} {
+	encode zstd gzip
+	import api_proxy
+	@platform path /build* /operations* /sandbox* /config* /traces* /replay* /login* /gallery*
+	handle @platform {
+		redir * https://{$NXCLEUS_PLATFORM_HOST:amdplatform.localhost}{uri} 302
+	}
+	import spa_static
+}
+
+# --- legacy / shared-link hosts: everything served, unchanged ----------------
+{$NXCLEUS_SITE:localhost} {
+	encode zstd gzip
+	import api_proxy
+	import spa_static
 }

@@ -15,6 +15,12 @@ services:
       - MODEL_MODE=auto        # real backends when reachable, else mock (badged)
       # Public URL — derived from the domain (sslip.io now; swap NXCLEUS_DOMAIN to nxcleus.com later).
       - APP_BASE_URL=https://${NXCLEUS_DOMAIN:-localhost}
+      # Login wall (backend auth). Key-only form: value comes from ../../.env (env_file, canonical —
+      # same as every other secret) OR from the deploy shell if exported. Unset in both => the entry
+      # is dropped (Compose v2+), so it never clobbers the .env value. Never commit real values.
+      - AUTH_ADMIN_PASSWORD
+      - AUTH_JUDGE_PASSWORD
+      - AUTH_SECRET
     volumes:
       - platform-data:/data
       # real seat/model/fleet/rates configs (repo infra/) — cwd is /app, so this is found before
@@ -38,6 +44,9 @@ services:
       # Auto-HTTPS site list (comma-separated hostnames; deploy.sh composes primary domain + sslip
       # host). Empty/localhost => internal cert; real hostnames => Let's Encrypt per host.
       - NXCLEUS_SITE=${NXCLEUS_SITE:-localhost}
+      # Dedicated landing + platform site blocks (deploy.sh composes them from the primary domain).
+      - NXCLEUS_LANDING_HOST=${NXCLEUS_LANDING_HOST:-amd.localhost}
+      - NXCLEUS_PLATFORM_HOST=${NXCLEUS_PLATFORM_HOST:-amdplatform.localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Frontend static build, served by Caddy at / (built on the Mac — static output is arch-independent).

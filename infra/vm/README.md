@@ -5,6 +5,12 @@ zero LLM inference** — every token is generated on AMD silicon (the MI300X fle
 fallback). This is the product architecture, not a hackathon convenience (lift the 01 §2 paragraph
 into the README + deck).
 
+> **Multi-host serving (current):** one SPA + API, four hostnames. `amd.nxcleus.tech` = marketing
+> landing (platform paths 302 → the platform host); `amdplatform.nxcleus.tech` = the app (`/` → `/build`);
+> `nxcleus.tech` + `165-245-152-181.sslip.io` = everything served, unchanged. deploy.sh composes the
+> three Caddy site groups (`NXCLEUS_SITE` + auto-derived `NXCLEUS_LANDING_HOST`/`NXCLEUS_PLATFORM_HOST`);
+> Caddy issues per-host certs independently. **Full step-by-step deploy: `DEPLOY-RUNBOOK.md`.**
+
 ## Live deployment (as provisioned 2026-07-09)
 
 | Thing | Value |
