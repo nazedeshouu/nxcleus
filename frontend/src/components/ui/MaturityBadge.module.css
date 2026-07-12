@@ -1,0 +1,30 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+  color: var(--warn);
+  background: var(--warn-wash);
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+  cursor: help;
+  vertical-align: middle;
+}
+.badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--warn);
+  flex: none;
+}
+.xs {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  letter-spacing: 0.04em;
+}

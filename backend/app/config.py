@@ -95,6 +95,11 @@ class Settings(BaseSettings):
 
     # --- auth / ops
     admin_token: str = ""                       # empty => demo/admin writes are open in dev
+    # real login (cookie session). Set either password => auth ENABLED (login wall in UI, writes
+    # require a session or the legacy X-Demo-Token). Both empty => dev mode, behaves as today.
+    auth_admin_password: str = ""               # user 'admin'  (role admin) — full access
+    auth_judge_password: str = ""               # user 'judge'  (role judge) — demo writes, no admin ops
+    auth_secret: str = ""                        # session cookie signing key; empty => admin_token, else random-at-boot
     fernet_key: str = ""                        # BYOK secret encryption; empty => ephemeral dev key
     discord_webhook_url: str = ""
 
@@ -139,6 +144,11 @@ class Settings(BaseSettings):
         d.mkdir(parents=True, exist_ok=True)
         return d
 
+    @property
+    def auth_enabled(self) -> bool:
+        """True once any login password is configured — flips writes from token-gated to session-gated."""
+        return bool(self.auth_admin_password or self.auth_judge_password)
+
     def config_path(self, which: str) -> Path | None:
         mapping = {
             "seats": self.seats_config,
@@ -170,6 +180,7 @@ class Settings(BaseSettings):
                 "openrouter": bool(self.openrouter_api_key),
             },
             "admin_required": bool(self.admin_token),
+            "auth_enabled": self.auth_enabled,
         }
 
 

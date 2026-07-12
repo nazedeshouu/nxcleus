@@ -9,11 +9,13 @@ import { Sandbox } from "./routes/Sandbox";
 import { Replay } from "./routes/Replay";
 import { Config } from "./routes/Config";
 import { Traces } from "./routes/Traces";
+import { Login } from "./routes/Login";
 
 export function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
       <Route element={<PlatformLayout />}>
         <Route path="/build" element={<JobList />} />
         <Route path="/build/:jobId" element={<BuildView />} />

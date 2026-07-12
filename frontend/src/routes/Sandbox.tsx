@@ -6,6 +6,7 @@ import type { Icon } from "@phosphor-icons/react";
 import { api, companyPrompts, type CompanySummary } from "../api/client";
 import { DataClassChip } from "../components/ui/DataClassChip";
 import { OriginBadge } from "../components/ui/OriginBadge";
+import { MaturityBadge } from "../components/ui/MaturityBadge";
 import { Composer, type ComposerSubmit } from "../components/build/Composer";
 import { businessValueFor, isReasoningPrompt } from "../lib/businessValue";
 import { useDemoToken } from "../api/useDemoToken";
@@ -245,7 +246,9 @@ export function Sandbox() {
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
-        <h1 className={styles.title}>Judge sandbox</h1>
+        <h1 className={styles.title}>
+          Judge sandbox <MaturityBadge label="Demo data" tip="Fictional seeded companies for evaluation — not real customer data" />
+        </h1>
         <p className={styles.sub}>
           Pick a company, browse its private data, then ask for a process. Every run is a real job — planned, certified, and built inside the walls.
           The frontier only ever sees a <b>sanitized brief</b>.

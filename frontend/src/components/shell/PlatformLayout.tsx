@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
+import { NavLink, Outlet, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  Cube, Stack, Flask, Terminal, Gear, Plus, SidebarSimple, CaretRight,
+  Cube, Stack, Flask, Terminal, Gear, Plus, SidebarSimple, CaretRight, SignOut,
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { Logo } from "../../brand/Logo";
 import { setDemoToken } from "../../api/config";
+import { authApi, type AuthSession } from "../../api/client";
+import { MaturityBadge } from "../ui/MaturityBadge";
 import { usePublicConfig } from "./usePublicConfig";
+import { useAuth } from "./useAuth";
 import { BreadcrumbProvider, useCrumbs } from "./breadcrumbs";
 import styles from "./PlatformLayout.module.css";
 
@@ -40,8 +44,29 @@ function TopBar() {
   );
 }
 
+function SessionChip({ session }: { session: AuthSession }) {
+  const qc = useQueryClient();
+  const nav = useNavigate();
+  const signOut = async () => {
+    try { await authApi.logout(); } catch { /* already gone */ }
+    await qc.invalidateQueries({ queryKey: ["auth", "me"] });
+    nav("/login", { replace: true });
+  };
+  return (
+    <div className={styles.session}>
+      <span className={styles.sessionName}>{session.username}</span>
+      <span className={styles.sessionRole}>{session.role}</span>
+      <button className={styles.signout} onClick={signOut} title="Sign out" aria-label="Sign out">
+        <SignOut weight="regular" />
+      </button>
+    </div>
+  );
+}
+
 export function PlatformLayout() {
   const { config } = usePublicConfig();
+  const { session, needsLogin } = useAuth();
+  const location = useLocation();
   const sovereign = config.sovereign; // backend-driven; default standard, no manual toggle
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem("nxcleus.rail") === "1"; } catch { return false; }
@@ -65,6 +90,9 @@ export function PlatformLayout() {
       return next;
     });
   };
+
+  // real login wall: only trips when auth is enabled backend-side (dev/mock get a synthetic session)
+  if (needsLogin) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
 
   return (
     <BreadcrumbProvider>
@@ -102,6 +130,10 @@ export function PlatformLayout() {
         <div className={styles.content}>
           <header className={styles.bar}>
             <TopBar />
+            <div className={styles.headRight}>
+              <MaturityBadge label="Preview build" tip="Demo build — not production-ready" />
+              {session?.auth_enabled && <SessionChip session={session} />}
+            </div>
           </header>
 
           <main className={styles.main}>

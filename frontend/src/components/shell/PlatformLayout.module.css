@@ -209,6 +209,59 @@ a.crumbLink:hover {
   text-overflow: ellipsis;
 }
 
+/* ---------- header right cluster: preview badge + session ---------- */
+.headRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+.session {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 11px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline-soft);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+.sessionName {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+.sessionRole {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+}
+.signout {
+  display: inline-flex;
+  padding: 5px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.signout:hover {
+  color: var(--danger);
+  background: var(--danger-wash);
+}
+.signout svg {
+  width: 15px;
+  height: 15px;
+}
+@media (max-width: 720px) {
+  .sessionName { display: none; }
+}
+
 .main {
   flex: 1;
   min-height: 0;

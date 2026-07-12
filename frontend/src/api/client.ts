@@ -509,3 +509,16 @@ export interface PackageInvoice {
 }
 
 export type { Zone };
+
+/* ---------- auth (cookie session; same-origin so the browser carries the cookie) ---------- */
+export interface AuthSession {
+  username: string;
+  role: "admin" | "judge" | string;
+  auth_enabled: boolean; // false => dev mode (synthetic session, no login wall)
+}
+export const authApi = {
+  me: () => req<AuthSession>("/auth/me"),
+  login: (username: string, password: string) =>
+    req<AuthSession>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+};

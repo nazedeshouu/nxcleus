@@ -1,8 +1,10 @@
 """API auth dependencies (06 §1). Deliberate hackathon-grade model:
 - public read: all GETs + SSE unauthenticated;
-- demo writes: X-Demo-Token == ADMIN_TOKEN (presenter-only). Empty ADMIN_TOKEN => open (dev);
-- admin/node: X-Admin-Token == ADMIN_TOKEN;
+- demo writes: a valid login session (any role) OR X-Demo-Token == ADMIN_TOKEN;
+- admin/node: a login session with role==admin OR X-Admin-Token == ADMIN_TOKEN;
 - sandbox writes: anonymous sandbox_session cookie.
+When auth is OFF (no login password set) the token behavior is legacy: empty ADMIN_TOKEN => open (dev).
+When auth is ON a session is required for writes unless a matching token header is presented.
 """
 from __future__ import annotations
 
@@ -16,14 +18,29 @@ def _err(code: int, msg: str) -> HTTPException:
     return HTTPException(status_code=code, detail={"error": {"code": code, "message": msg}})
 
 
-async def require_demo_token(x_demo_token: str | None = Header(default=None)) -> None:
-    if settings.admin_token and x_demo_token != settings.admin_token:
-        raise _err(401, "demo token required (X-Demo-Token)")
+async def require_demo_token(request: Request, x_demo_token: str | None = Header(default=None)) -> None:
+    from app.api.auth import read_session  # lazy: avoids an import cycle (auth imports _err from here)
+    if read_session(request):
+        return  # any authenticated user may perform demo-level writes
+    if settings.admin_token and x_demo_token == settings.admin_token:
+        return  # legacy presenter token (unchanged; keeps BYOK's token path working)
+    if settings.auth_enabled or settings.admin_token:
+        raise _err(401, "login required (session cookie or X-Demo-Token)")
+    # dev default: no auth, no token configured => writes open
 
 
-async def require_admin_token(x_admin_token: str | None = Header(default=None)) -> None:
-    if settings.admin_token and x_admin_token != settings.admin_token:
-        raise _err(401, "admin token required (X-Admin-Token)")
+async def require_admin_token(request: Request, x_admin_token: str | None = Header(default=None)) -> None:
+    from app.api.auth import read_session
+    sess = read_session(request)
+    if sess:
+        if sess.get("role") == "admin":
+            return
+        raise _err(403, "admin privileges required")  # e.g. a judge session on an admin-only op
+    if settings.admin_token and x_admin_token == settings.admin_token:
+        return
+    if settings.auth_enabled or settings.admin_token:
+        raise _err(401, "admin login required (session cookie or X-Admin-Token)")
+    # dev default: open
 
 
 async def sandbox_session(request: Request, response: Response) -> str:
