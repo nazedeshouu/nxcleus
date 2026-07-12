@@ -123,6 +123,32 @@ export interface RunUnit {
   ts?: string;
 }
 
+/** Diff of a run's flagged units vs the corpus's planted ground truth (demo 5). */
+export interface GroundTruthPair {
+  claims: number[];
+  policy_id: number;
+  incident_date: string;
+  amounts: number[];
+  label: string;
+}
+export interface GroundTruthFalsePositive {
+  unit_ref: string;
+  candidate: Record<string, unknown>;
+}
+export interface GroundTruthCompare {
+  company: string;
+  pattern: string;
+  ground_truth_basis: string;
+  planted_total: number;
+  flagged_total: number;
+  true_positive_count: number;
+  false_positive_count: number;
+  missed_count: number;
+  true_positives: GroundTruthPair[];
+  false_positives: GroundTruthFalsePositive[];
+  missed: GroundTruthPair[];
+}
+
 export interface Ticket {
   id: string;
   scope: string;
@@ -409,6 +435,7 @@ export const api = {
   /* runs */
   getRun: (id: string) => req<{ run: RunDetail }>(`/runs/${id}`),
   getRunUnits: (id: string, status?: string) => req<{ units: RunUnit[] }>(`/runs/${id}/units${qs({ status })}`),
+  groundTruthCompare: (id: string) => req<GroundTruthCompare>(`/runs/${id}/ground-truth-compare`),
   reviewUnit: (unitId: string, verdict: "approve" | "reject", note?: string) =>
     req<unknown>(`/units/${unitId}/review`, { method: "POST", body: JSON.stringify({ verdict, note }), demo: true }),
   /** POST generates (idempotent on the backend), GET reads; tolerate either failing. */

@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import settings
@@ -363,8 +364,8 @@ async def run_process_fanout(ctx, plan: dict) -> None:
     cost = {"total_usd": fanout_usd,
             "cost_per_unit": round(fanout_usd / max(1, summary["done"]), 6), "frontier_calls": 0}
     # artifacts BEFORE the status flip — clients poll status==done and expect artifacts to exist
-    await _finalize_artifacts(run_id, process_name=job.get("title", ""), goal=job.get("goal", ""),
-                              corpus=company, stats=stats, cost=cost,
+    await _finalize_artifacts(run_id, scope=ctx.scope, process_name=job.get("title", ""),
+                              goal=job.get("goal", ""), corpus=company, stats=stats, cost=cost,
                               deliverable=spec.get("deliverable") if isinstance(spec, dict) else None,
                               mirror_emit=ctx.emit)
     await ctx.dao.update_run(run_id, status="done", finished_at=now_iso(), stats=stats, cost=cost)
@@ -456,7 +457,7 @@ async def _drive_run_inner(run: dict, run_id: str, scope: str, _emit) -> None:
             "cost_per_unit": round(totals["cost_usd"] / max(1, summary["done"]), 6),
             "frontier_calls": 0}
     # artifacts BEFORE the status flip — clients poll status==done and expect artifacts to exist
-    await _finalize_artifacts(run_id, process_name=process.get("name", ""),
+    await _finalize_artifacts(run_id, scope=scope, process_name=process.get("name", ""),
                               goal=process.get("goal", ""), corpus=company, stats=stats, cost=cost,
                               deliverable=deliverable)
     await dao.update_run(run_id, status="done", finished_at=now_iso(), stats=stats, cost=cost)
@@ -543,18 +544,30 @@ async def _drive_build_units(run: dict, run_id: str, package: Path, company: str
             "discrepancies": discrepancies}
 
 
-async def _finalize_artifacts(run_id: str, *, process_name: str, goal: str, corpus: str | None,
-                              stats: dict, cost: dict, deliverable: dict | None,
-                              mirror_emit=None) -> None:
+async def _finalize_artifacts(run_id: str, *, scope: str, process_name: str, goal: str,
+                              corpus: str | None, stats: dict, cost: dict,
+                              deliverable: dict | None, mirror_emit=None) -> None:
     """Generate findings.csv + report.html for a completed run and announce them. Never fails
     the run — a deliverable bug must not eat the sweep that produced the data."""
     from app.runtime import deliverables
 
+    # headline facts for the report; both degrade gracefully to absent (never fail the run)
+    egress = duration_s = None
+    try:
+        egress = await dao.trace_zone_counts(scope)
+        run = await dao.get_run(run_id)
+        if run and run.get("started_at"):
+            duration_s = (datetime.now(timezone.utc)
+                          - datetime.fromisoformat(run["started_at"].replace("Z", "+00:00"))
+                          ).total_seconds()
+    except Exception:  # noqa: BLE001 — a report garnish must never break delivery
+        pass
     try:
         units = await dao.list_run_units(run_id, limit=settings.sql_step_row_cap)
         artifacts = deliverables.generate(run_id, process_name=process_name, goal=goal,
                                           corpus=corpus, stats=stats, cost=cost, units=units,
-                                          deliverable=deliverable)
+                                          deliverable=deliverable, egress=egress,
+                                          duration_s=duration_s)
     except Exception as exc:  # noqa: BLE001 — a deliverable bug must never 404 a completed run
         # write a minimal stub so /report + /export.csv still resolve; a live demo can't end in 404
         artifacts = deliverables.write_stub(run_id, process_name=process_name, goal=goal,

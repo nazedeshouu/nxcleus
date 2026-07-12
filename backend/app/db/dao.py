@@ -548,6 +548,15 @@ async def list_egress(scope: str | None = None, zone: str | None = None, limit: 
     return await db.fetchall(sql, params)
 
 
+async def trace_zone_counts(scope: str) -> dict[str, int]:
+    """Model-call counts by inference zone (EXTERNAL / AMD_HOSTED / LOCAL / CUSTOM) for a run's
+    scope — the report's egress card. Empty dict when no model calls were logged (e.g. SQL-only)."""
+    rows = await db.fetchall(
+        "SELECT zone, COUNT(*) AS n FROM model_traces WHERE scope=:sc GROUP BY zone",
+        {"sc": scope})
+    return {r["zone"]: r["n"] for r in rows if r.get("zone")}
+
+
 # ============================================================ checkpoints (07 §1, §4)
 async def set_checkpoint(scope: str, key: str, value: Any) -> None:
     await db.execute(

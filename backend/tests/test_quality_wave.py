@@ -95,6 +95,33 @@ def test_write_stub_guarantees_no_404_on_generator_failure():
     assert (d / "findings.csv").read_text().startswith("unit_ref,status")
 
 
+def test_report_surfaces_headline_stats_and_per_entity_reasoning():
+    """The judge-readable report: scannable headline cards, the egress-by-zone card, a human
+    summary sentence per flagged pair, and the model's cited reasoning where stored on the unit."""
+    units = [
+        {"unit_ref": "dup:497:48980", "status": "needs_review",
+         "result": {"candidate": {"policy_id": 28909, "incident_date": "2024-03-30",
+                                   "claim_id_1": 497, "claim_id_2": 48980,
+                                   "amount_claimed_1": 494122.32, "amount_claimed_2": 519036.05,
+                                   "percent_difference": 4.8}}},
+        {"unit_ref": "dup:18330:39510", "status": "needs_review",
+         "result": {"judge-shared-loss-event": {"findings": "Same policy 27189, within 5%.",
+                                                 "flagged": True}}},
+    ]
+    stats = {"units": 138, "ok": 99, "needs_review": 39, "error": 0, "sql_rows": 138}
+    cost = {"total_usd": 0.8552, "cost_per_unit": 0.006, "frontier_calls": 0}
+    html = deliverables._report_html("R1", process_name="Duplicate claims", goal="flag dupes",
+                                     corpus="insurer", stats=stats, cost=cost, units=units,
+                                     granularity="per_entity",
+                                     egress={"EXTERNAL": 0, "AMD_HOSTED": 138, "LOCAL": 12},
+                                     duration_s=71.0)
+    for needle in ("Units scanned", "Flagged", "Run cost", "Duration", "1m 11s", "138",
+                   "amd hosted", "inside the boundary",          # egress card
+                   "Claims", "494,122.32", "different claim IDs",  # human summary sentence
+                   "Same policy 27189, within 5%."):              # per-entity model reasoning
+        assert needle in html, needle
+
+
 # ---------------------------------------------------------------- T4: bounded QA stage
 def test_sample_probes_caps_and_keeps_every_source():
     scenarios = ([{"id": f"ac-{i}", "source": "ac"} for i in range(30)]

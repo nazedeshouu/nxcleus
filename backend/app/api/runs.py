@@ -50,6 +50,29 @@ async def get_units(run_id: str, status: str | None = None, page: int = 0, page_
                                               offset=page * page_size)}
 
 
+@router.get("/runs/{run_id}/ground-truth-compare")
+async def ground_truth_compare(run_id: str) -> dict:
+    """Diff this run's flagged units against the corpus's PLANTED ground truth (demo 5). Read-only,
+    builtin sandbox corpora only — BYOD/custom datasets have no known plant → 400."""
+    from app.sandbox import ground_truth, seeds
+
+    run = await dao.get_run(run_id)
+    if not run:
+        raise _err(404, "run not found")
+    company = ((run.get("params") or {}).get("corpus") or {}).get("company")
+    if not company and run.get("process_id"):
+        company = (await dao.get_process(run["process_id"]) or {}).get("corpus_company")
+    if not company:
+        raise _err(400, "this run has no bound sandbox corpus")
+    if seeds._custom_db_path(company) is not None:
+        raise _err(400, "ground-truth compare is available for builtin sandbox corpora only "
+                        "(BYOD/custom datasets have no planted ground truth)")
+    if not ground_truth.supported(company):
+        raise _err(400, f"no planted ground truth registered for corpus '{company}'")
+    flagged = await dao.list_run_units(run_id, status="needs_review", limit=100_000)
+    return ground_truth.compare(company, flagged)
+
+
 @router.get("/runs/{run_id}/events")
 async def run_events(run_id: str, request: Request, from_seq: int = 0):
     return await sse_response(request, scope=f"run:{run_id}", from_seq=from_seq)

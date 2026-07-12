@@ -4,9 +4,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Lightning, Copy, ArrowsClockwise, Lock, CaretDown, CaretRight,
   FileText, Receipt, CheckCircle, ShieldCheck, GitBranch, X, Printer,
-  DownloadSimple, ArrowSquareOut, MagnifyingGlass, Compass, Play,
+  DownloadSimple, ArrowSquareOut, MagnifyingGlass, Compass, Play, Target, WarningCircle,
 } from "@phosphor-icons/react";
-import { api, type EconProcess, type NextStep, type PackageInvoice, type PackageManifest, type ProcessSummary, type ProcessVersion, type RunUnit, type VersionDiff } from "../api/client";
+import { api, type EconProcess, type GroundTruthCompare, type NextStep, type PackageInvoice, type PackageManifest, type ProcessSummary, type ProcessVersion, type RunUnit, type VersionDiff } from "../api/client";
 import { useDemoToken } from "../api/useDemoToken";
 import { useBreadcrumb } from "../components/shell/breadcrumbs";
 import { ShortId } from "../components/ui/ShortId";
@@ -341,6 +341,56 @@ const NEXT_ICON: Record<NextStep["action"]["kind"], typeof Compass> = {
   rerun: Lightning,
 };
 
+function GroundTruthPanel({ q }: { q: { data?: GroundTruthCompare; isLoading: boolean; error: unknown } }) {
+  if (q.isLoading) return <p className={styles.diffNote}>Checking flagged units against the planted ground truth…</p>;
+  if (q.error || !q.data) {
+    const msg = (q.error as { message?: string })?.message ?? "comparison unavailable for this run";
+    return <p className={styles.diffNote}>Ground-truth comparison unavailable — {msg}</p>;
+  }
+  const c = q.data;
+  const perfect = c.false_positive_count === 0 && c.missed_count === 0;
+  return (
+    <div className={styles.gtPanel}>
+      <div className={styles.gtHead}><Target weight="bold" /> Planted vs flagged — {c.pattern}</div>
+      <div className={styles.gtStats}>
+        <div className={styles.gtStat}>
+          <b className="good">{c.true_positive_count}</b>
+          <span>caught of {c.planted_total} planted</span>
+        </div>
+        <div className={`${styles.gtStat} ${c.false_positive_count ? styles.gtBad : ""}`}>
+          <b>{c.false_positive_count}</b><span>flagged, not planted</span>
+        </div>
+        <div className={`${styles.gtStat} ${c.missed_count ? styles.gtBad : ""}`}>
+          <b>{c.missed_count}</b><span>planted, not flagged</span>
+        </div>
+      </div>
+      {perfect ? (
+        <p className={styles.gtPerfect}>
+          <CheckCircle weight="fill" /> All {c.planted_total} planted patterns flagged — zero false positives, zero misses.
+        </p>
+      ) : (
+        <>
+          {c.missed.length > 0 && (
+            <div className={styles.gtList}>
+              <div className={styles.gtListHead}><WarningCircle weight="bold" /> Planted but not flagged ({c.missed_count})</div>
+              {c.missed.slice(0, 20).map((m, i) => <div key={i} className={styles.gtItem}>{m.label}</div>)}
+              {c.missed_count > 20 && <div className={styles.gtMore}>+{c.missed_count - 20} more</div>}
+            </div>
+          )}
+          {c.false_positives.length > 0 && (
+            <div className={styles.gtList}>
+              <div className={styles.gtListHead}><WarningCircle weight="bold" /> Flagged but not planted ({c.false_positive_count})</div>
+              {c.false_positives.slice(0, 20).map((f, i) => <div key={i} className={styles.gtItem}>{f.unit_ref}</div>)}
+              {c.false_positive_count > 20 && <div className={styles.gtMore}>+{c.false_positive_count - 20} more</div>}
+            </div>
+          )}
+        </>
+      )}
+      <p className={styles.gtBasis}>Ground truth: {c.ground_truth_basis}.</p>
+    </div>
+  );
+}
+
 function RunRow({ run, processId, version }: { run: EconProcess["runs"][number]; processId: string; version: number }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
@@ -357,6 +407,8 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
   });
   const runQ = useQuery({ queryKey: ["run", run.run_id], queryFn: () => api.getRun(run.run_id), enabled: open, retry: 0 });
   const nextQ = useQuery({ queryKey: ["next-steps", run.run_id], queryFn: () => api.nextSteps(run.run_id), enabled: open, retry: 0 });
+  const [compareOn, setCompareOn] = useState(false);
+  const compareQ = useQuery({ queryKey: ["gt-compare", run.run_id], queryFn: () => api.groundTruthCompare(run.run_id), enabled: open && compareOn, retry: 0 });
   const [reviewing, setReviewing] = useState<string | null>(null);
 
   const review = async (unitId: string, verdict: "approve" | "reject", note?: string) => {
@@ -472,6 +524,9 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
               </div>
             )}
             {run.ts && <span className={styles.chip}>{whenLabel(run.ts)}</span>}
+            <button className={`${styles.inspectLink} ${styles.compareBtn}`} onClick={() => setCompareOn((v) => !v)}>
+              <Target weight="bold" /> {compareOn ? "Hide comparison" : "Compare with planted patterns"}
+            </button>
             <Link className={styles.inspectLink} to={`/replay/run/${run.run_id}`}>
               <Play weight="fill" /> Replay
             </Link>
@@ -479,6 +534,8 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
               <MagnifyingGlass weight="bold" /> Inspect prompts
             </Link>
           </div>
+
+          {compareOn && <GroundTruthPanel q={compareQ} />}
 
           {unitsQ.isLoading ? (
             <p className={styles.diffNote}>Loading units…</p>

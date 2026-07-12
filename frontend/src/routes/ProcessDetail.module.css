@@ -560,6 +560,68 @@
 .artBtn:hover { border-color: var(--accent-mid); color: var(--accent-strong); transform: translateY(-1px); }
 .artBtn svg { width: 13px; height: 13px; }
 
+/* ground-truth compare (planted vs flagged) */
+.compareBtn {
+  margin-left: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--accent-strong);
+}
+.compareBtn:hover { color: var(--accent); }
+.gtPanel {
+  margin: 4px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.gtHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  margin-bottom: 14px;
+}
+.gtHead svg { width: 13px; height: 13px; color: var(--accent); }
+.gtStats { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 12px; }
+.gtStat { display: flex; flex-direction: column; gap: 2px; }
+.gtStat b { font-size: 1.7rem; font-weight: 600; line-height: 1; color: var(--ink); }
+.gtStat span { font-size: var(--fs-micro); color: var(--text-muted); }
+.gtStat.gtBad b { color: var(--danger); }
+.gtPerfect {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: var(--fs-xs);
+  color: var(--ok);
+  margin: 0;
+}
+.gtPerfect svg { width: 15px; height: 15px; }
+.gtList { margin-top: 12px; }
+.gtListHead {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--warn);
+  margin-bottom: 6px;
+}
+.gtListHead svg { width: 12px; height: 12px; }
+.gtItem {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+.gtMore { font-size: var(--fs-micro); color: var(--text-faint); padding-top: 4px; }
+.gtBasis { margin: 12px 0 0; font-size: var(--fs-micro); color: var(--text-faint); font-style: italic; }
+
 /* next steps */
 .nextSteps { margin-top: 16px; }
 .nextGrid {
