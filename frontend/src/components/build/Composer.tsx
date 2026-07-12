@@ -1,11 +1,13 @@
 import { useRef, useState, type DragEvent } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Lightning, Lock, ShieldCheck, FileText, X, Database, Plus, CaretDown, CaretRight,
-  UploadSimple, Table, FolderOpen, CheckCircle,
+  UploadSimple, Table, FolderOpen, CheckCircle, Warning,
 } from "@phosphor-icons/react";
 import { api, type CompanySummary, type Dataset } from "../../api/client";
 import { useDemoToken } from "../../api/useDemoToken";
+import { usePublicConfig } from "../shell/usePublicConfig";
 import { OriginBadge } from "../ui/OriginBadge";
 import { compact } from "../../lib/format";
 import styles from "./Composer.module.css";
@@ -30,7 +32,9 @@ interface Props {
 
 type Policy = { name: string; text: string };
 
-const isPolicyFile = (f: File) => /\.(txt|md|markdown)$/i.test(f.name);
+const POLICY_ACCEPT = ".txt,.md,.markdown,.pdf,.png,.jpg,.jpeg,.webp";
+const isPolicyFile = (f: File) => /\.(txt|md|markdown|pdf|png|jpe?g|webp)$/i.test(f.name);
+const isTextPolicy = (f: File) => /\.(txt|md|markdown)$/i.test(f.name);
 
 function sourceCounts(c: CompanySummary): string {
   const tables = c.tables ?? [];
@@ -42,6 +46,7 @@ function sourceCounts(c: CompanySummary): string {
 
 export function Composer({ variant, boundCompany, suggestions, placeholder, submitLabel, onSubmit }: Props) {
   const unlocked = useDemoToken();
+  const { config } = usePublicConfig();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -49,6 +54,7 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
   const [title, setTitle] = useState("");
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [policyOpen, setPolicyOpen] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [sovereign, setSovereign] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -70,9 +76,28 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
 
   const attachPolicy = async (file: File | undefined) => {
     if (!file) return;
-    const text = await file.text();
-    setPolicy({ name: file.name, text });
-    setPolicyOpen(true);
+    if (isTextPolicy(file)) {
+      setPolicy({ name: file.name, text: await file.text() });
+      setPolicyOpen(true);
+      return;
+    }
+    // PDF / image → server-side extraction into the same editable policy_text path
+    setExtracting(true);
+    setErr(null);
+    try {
+      const res = await api.extractPolicy(file);
+      setPolicy({ name: file.name, text: res.text });
+      setPolicyOpen(true);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      setErr(
+        status === 401 ? "Presenter mode required to extract PDFs/images — unlock top-right, or attach a .txt/.md."
+          : status === 413 ? "That file is too large — the cap is 8 MB."
+            : `Could not read that policy file: ${(e as Error).message}. A .txt/.md still works.`,
+      );
+    } finally {
+      setExtracting(false);
+    }
   };
 
   const onDrop = (e: DragEvent) => {
@@ -118,8 +143,15 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
       {dragging && (
         <div className={styles.dropVeil}>
           <FileText weight="regular" />
-          Drop a .txt or .md policy to attach it
+          Drop a policy to attach — .txt, .md, PDF, or an image
         </div>
+      )}
+
+      {config.fallback_serving && (
+        <Link to="/config" className={styles.degraded}>
+          <Warning weight="fill" />
+          <span>Model serving is degraded — running on fallback. <strong>Bring your own key</strong> to keep every seat live.</span>
+        </Link>
       )}
 
       {variant === "build" && (
@@ -211,8 +243,8 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
       <div className={styles.toolbar}>
         <div className={styles.tools}>
           {!policy && (
-            <button className={styles.tool} type="button" onClick={() => fileRef.current?.click()}>
-              <FileText weight="regular" /> Attach policy
+            <button className={styles.tool} type="button" onClick={() => fileRef.current?.click()} disabled={extracting}>
+              <FileText weight="regular" /> {extracting ? "Extracting…" : "Attach policy"}
             </button>
           )}
           {variant === "build" && (
@@ -261,7 +293,7 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
         </button>
       </div>
 
-      <input ref={fileRef} type="file" accept=".txt,.md,.markdown" hidden onChange={(e) => { void attachPolicy(e.target.files?.[0]); e.target.value = ""; }} />
+      <input ref={fileRef} type="file" accept={POLICY_ACCEPT} hidden onChange={(e) => { void attachPolicy(e.target.files?.[0]); e.target.value = ""; }} />
 
       {err && <div className={styles.err}>{err}</div>}
 

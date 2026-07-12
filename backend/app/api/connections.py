@@ -145,3 +145,13 @@ async def bind_seat(seat: str, body: dict) -> dict:
         # "system" is a write-only scope (no SSE endpoint subscribes) — mirror to the job stream
         await emit(scope, E.CONFIG_SEAT_BOUND, payload)
     return payload
+
+
+@router.delete("/seats/{seat}/binding", dependencies=[Depends(require_demo_token)])
+async def unbind_seat(seat: str, scope: str = "global") -> dict:
+    """Revert a seat to its platform default (drop the override). Idempotent — no error if none set."""
+    if seat not in registry.seats:
+        raise _err(404, "unknown seat")
+    await dao.delete_seat_override(seat=seat, scope=scope)
+    await emit("system", E.CONFIG_SEAT_BOUND, {"seat": seat, "model_key": None, "scope": scope})
+    return {"seat": seat, "scope": scope, "reverted": True}

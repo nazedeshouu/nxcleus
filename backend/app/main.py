@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import (
     admin,
+    auth,
     connections,
     datasets,
     economics,
@@ -37,10 +38,15 @@ from app.orchestrator.engine import engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if not settings.admin_token and settings.model_mode != "mock":
+    if not settings.auth_enabled and not settings.admin_token and settings.model_mode != "mock":
         import sys
-        print("[auth] WARNING: ADMIN_TOKEN is empty in non-mock mode — every demo/admin write "
-              "endpoint is OPEN. Set a real token before judging.", file=sys.stderr)
+        print("[auth] WARNING: no login password (AUTH_ADMIN_PASSWORD/AUTH_JUDGE_PASSWORD) and empty "
+              "ADMIN_TOKEN in non-mock mode — every demo/admin write endpoint is OPEN. Set a login "
+              "password (real auth) or ADMIN_TOKEN before going public.", file=sys.stderr)
+    elif settings.auth_enabled and not (settings.auth_secret or settings.admin_token):
+        import sys
+        print("[auth] NOTE: login enabled with a random-at-boot session key — restarting the process "
+              "logs everyone out. Set AUTH_SECRET (or ADMIN_TOKEN) to persist sessions.", file=sys.stderr)
     # ponytail: corpus is ~660MB (a 655k-row table) — regenerating on boot is minutes, well over the
     # 2-min auto-gen bar, so we only warn + surface it on /health; regen stays the deploy-time step.
     from app.sandbox.seeds import builtin_corpus_present
@@ -75,7 +81,7 @@ def create_app() -> FastAPI:
                        allow_headers=["*"], expose_headers=["*"])
 
     for r in (jobs.router, processes.router, runs.router, fleet.router, sandbox.router,
-              admin.router, economics.router, connections.router, datasets.router,
+              admin.router, auth.router, economics.router, connections.router, datasets.router,
               policies.router, proxy.router, traces.router):
         app.include_router(r, prefix="/api")
 

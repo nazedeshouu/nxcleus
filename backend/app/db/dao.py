@@ -487,6 +487,11 @@ async def list_seat_overrides() -> list[dict]:
     return await db.fetchall("SELECT * FROM seat_overrides ORDER BY seat")
 
 
+async def delete_seat_override(*, seat: str, scope: str = "global") -> None:
+    await db.execute("DELETE FROM seat_overrides WHERE seat = :seat AND scope = :scope",
+                     {"seat": seat, "scope": scope})
+
+
 # ============================================================ datasets (bring-your-own-data)
 async def register_dataset(*, dataset_id: str, name: str, blurb: str, origin: str, kind: str,
                            db_path: str, meta: dict | None = None) -> None:

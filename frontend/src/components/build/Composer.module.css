@@ -574,3 +574,32 @@
     margin-left: 0;
   }
 }
+
+/* degraded-serving nudge → links to /config BYOK flow */
+.degraded {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  background: var(--warn-wash);
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  color: var(--warn);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  text-decoration: none;
+  transition: border-color var(--dur-1) var(--ease);
+}
+.degraded:hover {
+  border-color: var(--warn);
+}
+.degraded svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.degraded strong {
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

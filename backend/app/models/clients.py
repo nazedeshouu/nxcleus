@@ -40,7 +40,14 @@ def _estimate_tokens(text: str) -> int:
 
 
 def _messages_text(messages: list[dict]) -> str:
-    return "\n".join(m.get("content", "") for m in messages)
+    # content may be a str OR an OpenAI content-array (text + image_url parts, for vision).
+    out = []
+    for m in messages:
+        c = m.get("content", "")
+        if isinstance(c, list):
+            c = " ".join(p.get("text", "") for p in c if isinstance(p, dict) and p.get("type") == "text")
+        out.append(c)
+    return "\n".join(out)
 
 
 # ------------------------------------------------------------------ JSON-schema synthesis (mock)

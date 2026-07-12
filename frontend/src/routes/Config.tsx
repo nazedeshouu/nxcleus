@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Cpu, Plug, Lock, Trash, ShieldCheck, WifiHigh, WarningOctagon, Warning, CheckCircle, XCircle, Pulse } from "@phosphor-icons/react";
+import { Cpu, Plug, Lock, Trash, ShieldCheck, WifiHigh, WarningOctagon, Warning, CheckCircle, XCircle, Pulse, Lightning, ArrowCounterClockwise } from "@phosphor-icons/react";
 import { api, type ApiStyle, type ConnectionInfo, type ConnectionTest, type EgressRow, type ModelInfo } from "../api/client";
 import { ZoneBadge } from "../components/ui/ZoneBadge";
 import { DataClassChip } from "../components/ui/DataClassChip";
@@ -32,6 +32,190 @@ const SEATS: { seat: Seat; zone: Zone; role: string }[] = [
 ];
 
 const FLAG_PRESETS = ["code", "json", "long_context", "reasoning", "cheap"];
+
+/* ---------- Quick "bring your own model" — 3 fields, 2 clicks, keep the platform alive ---------- */
+
+// Judge-facing presets. base_url is what the router hands the OpenAI-compat client, which appends
+// /v1/chat/completions — so OpenRouter is ".../api", not ".../api/v1".
+const QUICK_PRESETS: Record<string, { label: string; base_url: string; model: string; editableUrl: boolean; hint: string }> = {
+  openrouter: { label: "OpenRouter", base_url: "https://openrouter.ai/api", model: "openai/gpt-4o-mini", editableUrl: false, hint: "recommended — one key, every frontier model" },
+  openai: { label: "OpenAI-compatible", base_url: "https://api.openai.com/v1", model: "gpt-4o-mini", editableUrl: true, hint: "OpenAI, Fireworks, vLLM, or any /v1/chat/completions endpoint" },
+  custom: { label: "Custom base URL", base_url: "", model: "", editableUrl: true, hint: "paste your own endpoint" },
+};
+
+const ALL_SEATS = SEATS.map((s) => s.seat) as string[];
+
+function QuickByok() {
+  const unlocked = useDemoToken();
+  const qc = useQueryClient();
+  const [preset, setPreset] = useState<keyof typeof QUICK_PRESETS>("openrouter");
+  const [baseUrl, setBaseUrl] = useState(QUICK_PRESETS.openrouter.base_url);
+  const [model, setModel] = useState(QUICK_PRESETS.openrouter.model);
+  const [apiKey, setApiKey] = useState("");
+  const [alsoLocal, setAlsoLocal] = useState(false);
+  const [test, setTest] = useState<ConnectionTest | "busy" | null>(null);
+  const [phase, setPhase] = useState<"idle" | "testing" | "using">("idle");
+  const [flash, setFlash] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+  const [result, setResult] = useState<{ seats: string[]; model: string } | null>(null);
+
+  // one connection is created lazily and reused; any field edit marks it stale so the next
+  // Test/Use tears it down and rebuilds (the RAW/counts_as_local flags are baked at creation).
+  const [conn, setConn] = useState<{ id: string; modelKey: string; alsoLocal: boolean } | null>(null);
+
+  const choosePreset = (p: keyof typeof QUICK_PRESETS) => {
+    setPreset(p);
+    setBaseUrl(QUICK_PRESETS[p].base_url);
+    setModel(QUICK_PRESETS[p].model);
+    invalidate();
+  };
+  const invalidate = () => { setTest(null); if (conn) void api.removeConnection(conn.id).catch(() => {}); setConn(null); };
+
+  const edit = <T,>(setter: (v: T) => void) => (v: T) => { setter(v); invalidate(); };
+
+  // create connection + register the model; reuse if nothing changed. counts_as_local RAW is the
+  // attestation that makes an endpoint eligible for the LOCAL build seats (raw data may reach it).
+  const ensureConn = async () => {
+    if (conn && conn.alsoLocal === alsoLocal) return conn;
+    if (conn) await api.removeConnection(conn.id).catch(() => {});
+    const res = await api.addConnection({
+      name: `BYOK · ${QUICK_PRESETS[preset].label}`,
+      base_url: baseUrl.trim(),
+      api_key: apiKey,
+      api_style: "openai",
+      counts_as_local: alsoLocal,
+      data_class_ceiling: alsoLocal ? "RAW" : "SANITIZED",
+    });
+    const id = res.connection.id;
+    const m = await api.addConnectionModel(id, {
+      provider_model_id: model.trim(), display_name: model.trim(),
+      flags: ["code", "json", "reasoning", "long_context"],
+    }) as { model_id: string };
+    const next = { id, modelKey: m.model_id, alsoLocal };
+    setConn(next);
+    return next;
+  };
+
+  const runTest = async () => {
+    setPhase("testing"); setTest("busy"); setFlash(null);
+    try {
+      const c = await ensureConn();
+      setTest(await api.testConnection(c.id));
+    } catch (e) {
+      setTest({ ok: false, error: (e as Error).message });
+    } finally { setPhase("idle"); }
+  };
+
+  const use = async () => {
+    setPhase("using"); setFlash(null);
+    try {
+      const c = await ensureConn();
+      const seats = alsoLocal ? ALL_SEATS : ["planner"];
+      const outcomes = await Promise.allSettled(seats.map((s) => api.bindSeat(s, { model_key: c.modelKey })));
+      const bound = seats.filter((_, i) => outcomes[i].status === "fulfilled");
+      if (!bound.length) throw new Error("no seats could be bound — check the model / attestation");
+      setResult({ seats: bound, model: model.trim() });
+      const failed = seats.length - bound.length;
+      setFlash({ kind: "ok", msg: failed ? `${bound.length} seats now serving; ${failed} rejected (zone / data-class)` : `Serving seat${bound.length > 1 ? "s" : ""} ${bound.join(", ")}.` });
+      await qc.invalidateQueries({ queryKey: ["models"] });
+      await qc.invalidateQueries({ queryKey: ["connections"] });
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      setFlash({ kind: "err", msg: status === 401 ? "Presenter token required — unlock top-right." : (e as Error).message });
+    } finally { setPhase("idle"); }
+  };
+
+  const revert = async () => {
+    if (!result) return;
+    setPhase("using");
+    try {
+      await Promise.allSettled(result.seats.map((s) => api.unbindSeat(s)));
+      setResult(null);
+      setFlash({ kind: "ok", msg: "Reverted to platform defaults." });
+      await qc.invalidateQueries({ queryKey: ["models"] });
+    } finally { setPhase("idle"); }
+  };
+
+  const ready = !!(baseUrl.trim() && model.trim() && apiKey);
+
+  return (
+    <section className={styles.quickCard}>
+      <div className={styles.quickHead}>
+        <Lightning weight="fill" className={styles.quickIcon} />
+        <div>
+          <div className={styles.quickTitle}>Bring your own model</div>
+          <p className={styles.quickSub}>Platform credits running dry? Plug in your own key and keep every seat serving — three fields, two clicks.</p>
+        </div>
+      </div>
+
+      {result ? (
+        <div className={styles.quickSuccess}>
+          <CheckCircle weight="fill" />
+          <div className={styles.quickSuccessBody}>
+            <div className={styles.quickSuccessTitle}><code>{result.model}</code> is now serving {result.seats.length === 1 ? "seat" : `${result.seats.length} seats`}</div>
+            <div className={styles.quickSuccessSeats}>{result.seats.join(" · ")}</div>
+          </div>
+          <button className={styles.revertBtn} onClick={revert} disabled={phase !== "idle"}>
+            <ArrowCounterClockwise weight="bold" /> Revert to platform defaults
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className={styles.presetRow}>
+            {(Object.keys(QUICK_PRESETS) as (keyof typeof QUICK_PRESETS)[]).map((p) => (
+              <button key={p} type="button" className={`${styles.presetChip} ${preset === p ? styles.on : ""}`} onClick={() => choosePreset(p)} disabled={!unlocked}>
+                {QUICK_PRESETS[p].label}
+                {p === "openrouter" && <span className={styles.presetTag}>recommended</span>}
+              </button>
+            ))}
+          </div>
+          <div className={styles.quickHint}>{QUICK_PRESETS[preset].hint}</div>
+
+          <div className={styles.quickGrid}>
+            {QUICK_PRESETS[preset].editableUrl && (
+              <div className={styles.field}>
+                <label className={styles.label}>Base URL</label>
+                <input className={styles.input} value={baseUrl} onChange={(e) => edit(setBaseUrl)(e.target.value)} placeholder="https://api.openai.com/v1" disabled={!unlocked} />
+              </div>
+            )}
+            <div className={styles.field}>
+              <label className={styles.label}>Model</label>
+              <input className={styles.input} value={model} onChange={(e) => edit(setModel)(e.target.value)} placeholder="openai/gpt-4o-mini" disabled={!unlocked} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>API key</label>
+              <input className={styles.input} type="password" value={apiKey} onChange={(e) => edit(setApiKey)(e.target.value)} placeholder="sk-… (stored write-only)" disabled={!unlocked} />
+            </div>
+          </div>
+
+          <label className={`${styles.checkbox} ${styles.quickAttest}`}>
+            <input type="checkbox" checked={alsoLocal} onChange={(e) => { setAlsoLocal(e.target.checked); if (conn) invalidate(); }} disabled={!unlocked} />
+            Also serve the local build seats (coder, consolidator, …). I attest this endpoint sits inside my boundary — raw data may be sent to it.
+          </label>
+
+          {test && test !== "busy" && (
+            <div className={test.ok ? styles.testOk : styles.testErr} style={{ marginTop: 4 }}>
+              {test.ok ? <><CheckCircle weight="fill" /> reachable{test.latency_ms != null ? ` · ${test.latency_ms} ms` : ""}{test.model ? ` · ${test.model}` : ""}</> : <><XCircle weight="fill" /> {test.error ?? "failed"}</>}
+            </div>
+          )}
+          {flash && <div className={`${styles.flash} ${flash.kind === "ok" ? styles.ok : styles.err}`}>{flash.msg}</div>}
+
+          {unlocked ? (
+            <div className={styles.quickActions}>
+              <button className={styles.testBtn} onClick={runTest} disabled={!ready || phase !== "idle"}>
+                <Pulse weight="bold" style={{ width: 12, verticalAlign: "-2px" }} /> {phase === "testing" ? "Testing…" : "Test"}
+              </button>
+              <button className={styles.useBtn} onClick={use} disabled={!ready || phase !== "idle"}>
+                <Lightning weight="fill" /> {phase === "using" ? "Binding…" : alsoLocal ? "Use for every seat" : "Use for planning"}
+              </button>
+            </div>
+          ) : (
+            <span className={styles.locked}><Lock weight="regular" style={{ width: 11, verticalAlign: "-1px" }} /> Unlock Presenter mode to bring your own model.</span>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
 
 function ModelRegistry({ models }: { models: ModelInfo[] }) {
   return (
@@ -391,6 +575,8 @@ export function Config() {
           route is checked against the seat's zone and data-class ceiling before a single token moves.
         </p>
       </div>
+
+      <QuickByok />
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
