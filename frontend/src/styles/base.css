@@ -105,16 +105,19 @@ body::after {
   color: #eaf6fb;
 }
 
-/* Global scroll-reveal primitive (motivated: section entrance hierarchy) */
+/* Global scroll-reveal primitive (motivated: section entrance hierarchy).
+   Visible by DEFAULT so a missed IntersectionObserver hit (fast/momentum scroll
+   skipping an element's intersection window) can never leave a section stuck
+   invisible. `.in` only ENHANCES with the entrance animation. */
 .reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity var(--dur-3) var(--ease), transform var(--dur-3) var(--ease);
-  will-change: opacity, transform;
+  opacity: 1;
 }
 .reveal.in {
-  opacity: 1;
-  transform: none;
+  animation: revealIn var(--dur-3) var(--ease);
+}
+@keyframes revealIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
