@@ -466,6 +466,7 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
                 ))}
               </div>
             )}
+            {run.started_at && <span className={styles.chip}>{whenLabel(run.started_at)}</span>}
             <Link className={styles.inspectLink} to={`/replay/run/${run.run_id}`}>
               <Play weight="fill" /> Replay
             </Link>
