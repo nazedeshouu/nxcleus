@@ -102,7 +102,7 @@ export function Landing() {
               </PlatformLink>
             </div>
             <p className={styles.heroProof}>
-              <b>8× AMD MI300X</b> · ROCm + vLLM · raw data crossings: <b>0</b>
+              <b>AMD MI300X</b> · ROCm + vLLM · raw data crossings: <b>0</b>
             </p>
           </div>
           <div className={styles.heroArt}>
@@ -127,7 +127,7 @@ export function Landing() {
         <div className={styles.amdStrip}>
           <span className={styles.amdLabel}>Runs entirely on AMD</span>
           <div className={styles.amdItems}>
-            <span className={styles.amdItem}><GraphicsCard weight="fill" /> 8× MI300X fleet</span>
+            <span className={styles.amdItem}><GraphicsCard weight="fill" /> MI300X fleet · 8× scale profile</span>
             <span className={styles.amdItem}><Cpu weight="fill" /> ROCm + vLLM</span>
             <span className={styles.amdItem}><Broadcast weight="fill" /> Fireworks <span className="muted">fallback only</span></span>
             <span className={styles.amdItem}>Live GPU telemetry in every build</span>
