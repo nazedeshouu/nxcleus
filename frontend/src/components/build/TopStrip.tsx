@@ -4,6 +4,7 @@ import { Target, WarningOctagon, ArrowClockwise, MagnifyingGlass } from "@phosph
 import type { JobView } from "../../store/jobStore";
 import type { ConnState } from "../../api/sse";
 import { ShortId } from "../ui/ShortId";
+import { MaturityBadge } from "../ui/MaturityBadge";
 import { usd } from "../../lib/format";
 
 const STAGES: { n: number; name: string }[] = [
@@ -60,7 +61,8 @@ export function TopStrip({
           </Link>
           {controls ?? (
             <div className="bv-presenter">
-              <button className="danger" onClick={onSimulateBreach} title="Presenter: simulate a blocked external call under Sovereign Mode">
+              <MaturityBadge label="Demo" tip="Injects a simulated boundary violation — a scripted demonstration, not a live event" size="xs" />
+              <button className="danger" onClick={onSimulateBreach} title="Demo: inject a simulated blocked external call to show the boundary catching a violation">
                 <WarningOctagon weight="regular" /> Simulate breach
               </button>
               <button onClick={onRestart} title="Replay from the first event">

@@ -172,6 +172,20 @@ curl -s -i -X POST https://amdplatform.nxcleus.tech/api/auth/login \
   -d '{"username":"admin","password":"<strong-admin-password>"}' | grep -iE 'HTTP|set-cookie'
 #   expect: 200  +  a session Set-Cookie. Then judge/<judge-password> should also work; a wrong
 #   password should 401.
+
+# h) BYOK connections list is clean (no duplicate rows). Repeated dev BYOK registration accumulates
+#    duplicate api_connections rows in platform.db (nothing in the app/seed path creates them — only
+#    the POST /api/connections endpoint does). A fresh prod DB has none; verify before the demo:
+curl -s -b cookies.txt https://amdplatform.nxcleus.tech/api/connections | python3 -c \
+  'import sys,json,collections; r=json.load(sys.stdin); r=r if isinstance(r,list) else r.get("connections",[]); \
+   d=collections.Counter((c.get("name"),c.get("base_url")) for c in r); \
+   print("dupes:", {k:n for k,n in d.items() if n>1} or "none")'
+#   If any dupes: on the VM, keep the newest per (name, base_url) and drop the rest —
+#   docker compose exec <app> sqlite3 /data/platform.db "
+#     DELETE FROM api_connections WHERE id NOT IN (
+#       SELECT id FROM api_connections a WHERE created_at =
+#         (SELECT MAX(created_at) FROM api_connections b WHERE b.name=a.name AND b.base_url=a.base_url));"
+#   (back up first: infra/vm/backup_sqlite.sh)
 ```
 
 All green → deploy is done. Clean up rollback snapshots when satisfied:
