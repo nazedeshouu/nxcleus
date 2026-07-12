@@ -11,7 +11,7 @@ import { Logo } from "../brand/Logo";
 import { BRAND } from "../brand/brand";
 import { BoundaryDiagram } from "../components/landing/BoundaryDiagram";
 import { Reveal } from "../components/ui/Reveal";
-import heroImg from "../assets/img/hero-arc.webp";
+import heroImg from "../assets/hero-archive-crossing.jpg";
 import wedgeImg from "../assets/img/wedge-dark.webp";
 import fieldImg from "../assets/img/field-light.webp";
 import styles from "./Landing.module.css";
@@ -104,6 +104,7 @@ export function Landing() {
       {/* ---------- hero: full-bleed cinematic, copy bottom-left ---------- */}
       <div className={styles.hero} ref={heroRef} onPointerMove={onHeroMove}>
         <div className={styles.heroMedia} aria-hidden="true">
+          {/* HERO BACKGROUND — single swap point: replace the heroImg import (top of file) */}
           <img src={heroImg} alt="" width={1600} height={1200} fetchPriority="high" />
           <div className={styles.heroDrift} />
           <div className={styles.heroScrim} />
@@ -114,13 +115,18 @@ export function Landing() {
         </div>
         <div className={styles.container}>
           <div className={styles.heroCopy}>
-            <h1 className={styles.heroTitle}>
-              Run frontier intelligence <em>inside your walls</em>.
-            </h1>
-            <p className={styles.heroSub}>
-              Describe an internal process. Nxcleus builds and verifies it into a sovereign automation, yours to run
-              forever.
-            </p>
+            <div className={styles.heroText}>
+              <h1 className={styles.heroTitle}>
+                Run frontier intelligence <em>inside your walls</em>.
+              </h1>
+              <p className={styles.heroSub}>
+                Describe an internal process. Nxcleus builds and verifies it into a sovereign automation, yours to run
+                forever.
+              </p>
+              <p className={styles.heroProof}>
+                <b>AMD MI300X</b> · ROCm + vLLM · raw data crossings: <b>0</b>
+              </p>
+            </div>
             <div className={styles.heroCtas}>
               <PlatformLink to="/build" className={styles.btnPrimary}>
                 Enter the platform
@@ -130,9 +136,6 @@ export function Landing() {
                 Judge sandbox
               </PlatformLink>
             </div>
-            <p className={styles.heroProof}>
-              <b>AMD MI300X</b> · ROCm + vLLM · raw data crossings: <b>0</b>
-            </p>
           </div>
         </div>
       </div>
