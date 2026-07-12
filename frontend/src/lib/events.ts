@@ -340,6 +340,7 @@ export interface ModelCallPayload {
   tokens_in: number;
   tokens_out: number;
   cost_usd: number;
+  badge?: string | null;
 }
 export interface MeterTickPayload {
   scope: string;

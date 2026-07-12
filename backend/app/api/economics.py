@@ -24,7 +24,8 @@ async def economics_summary() -> dict:
             run_lines.append({"run_id": r["id"], "ts": r.get("started_at"), "units": units,
                               "cost_usd": cost,
                               "cost_per_unit": round(cost / units, 6) if units else 0.0,
-                              "frontier_calls": 0})
+                              "frontier_calls": 0,
+                              "mock_dispatches": (r.get("stats") or {}).get("mock_dispatches", 0)})
         out.append({
             "process_id": process["id"], "slug": process["slug"],
             "build_cost_usd": build_invoice_data["total_usd"],

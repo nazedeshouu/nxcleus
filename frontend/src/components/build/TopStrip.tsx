@@ -53,6 +53,11 @@ export function TopStrip({
           <div className="bv-title-sub"><ShortId id={view.scope.replace(/^job:/, "")} /></div>
         </div>
         <div className="bv-title-meta">
+          {view.mockDispatches > 0 && (
+            <span className="bv-simchip" title="Some model calls fell through to a simulated (mock) backend under load — this run is not fully live.">
+              <i /> {view.mockDispatches} simulated
+            </span>
+          )}
           <span className={`bv-conn ${conn}`}>
             <i /> {connLabel ?? (conn === "open" ? "streaming" : conn)}
           </span>

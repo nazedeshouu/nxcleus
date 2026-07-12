@@ -199,6 +199,8 @@ export interface JobView {
 
   cost: { cost_usd: number; tokens: number; gpu_seconds: number };
   modelCalls: Array<{ seq: number; seat: string; backend: string; zone: string; data_class: string; cost_usd: number; tokens: number }>;
+  /** honesty counter: model calls that fell through to a simulated (mock) backend this run */
+  mockDispatches: number;
 
   egress: EgressEntry[];
   violation?: EgressEntry;
@@ -236,6 +238,7 @@ export function initialJobView(scope = ""): JobView {
     tools: { created: [], invocations: 0 },
     cost: { cost_usd: 0, tokens: 0, gpu_seconds: 0 },
     modelCalls: [],
+    mockDispatches: 0,
     egress: [],
     telemetry: {},
     notices: [],
@@ -567,6 +570,7 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
     /* router / meter / egress / telemetry */
     case "model.call":
       v.modelCalls = [{ seq: ev.seq, seat: ev.payload.seat, backend: ev.payload.backend, zone: ev.payload.zone, data_class: ev.payload.data_class, cost_usd: ev.payload.cost_usd, tokens: ev.payload.tokens_in + ev.payload.tokens_out }, ...v.modelCalls].slice(0, MAX_CALLS);
+      if (ev.payload.badge === "mock") v.mockDispatches = v.mockDispatches + 1;
       break;
     case "model.trace":
       v.traceCount = v.traceCount + 1; // full traces live in the /traces inspector

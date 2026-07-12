@@ -38,14 +38,28 @@ _CANDIDATE_FRAME = (
     "DECISION RULE (authoritative — overrides any wording above that asks for more):\n"
     "This row was surfaced by an upstream detection step that ALREADY matched the structural "
     "pattern the request targets (matched keys, sums vs limits, shared identifiers, time-window "
-    "bursts). Confirm or rule out this candidate against the request's OWN definition of a finding, "
-    "applying exactly that definition and never a stricter one. The structural match is established; "
-    "differences in free-text wording, narrative, or incidental fields between the rows are EXPECTED "
-    "(a duplicated or re-filed record carries fresh prose and its own ids) and are NOT, by "
-    "themselves, grounds to reject. In particular do NOT require the rows to describe the same "
-    "incident narrative or the same damage/detail — the request defines the finding structurally, "
-    "not by matching prose. Set flagged=true when the row meets the request's structural definition; "
-    "rule out ONLY on affirmative evidence the rows fall outside what the request targets."
+    "bursts). Judge it against the request's OWN definition of a finding — applying exactly that "
+    "definition, never a stricter one.\n"
+    "1. The structural match is established. Differences in free-text wording, narrative, or "
+    "incidental fields between the rows are EXPECTED (a duplicated or re-filed record carries fresh "
+    "prose and its own ids) and are NOT, by themselves, grounds to reject. Do NOT require the rows "
+    "to describe the same incident, story, or detail — the finding is defined structurally, not by "
+    "matching prose.\n"
+    "2. Confirm the PHENOMENON the request describes, not merely its numeric thresholds. The upstream "
+    "step may cast a slightly loose or off-target net, so check this row against the request's own "
+    "words: (a) its named entities and their state — if the request scopes to a described subset "
+    "(a 'dormant' account, a 'closed' case, an 'external' party) and a field on this row contradicts "
+    "that (status=active), set flagged=false; (b) the direction/type of event — if the request is "
+    "about an inflow/reactivation/deposit and this row is an outbound debit/withdrawal/transfer, it "
+    "is NOT the phenomenon, set flagged=false; (c) its quantitative qualifiers (a magnitude it calls "
+    "large/material/unusual, a minimum count/run-length, a time gap, a threshold vs a limit) — the "
+    "row must MEET them. Clearing the upstream filter's numbers is NOT enough; the row must be the "
+    "thing the request is looking for. In your `findings` text, name which qualifier(s) it satisfies "
+    "and cite the specific field and value; if a scoping field contradicts the request, say so and "
+    "set flagged=false.\n"
+    "3. When the request states no qualifier beyond the structural match, the structural match alone "
+    "confirms the row (flagged=true). Rule out ONLY on affirmative evidence the row falls outside "
+    "what the request targets — never on absent prose."
 )
 
 
@@ -332,7 +346,8 @@ async def run_process_fanout(ctx, plan: dict) -> None:
 
     stats = {"units": summary["total"], "completed": summary["done"], **summary["counts"],
              "flagged_refs": summary["flagged"][:20], "partial": summary["partial"],
-             "sql_rows": summary["sql_rows"]}
+             "sql_rows": summary["sql_rows"],
+             "mock_dispatches": await meter.mock_dispatches(ctx.scope)}
     fanout_usd = round((await meter.scope_totals(ctx.scope))["cost_usd"] - baseline, 6)
     cost = {"total_usd": fanout_usd,
             "cost_per_unit": round(fanout_usd / max(1, summary["done"]), 6), "frontier_calls": 0}
@@ -419,7 +434,8 @@ async def _drive_run_inner(run: dict, run_id: str, scope: str, _emit) -> None:
     stats = {"units": summary["total"], "completed": summary["done"], **summary["counts"],
              "flagged_refs": summary["flagged"][:20], "partial": summary["partial"],
              "sql_rows": summary["sql_rows"], "spot_checks": summary["spot_checks"],
-             "discrepancies": summary["discrepancies"], "corpus": company}
+             "discrepancies": summary["discrepancies"], "corpus": company,
+             "mock_dispatches": await meter.mock_dispatches(scope)}
     cost = {"total_usd": totals["cost_usd"],
             "cost_per_unit": round(totals["cost_usd"] / max(1, summary["done"]), 6),
             "frontier_calls": 0}

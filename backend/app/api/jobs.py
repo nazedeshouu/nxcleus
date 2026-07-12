@@ -8,6 +8,7 @@ from app.api.sse import sse_response
 from app.boundary import whisper
 from app.db import dao
 from app.events import E, emit
+from app.metering import meter
 from app.orchestrator.engine import engine
 from app.orchestrator.seatlib import seat
 
@@ -45,7 +46,8 @@ async def get_job(job_id: str) -> dict:
     job = await dao.get_job(job_id)
     if not job:
         raise _err(404, "job not found")
-    out = {"job": job, "policy_summary": job.get("policy"), "goal": job.get("goal")}
+    out = {"job": job, "policy_summary": job.get("policy"), "goal": job.get("goal"),
+           "mock_dispatches": await meter.mock_dispatches(f"job:{job_id}")}
     if job.get("status") == "awaiting_input":
         out["clarifications"] = await dao.get_checkpoint(f"job:{job_id}", "clarifications") or []
     return out

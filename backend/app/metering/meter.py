@@ -69,6 +69,20 @@ async def scope_totals(scope: str) -> dict:
             "cost_usd": round(float(row["cost"]), 6), "calls": int(row["calls"])}
 
 
+async def mock_dispatches(scope: str) -> int:
+    """How many model calls in this scope fell through to a SIMULATED (mock) backend. The model.call
+    event carries the resolved badge; badge='mock' is the honest 'this dispatch was faked' signal
+    (registry terminal-mock + call-time fallthrough). Read from the always-persisted events table so
+    it works regardless of trace_prompts. Surfaced in run/job summaries so a degraded run can't pass
+    as a clean live one."""
+    row = await db.fetchone(
+        "SELECT COUNT(*) n FROM events WHERE scope = :scope AND type = 'model.call' "
+        "AND json_extract(payload, '$.badge') = 'mock'",
+        {"scope": scope},
+    )
+    return int(row["n"]) if row else 0
+
+
 async def tick(scope: str) -> None:
     """Throttled scope-total broadcast (<=1/s per scope) for the live cost meter (06 §3)."""
     now = time.monotonic()

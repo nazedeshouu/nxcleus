@@ -8,6 +8,41 @@ from app.events import E
 from app.ids import deterministic
 from app.orchestrator.seatlib import seat
 
+# A corpus-bound detection plan that ships NO candidate step judges raw sampled rows and silently
+# misses the pattern (the lawfirm/exchange 0-flag failure). The guard below replans once with this
+# directive, then blocks loudly rather than delivering a false "0 findings". Generic — no per-company
+# knowledge; it only asserts that a data-analysis plan must narrow the corpus before it judges.
+_TOPOLOGY_REQUIRED = (
+    "REQUIRED FIX: your previous plan had NO candidate step, so it would scan raw rows and surface "
+    "nothing. This request targets a pattern in the corpus — you MUST include at least one candidate "
+    'step (kind:"sql" for structured joins/aggregates/windows, or kind:"analysis" for multi-hop/'
+    "statistical logic) that narrows the whole corpus to the rows that structurally match, BEFORE any "
+    "per-unit judgment. Only omit it if the request is genuinely impossible from this company's schema, "
+    "in which case say so in risks."
+)
+
+
+def _has_candidate_step(plan: dict) -> bool:
+    """A candidate step (sql with a query, or analysis with a purpose) narrows the corpus. Its
+    presence is the difference between 'detected the pattern' and 'sampled raw rows and missed it'."""
+    for s in ((plan.get("topology") or {}).get("steps") or []):
+        if s.get("kind") == "sql" and s.get("sql"):
+            return True
+        if s.get("kind") == "analysis" and (s.get("purpose") or s.get("prompt_spec")):
+            return True
+    return False
+
+
+def _is_refusal(plan: dict) -> bool:
+    """A deliberate out-of-scope refusal: empty topology + a stated risk. Honest 0-findings, not the
+    silent-miss failure — the guard must let it through, not force a topology onto it."""
+    steps = (plan.get("topology") or {}).get("steps") or []
+    return not steps and bool(plan.get("risks"))
+
+
+def _is_detection_plan(plan: dict) -> bool:
+    return plan.get("mode") == "process" or bool(plan.get("topology"))
+
 
 async def run(ctx) -> None:
     job = await ctx.refresh()
@@ -18,15 +53,48 @@ async def run(ctx) -> None:
     company = brief.get("company") if isinstance(brief, dict) else None
     sandbox_fn = getattr(planner, "sandbox_plan", None) \
         if job.get("origin") == "sandbox" and company else None
-    if sandbox_fn:
-        # sandbox planning is company-schema-scoped with polite out-of-scope refusal (09 §2)
-        from app.sandbox import seeds
-        plan = await sandbox_fn(ctx.complete, ctx.emit,
-                                prompt=brief.get("request") or brief.get("summary") or brief.get("title", ""),
-                                company=company,
-                                company_schema={"tables": seeds.company_schema(company)})
-    else:
-        plan = await planner.plan(ctx.complete, ctx.emit, brief=brief)
+
+    async def _author(extra_directive: str = ""):
+        if sandbox_fn:
+            # sandbox planning is company-schema-scoped with polite out-of-scope refusal (09 §2)
+            from app.sandbox import seeds
+            prompt = brief.get("request") or brief.get("summary") or brief.get("title", "")
+            if extra_directive:
+                prompt = f"{prompt}\n\n{extra_directive}"
+            return await sandbox_fn(ctx.complete, ctx.emit, prompt=prompt, company=company,
+                                    company_schema={"tables": seeds.company_schema(company)})
+        b = {**brief, "topology_requirement": extra_directive} if extra_directive else brief
+        return await planner.plan(ctx.complete, ctx.emit, brief=b)
+
+    plan = await _author()
+
+    # Topology guard (reliability): a corpus-bound detection plan MUST narrow the corpus with a
+    # candidate step or it silently reports 0 findings. Replan ONCE with an explicit requirement;
+    # if it still lacks one (and isn't a genuine out-of-scope refusal), block loudly — never deliver
+    # a silent 0-flag "done".
+    def _missing_topology(p: dict) -> bool:
+        # mock mode synthesizes plans from the schema — no real planner to hold accountable, and the
+        # mock corpus fan-out is understood to be synthetic; only enforce on non-mock (live) runs.
+        from app.config import settings
+        if settings.model_mode == "mock":
+            return False
+        return bool(company) and _is_detection_plan(p) and not _has_candidate_step(p) and not _is_refusal(p)
+
+    if _missing_topology(plan):
+        await ctx.emit(E.SYSTEM_NOTICE, {
+            "text": "plan has no corpus-narrowing (sql/analysis) step — replanning with a "
+                    "topology requirement so the run can't silently report 0 findings",
+            "level": "warn"})
+        plan = await _author(_TOPOLOGY_REQUIRED)
+        if _missing_topology(plan):
+            await ctx.emit(E.SYSTEM_NOTICE, {
+                "text": "planner produced no corpus-narrowing topology after a replan — blocking "
+                        "the job rather than delivering a false 0-findings result",
+                "level": "error"})
+            await ctx.dao.update_job(ctx.job_id, status="blocked")
+            await ctx.emit(E.JOB_BLOCKED, {"stage": "planning",
+                           "reason": "no candidate topology for a corpus-bound detection request"})
+            return
 
     # deterministic plan id so a resumed stage upserts the same row (07 §4)
     plan_id = deterministic("plan", ctx.job_id, "v1")

@@ -431,6 +431,11 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
           <span className="good"><b className="good">{usd(run.cost_usd)}</b></span>
           <span>{usd(run.cost_per_unit)}/unit</span>
           <span className={styles.frontierZero}><b className={styles.frontierZero}>{run.frontier_calls}</b> frontier</span>
+          {(run.mock_dispatches ?? 0) > 0 && (
+            <span className={styles.simChip} title="Some model calls fell through to a simulated (mock) backend — not a clean live run.">
+              {run.mock_dispatches} simulated
+            </span>
+          )}
         </div>
       </div>
       {open && (

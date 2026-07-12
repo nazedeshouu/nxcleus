@@ -63,7 +63,21 @@ pairs, duplicate clusters, sums vs limits, grouped balances, time-window bursts.
 {id, kind:"sql", per_unit:false, sql:"SELECT ...", label} against the provided db schema — a \
 single read-only SELECT (CTEs allowed; no writes, no PRAGMA). Its result rows REPLACE the \
 unit set: each row becomes one candidate for the steps that follow; select every column the \
-downstream judge needs (both sides of a pair, the sum and the limit, the burst window).
+downstream judge needs (both sides of a pair, the sum and the limit, the burst window). \
+PRECISION: the candidate SQL must approximate the request's OWN phenomenon, not a loose \
+numeric proxy for it. Two things: \
+(a) BIND to the request's named entities and their state using the schema's own columns. If the \
+request scopes to a described subset (a "dormant" account, a "closed" ticket, an "external" \
+counterparty), filter the column that records that state; if it names a DIRECTION or TYPE of \
+event ("reactivation / inflow / deposit" vs "payout / withdrawal / transfer out"), filter \
+direction/kind. Do NOT substitute a computed proxy (a LAG time-gap between rows) for a status the \
+schema already stores — a "dormant-account reactivation" is an INFLOW that wakes a status=dormant \
+account, not any large row that happens to follow a quiet spell on an active account. \
+(b) encode the request's quantitative qualifiers directly in WHERE/HAVING — a magnitude it calls \
+"large/material/unusual", a minimum count or run-length, a time gap, a threshold vs a limit — \
+derived from the request's language and the data's scale. Do NOT emit an "any activity / any \
+match" net that defers all discrimination to the judge; an over-broad or off-target candidate set \
+floods the reviewer with false positives.
   - per-unit JUDGMENT steps — wherever the signal is SEMANTIC, in free-text fields (columns \
 like *_narrative, notes, memo, description): meaning must be read, not keyword-matched — a \
 paraphrase carries the same signal as the phrasing you would grep for, so SQL LIKE-patterns \
@@ -144,9 +158,15 @@ Company schema (the only tables/fields available):
 
 {_FABRIC}
 
-Design a process-mode topology (independent parallelism): a per-unit extraction/scoring step \
-over the relevant units, plus an aggregate step producing a dashboard payload. Reference only \
-tables and fields present in the schema above.
+Design a process-mode topology (independent parallelism) that DETECTS the requested pattern. \
+A detection request is ALWAYS built as: (1) a candidate step — kind:"sql" or kind:"analysis" — \
+that narrows the whole corpus to the rows that STRUCTURALLY match the request (matched pairs, \
+clusters, sums vs limits, time-window bursts, chains), then optionally (2) a per-unit judgment \
+step that confirms each candidate against free-text evidence. A bare per-unit scan over raw \
+rows with NO candidate step is almost always wrong: it samples the corpus and never surfaces \
+the pattern, so the run reports zero findings. Emit a candidate step unless the request is \
+genuinely out of scope for this company's data. Reference only tables and fields present in the \
+schema above; end with an aggregate step producing a dashboard payload.
 
 {_SQL_STEPS}
 
