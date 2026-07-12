@@ -7,7 +7,7 @@ Speak slower than feels natural; numbers land harder than adjectives.
 
 > **Golden run — locked** (insurer duplicate-claim, live `MODEL_MODE=auto`, all URLs in `presentation/golden-run.md`):
 > build `job_01KXBWJB2Q4W05GYQP8Y94V4TV` · process `prc_01KXBWVWH90X32B01BKS2BZPQV` · run-map `/build/job_01KXBWJB2Q4W05GYQP8Y94V4TV/map`.
-> Result: **138/138 planted flagged** (needs_review 138, ok 0, error 0), `report.html` + `export.csv` both 200. Egress ledger **EXTERNAL 1 / AMD_HOSTED 13**, mock 0, total **$0.41**, wall **5m13s** (intake 55s · plan 43s · certify 152s · fan-out 46s · deliver 17s). Planner = `openrouter openai/gpt-5.6-sol` as **flagship primary** (not a fallback badge).
+> Result: **138/138 planted flagged** (needs_review 138, ok 0, error 0), `report.html` + `export.csv` both 200. Egress ledger **EXTERNAL 1 / AMD_HOSTED 15**, mock 0, total **$0.41**, wall **5m13s** (intake 55s · plan 43s · certify 152s · fan-out 46s · deliver 17s). Planner = `openrouter openai/gpt-5.6-sol` as **flagship primary** (not a fallback badge).
 >
 > ⚠️ **This run's non-planner seats served on Fireworks (AMD_HOSTED, demo-exception badge), NOT self-hosted MI300X.** Narration must not say "MI300X served this run" — say **"AMD-hosted"** for this run, and keep own-fleet MI300X as an architecture/scale claim.
 
@@ -15,12 +15,13 @@ Speak slower than feels natural; numbers land harder than adjectives.
 
 ## Pre-roll tab order (open, logged-in, fully loaded, in this order)
 
-1. `http://localhost:5173/` — landing
-2. `http://localhost:5173/sandbox` — company + prompt picker (Cascadia Mutual pre-selected)
-3. `http://localhost:5173/build/job_01KXBWJB2Q4W05GYQP8Y94V4TV` — the completed golden run, stages 0→7 green
-4. `http://localhost:5173/build/job_01JKYCDEMO0000000000000001/map` — KYC build fixture map (fan-out beat) · then `http://localhost:5173/build/job_01KXBWJB2Q4W05GYQP8Y94V4TV/map` — live golden detection map
-5. `http://localhost:5173/traces` — egress ledger (boundary proof)
-6. `http://localhost:5173/operations/prc_01KXBWVWH90X32B01BKS2BZPQV` — registry + economics
+1. `http://localhost:5173/build/job_01JKYCDEMO0000000000000001/map` — KYC build fixture map. **Open this FIRST** — it's a ~40s time-animation; let it draw the full fan-out before shooting, and **never refresh it** (refresh resets the animation to zero).
+2. `http://localhost:5173/` — landing
+3. `http://localhost:5173/sandbox` — company + prompt picker (defaults to **Meridian Bank**; you click **Cascadia Mutual** on camera)
+4. `http://localhost:5173/build/job_01KXBWJB2Q4W05GYQP8Y94V4TV` — the completed golden run; every needed stage green (build stages 4/5 are dimmed/skipped on a detection run)
+5. `http://localhost:5173/build/job_01KXBWJB2Q4W05GYQP8Y94V4TV/map` — live golden detection map
+6. `http://localhost:5173/traces?scope=job:job_01KXBWJB2Q4W05GYQP8Y94V4TV&seat=planner` — egress ledger, deep-linked to the planner seat (boundary proof)
+7. `http://localhost:5173/operations/prc_01KXBWVWH90X32B01BKS2BZPQV` — registry + economics
 
 The build is pre-captured — you are **walking a finished run**, not waiting on one. (This golden run took 5m13s; you can't film it live in a 3-min video.) Optional live-batch variant is in REHEARSAL.md.
 
@@ -64,7 +65,7 @@ The map renders two shapes; show both so the fan-out beauty and the live run are
 
 **Beat 1 · build-job fan-out (~14s).** Open the **KYC build fixture** map (a replay/fixture surface — deterministic, no backend, redraws mid-run on load). Node graph draws itself: Planner → Certifier → a **conductor fanning out to a wave of specialist coder nodes and fanning back in**, wave by wave, edges energizing. This is the dramatic multi-agent shape — a *build* job.
 **Beat 2 · the live golden run (~14s).** Cut to the golden insurer map (**LIVE** badge). A detection job is a straight line, not a fan-out: **Intake·Boundary → Planner (alone in the dashed "sovereign boundary" band) → Certifier → the detection node ("scans the corpus & flags — 138 flagged") → Deliverable.** Click a node → its Claude-Code-style transcript (model + zone header).
-**Camera:** let beat 1 redraw once, then cut cleanly to beat 2. Don't scrub within a beat.
+**Camera:** beat 1's map must be **fully drawn before you cut to it** — it's a ~40s animation opened first and **never refreshed** (a refresh restarts it from zero). Let it settle, then cut cleanly to beat 2. Don't scrub within a beat.
 
 > "Every run draws itself as a live graph. On a build job, a conductor fans the work across a fleet of specialist models, wave by wave, then converges it back to one result." *(cut to beat 2)* "On this live insurer run it's a straight line — only the planner crosses the boundary, that dashed band — then the process scans the whole corpus and flags all 138. Every node is a model call you can open and read, line by line, all on AMD."
 
@@ -72,8 +73,8 @@ The map renders two shapes; show both so the fan-out beauty and the live run are
 
 ### Scene 5 · The boundary, proven — Traces / egress ledger
 `localhost:5173/traces` · **2:00–2:24 (24s)**
-**Screen:** The egress ledger. Filter to the **planner** seat → the lone **EXTERNAL** row routing to `openai/gpt-5.6-sol`; click it to show the sanitized payload in the reader. Every other row badged **AMD_HOSTED** (this run: **EXTERNAL 1 / AMD_HOSTED 13**). Then flip the **Sovereign Mode** toggle.
-**Camera:** hover the EXTERNAL row so the "sanitized" tag is legible.
+**Screen:** The egress ledger. Filter to the **planner** seat → the lone **EXTERNAL** row routing to `openai/gpt-5.6-sol`; click it to show the sanitized payload in the reader. Every other row badged **AMD_HOSTED** (this run: **EXTERNAL 1 / AMD_HOSTED 15**). There is **no Sovereign toggle on /traces** — the sovereign line is spoken-only; don't reach for an on-screen control.
+**Camera:** hover the EXTERNAL row so the "sanitized" tag is legible. Quote "EXTERNAL 1" as the exact number; say the AMD-hosted count as "15" or leave it unquantified.
 
 > "Don't take the privacy claim on faith — audit it. Every model call is logged with its destination zone. EXTERNAL equals the planner, and nothing else. And if even one sanitized call is too many, Sovereign Mode rebinds the planner onto the local fleet — zero external calls, fully sealed."
 
@@ -81,7 +82,7 @@ The map renders two shapes; show both so the fan-out beauty and the live run are
 
 ### Scene 6 · The result + the economics — Registry
 `localhost:5173/operations/prc_01KXBWVWH90X32B01BKS2BZPQV` · **2:24–2:50 (26s)**
-**Screen:** The delivered process, ACTIVE in the registry. Show the run result — **138 candidates, all 138 flagged** (needs_review 138 / ok 0) — then the invoice card split AMD_HOSTED / EXTERNAL (**$0.41 total**), and **1 boundary crossing at build / 0 at run**.
+**Screen:** The delivered process, ACTIVE in the registry. **Scroll down to the runs section** (the run row is below the fold) and show the run result — **138 candidates, all 138 flagged** (needs_review 138 / ok 0) — then the invoice card split AMD_HOSTED / EXTERNAL (**$0.41 total**), and **1 boundary crossing at build / 0 at run**.
 **Camera:** rest on the 138/138 figure, then the invoice split.
 
 > "The finished process lands in the operations registry and runs live batches. Against the insurer corpus it surfaces **138 duplicate-claim candidates** and flags every one for review — reasoning over the records, not string-matching. The build made **exactly one call out of the building**; every batch it runs after is fully local — **zero frontier calls, forever.** That's the consultant turned into a line item."
