@@ -209,79 +209,6 @@ a.crumbLink:hover {
   text-overflow: ellipsis;
 }
 
-.right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: none;
-}
-.fallback,
-.sov,
-.conn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.42em;
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  white-space: nowrap;
-}
-.fallback svg,
-.sov svg {
-  width: 1em;
-  height: 1em;
-}
-.fallback {
-  color: var(--warn);
-  background: var(--warn-wash);
-  padding: 5px 10px;
-  border-radius: var(--r-pill);
-  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
-}
-.sov {
-  color: var(--text-muted);
-  padding: 5px 10px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--hairline);
-  background: transparent;
-  font-family: inherit;
-  cursor: default;
-}
-.sovBtn {
-  cursor: pointer;
-  transition: border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
-}
-.sovBtn:hover:not(:disabled) {
-  border-color: var(--sov-seal);
-  transform: translateY(-1px);
-}
-.sovOn {
-  color: var(--sov-seal);
-  background: var(--sov-surface);
-  border-color: color-mix(in srgb, var(--sov-seal) 40%, transparent);
-}
-.conn {
-  color: var(--text-muted);
-}
-.pulse {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.connLive {
-  color: var(--ok);
-}
-.connLive .pulse {
-  animation: pulse 2s var(--ease) infinite;
-}
-.connMock {
-  color: var(--accent);
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-
 .main {
   flex: 1;
   min-height: 0;
@@ -292,41 +219,6 @@ a.crumbLink:hover {
   to { opacity: 1; transform: none; }
 }
 
-/* ---- Sovereign status strip (shields up) ---- */
-.sovStrip {
-  display: flex;
-  align-items: center;
-  gap: 0.6em;
-  padding: 9px clamp(16px, 3vw, 32px);
-  background: var(--sov-bg);
-  color: var(--sov-text);
-  border-bottom: 1px solid color-mix(in srgb, var(--sov-seal) 30%, transparent);
-  font-size: var(--fs-xs);
-}
-.sovStrip svg {
-  width: 15px;
-  height: 15px;
-  color: var(--sov-seal);
-  flex: none;
-}
-.sovStrip b {
-  color: var(--sov-seal);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-.sovStrip span {
-  color: color-mix(in srgb, var(--sov-text) 82%, transparent);
-}
-
-@media (max-width: 860px) {
-  .hideSm {
-    display: none;
-  }
-  .sov,
-  .fallback {
-    padding: 6px;
-  }
-}
 /* narrow screens: force the sidebar to a slim icon rail so nav stays reachable */
 @media (max-width: 720px) {
   .sidebar {

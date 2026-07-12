@@ -85,21 +85,6 @@
   padding: 2px 8px;
   border-radius: var(--r-pill);
 }
-.refTag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  color: var(--accent-strong);
-  background: var(--accent-wash);
-  padding: 2px 9px;
-  border-radius: var(--r-pill);
-}
-.refTag svg {
-  width: 11px;
-  height: 11px;
-}
 .jobTitle {
   font-size: var(--fs-h3);
   letter-spacing: -0.015em;
@@ -149,6 +134,41 @@
 .replay svg {
   width: 0.85em;
   height: 0.85em;
+}
+
+/* muted footer: readable time + demoted ULID (hover for full, click to copy) */
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: var(--fs-micro);
+  color: var(--text-faint);
+}
+.cardMeta > span {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.empty {
+  margin-top: 40px;
+  padding: 44px 32px;
+  text-align: center;
+  border: 1px dashed var(--hairline);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+}
+.emptyLead {
+  font-size: var(--fs-h3);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.emptySub {
+  margin: 8px auto 0;
+  max-width: 46ch;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.55;
 }
 
 /* the composer owns the front-door entry now (components/build/Composer) */

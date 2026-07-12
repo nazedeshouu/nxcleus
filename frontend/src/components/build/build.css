@@ -93,6 +93,7 @@
   margin-bottom: 16px;
 }
 .bv-title { font-size: var(--fs-h2); letter-spacing: -0.02em; }
+.bv-title-sub { margin-top: 3px; font-size: var(--fs-micro); color: var(--text-faint); }
 .bv-title-meta {
   display: flex;
   align-items: center;

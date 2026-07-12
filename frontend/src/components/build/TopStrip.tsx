@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Target, WarningOctagon, ArrowClockwise, MagnifyingGlass } from "@phosphor-icons/react";
 import type { JobView } from "../../store/jobStore";
 import type { ConnState } from "../../api/sse";
+import { ShortId } from "../ui/ShortId";
 import { usd } from "../../lib/format";
 
 const STAGES: { n: number; name: string }[] = [
@@ -48,6 +49,7 @@ export function TopStrip({
       <div className="bv-title-row">
         <div>
           <h1 className="bv-title">{view.title ?? "Build job"}</h1>
+          <div className="bv-title-sub"><ShortId id={view.scope.replace(/^job:/, "")} /></div>
         </div>
         <div className="bv-title-meta">
           <span className={`bv-conn ${conn}`}>

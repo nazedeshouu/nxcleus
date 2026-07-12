@@ -109,6 +109,8 @@ function DataBrowser({ companyId }: { companyId: string }) {
             <div className={styles.empty}>This company hasn't published its terms of data use yet.</div>
           )}
         </div>
+      ) : !tablesQ.isLoading && tables.length === 0 ? (
+        <div className={styles.empty}>Not seeded in this environment.</div>
       ) : (
         <>
           <div className={styles.tabs}>

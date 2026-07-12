@@ -10,3 +10,13 @@ export const compact = (n: number) => {
 export const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 export const seconds = (s: number) => (s >= 60 ? `${(s / 60).toFixed(1)}m` : `${s}s`);
+
+/** Human timestamp for list/header meta: "Today 14:03" or "Jul 12, 14:03". */
+export function whenLabel(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (d.toDateString() === new Date().toDateString()) return `Today ${time}`;
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
+}

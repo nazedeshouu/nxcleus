@@ -10,7 +10,7 @@ import { api, type EconProcess, type NextStep, type PackageInvoice, type Package
 import { useDemoToken } from "../api/useDemoToken";
 import { useBreadcrumb } from "../components/shell/breadcrumbs";
 import { ShortId } from "../components/ui/ShortId";
-import { usd } from "../lib/format";
+import { usd, whenLabel } from "../lib/format";
 import styles from "./ProcessDetail.module.css";
 
 type Flash = { kind: "ok" | "err"; msg: string } | null;
@@ -573,6 +573,7 @@ export function ProcessDetail() {
             <span className={styles.chip}>v{process.current_version}</span>
             <span className={`${styles.chip} ${process.status === "active" ? styles.ok : ""}`}>{process.status}</span>
             <span className={styles.chip}>{process.slug}</span>
+            {whenLabel(process.created_at) && <span className={styles.chip}>{whenLabel(process.created_at)}</span>}
           </div>
           <p className={styles.goal}>{process.goal}</p>
         </div>
