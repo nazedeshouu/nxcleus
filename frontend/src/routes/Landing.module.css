@@ -378,9 +378,34 @@
 .modeName { font-size: var(--fs-h3); letter-spacing: -0.015em; }
 .modeDesc { margin-top: 10px; font-size: var(--fs-sm); line-height: 1.6; color: var(--text-muted); }
 .modeLead .modeName { font-size: var(--fs-h2); }
+/* lead card earns its height: the deliverables Build mode ships, in the same
+   accent-dot vocabulary as the hero kicker and lifecycle nodes */
+.leadFeats {
+  margin-top: clamp(20px, 2.6vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+}
+.leadFeat {
+  display: flex;
+  align-items: baseline;
+  gap: 11px;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.leadFeat i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateY(-1px);
+}
 .modeTag {
   margin-top: auto;
-  padding-top: 20px;
+  padding-top: 24px;
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--accent-strong);

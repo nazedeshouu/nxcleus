@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -18,6 +19,19 @@ import heroImg from "../assets/img/hero-arc.webp";
 import wedgeImg from "../assets/img/wedge-dark.webp";
 import fieldImg from "../assets/img/field-light.webp";
 import styles from "./Landing.module.css";
+
+// The platform app deploys separately at amdplatform.nxcleus.tech; in dev it is
+// this same SPA, so keep in-app <Link> routing for local work and hand off to the
+// platform host in production. ponytail: env switch, no router coupling.
+const PLATFORM_ORIGIN = import.meta.env.PROD ? "https://amdplatform.nxcleus.tech" : "";
+
+function PlatformLink({ to, className, children }: { to: string; className?: string; children: ReactNode }) {
+  return PLATFORM_ORIGIN ? (
+    <a className={className} href={PLATFORM_ORIGIN + to}>{children}</a>
+  ) : (
+    <Link className={className} to={to}>{children}</Link>
+  );
+}
 
 function MoneyChart() {
   // Illustrative cost-vs-runs: a competitor pays every run (rising); Nxcleus pays
@@ -57,12 +71,12 @@ export function Landing() {
             <a className={styles.navLink} href="#boundary">The boundary</a>
             <a className={styles.navLink} href="#lifecycle">Lifecycle</a>
             <a className={styles.navLink} href="#economics">Economics</a>
-            <Link className={styles.navLink} to="/sandbox">Sandbox</Link>
+            <PlatformLink className={styles.navLink} to="/sandbox">Sandbox</PlatformLink>
           </nav>
-          <Link to="/build" className={styles.navCta}>
+          <PlatformLink to="/build" className={styles.navCta}>
             Enter the platform
             <span className={styles.btnCoin}><ArrowRight weight="bold" /></span>
-          </Link>
+          </PlatformLink>
         </div>
       </header>
 
@@ -79,13 +93,13 @@ export function Landing() {
               forever.
             </p>
             <div className={styles.heroCtas}>
-              <Link to="/build" className={styles.btnPrimary}>
+              <PlatformLink to="/build" className={styles.btnPrimary}>
                 Enter the platform
                 <span className={styles.btnCoin}><ArrowRight weight="bold" /></span>
-              </Link>
-              <Link to="/sandbox" className={styles.btnSecondary}>
+              </PlatformLink>
+              <PlatformLink to="/sandbox" className={styles.btnSecondary}>
                 Judge sandbox
-              </Link>
+              </PlatformLink>
             </div>
             <p className={styles.heroProof}>
               <b>8× AMD MI300X</b> · ROCm + vLLM · raw data crossings: <b>0</b>
@@ -160,6 +174,12 @@ export function Landing() {
                 Construct a real process automation: typed modules, declared interfaces, objective tests. The
                 fleet builds it in waves, a conductor reviews between each, and it lands in the registry ready to run.
               </p>
+              <ul className={styles.leadFeats}>
+                <li className={styles.leadFeat}><i /> Typed modules with declared interfaces</li>
+                <li className={styles.leadFeat}><i /> Objective tests gate every ship</li>
+                <li className={styles.leadFeat}><i /> Adversarial QA before it lands</li>
+                <li className={styles.leadFeat}><i /> Versioned, re-runnable registry asset</li>
+              </ul>
               <div className={styles.modeTag}>software plan → running process</div>
             </div>
             <div className={styles.mode}>
@@ -282,13 +302,13 @@ export function Landing() {
             the judge sandbox against synthetic bank, clinic, and law-firm data.
           </p>
           <div className={styles.ctaRow}>
-            <Link to="/build" className={styles.btnPrimary}>
+            <PlatformLink to="/build" className={styles.btnPrimary}>
               Enter the platform
               <span className={styles.btnCoin}><ArrowRight weight="bold" /></span>
-            </Link>
-            <Link to="/sandbox" className={styles.btnSecondary}>
+            </PlatformLink>
+            <PlatformLink to="/sandbox" className={styles.btnSecondary}>
               Judge sandbox
-            </Link>
+            </PlatformLink>
           </div>
         </div>
       </section>
@@ -302,9 +322,9 @@ export function Landing() {
             </p>
           </div>
           <div className={styles.footerLinks}>
-            <Link className={styles.footerLink} to="/build">Platform</Link>
-            <Link className={styles.footerLink} to="/operations">Operations</Link>
-            <Link className={styles.footerLink} to="/sandbox">Sandbox</Link>
+            <PlatformLink className={styles.footerLink} to="/build">Platform</PlatformLink>
+            <PlatformLink className={styles.footerLink} to="/operations">Operations</PlatformLink>
+            <PlatformLink className={styles.footerLink} to="/sandbox">Sandbox</PlatformLink>
           </div>
         </div>
       </footer>

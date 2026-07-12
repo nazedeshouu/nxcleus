@@ -214,10 +214,12 @@
 .switchOn .knob { transform: translateX(22px); }
 
 @media (max-width: 620px) {
+  /* zones stack; the wall becomes a compact centered crossing indicator between
+     them — aperture, brief, label reading downward. No strike-through line. */
   .stage { grid-template-columns: 1fr; gap: 14px; }
-  .wall { flex-direction: row; min-width: 0; height: 60px; gap: 12px; }
-  .wallLine { top: auto; bottom: auto; left: 8px; right: 8px; height: 2px; width: auto; }
-  .brief { position: static; animation: none; }
+  .wall { min-width: 0; height: auto; gap: 9px; padding: 8px 0; }
+  .wallLine { display: none; }
+  .brief { position: static; animation: none; box-shadow: none; }
   .wallLabel { position: static; }
 }
 @media (prefers-reduced-motion: reduce) {
