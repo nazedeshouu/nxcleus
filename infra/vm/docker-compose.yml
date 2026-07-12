@@ -16,12 +16,10 @@ services:
       - TRACE_PROMPTS=true     # persist full prompt+response per dispatch (LOCAL-only rows) — matches the default, set explicitly so it can't drift off
       # Public URL — derived from the domain (sslip.io now; swap NXCLEUS_DOMAIN to nxcleus.com later).
       - APP_BASE_URL=https://${NXCLEUS_DOMAIN:-localhost}
-      # Login wall (backend auth). Key-only form: value comes from ../../.env (env_file, canonical —
-      # same as every other secret) OR from the deploy shell if exported. Unset in both => the entry
-      # is dropped (Compose v2+), so it never clobbers the .env value. Never commit real values.
-      - AUTH_ADMIN_PASSWORD
-      - AUTH_JUDGE_PASSWORD
-      - AUTH_SECRET
+      # Login wall (backend auth): AUTH_ADMIN_PASSWORD / AUTH_JUDGE_PASSWORD / AUTH_SECRET come from
+      # ../../.env via env_file, same as every other secret. Deliberately NOT listed key-only here:
+      # this VM's compose (v5.2.0) passes absent key-only entries as bare keys that SHADOW/blank the
+      # env_file values — a plain `deploy.sh up` would silently drop the auth wall. Never commit values.
     volumes:
       - platform-data:/data
       # real seat/model/fleet/rates configs (repo infra/) — cwd is /app, so this is found before
