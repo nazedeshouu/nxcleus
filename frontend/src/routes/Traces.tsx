@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Check, Copy, LockKey, Terminal, Wrench, CaretDown, CaretRight, CaretUp,
-  CheckCircle, XCircle, MagnifyingGlass, Brain,
+  CheckCircle, XCircle, MagnifyingGlass, Brain, DownloadSimple,
 } from "@phosphor-icons/react";
 import { api, type ToolInfo, type TraceDetail, type TraceSummary } from "../api/client";
 import { API_BASE, MOCK_FORCED } from "../api/config";
@@ -357,6 +357,10 @@ export function Traces() {
   }, [scope, qc]);
 
   const backTo = scope.startsWith("job:") ? `/build/${scope.slice(4)}` : "/operations";
+  const exportHref = `${API_BASE}/traces/export?${new URLSearchParams({
+    ...(scope ? { scope } : {}),
+    ...(seat ? { seat } : {}),
+  }).toString()}`;
 
   return (
     <div className={styles.wrap}>
@@ -409,6 +413,12 @@ export function Traces() {
             {seats.map((s) => (
               <button key={s} className={`${styles.seatChip} ${seat === s ? styles.on : ""}`} onClick={() => setSeat((cur) => (cur === s ? null : s))}>{s}</button>
             ))}
+            {!MOCK_FORCED && filtered.length > 0 && (
+              <a className={styles.seatChip} href={exportHref} style={{ marginLeft: "auto" }}
+                 title="Download every dispatch on this scope as JSONL (full prompts + responses)">
+                <DownloadSimple weight="bold" style={{ width: 11, verticalAlign: "-1px", marginRight: 4 }} /> Export JSONL
+              </a>
+            )}
           </>
         )}
       </div>
@@ -437,10 +447,13 @@ export function Traces() {
                   <span className={styles.groupModel}>{g.model}</span>
                   <span className={styles.groupCount}>{g.rows.length}×</span>
                 </div>
+                {SEAT_INFO[g.seat]?.purpose && (
+                  <div className={styles.groupWhy}>{SEAT_INFO[g.seat]!.purpose}</div>
+                )}
                 {g.rows.map((t) => (
                   <button key={t.id} className={`${styles.row} ${sel === t.id ? styles.sel : ""}`} onClick={() => setSel(t.id)}>
                     <div className={styles.rowTop}>
-                      <span className={styles.rowTs}>{hhmmss(t.ts)}</span>
+                      <span className={styles.rowTs} title={t.ts}>{hhmmss(t.ts)}</span>
                       <ZoneBadge zone={t.zone as Zone} size="xs" />
                       <span className={styles.rowNums}>
                         <span>{(t.tokens_in + t.tokens_out).toLocaleString()} tok</span>

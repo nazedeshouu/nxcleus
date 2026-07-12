@@ -3,6 +3,7 @@ execute_topology with sql + judgment steps, clarifying intake park/resume."""
 from __future__ import annotations
 
 import asyncio
+import json
 import shutil
 import sqlite3
 
@@ -273,3 +274,39 @@ async def test_abort_stops_the_engine_drive_loop():
     t = engine._tasks.get(job_id)
     assert t is not None and t.done()
     assert (await dao.get_job(job_id))["status"] == "aborted"
+
+
+# ---------------------------------------------------------------- trace JSONL export
+async def test_traces_export_streams_full_rows_as_jsonl():
+    """GET /traces/export round-trips a seeded trace: one JSONL line per row, messages parsed,
+    response + ts + model + seat + tokens/cost/latency + badge all present."""
+    from app.api.traces import export_traces
+
+    msgs = [{"role": "system", "content": "sys"}, {"role": "user", "content": "hi"}]
+    await db.execute(
+        "INSERT INTO model_traces (id, ts, scope, seat, backend, model, zone, messages_json, "
+        "response_text, parsed_ok, tokens_in, tokens_out, cost_usd, latency_ms, badge) VALUES "
+        "(:id, datetime('now'), :scope, 'planner', 'openrouter', 'openai/gpt-5.6-sol', 'EXTERNAL', "
+        ":msgs, 'hello', 1, 10, 5, 0.02, 1234, 'fallback-serving')",
+        {"id": "trace_exp1", "scope": "job:JX", "msgs": json.dumps(msgs)},
+    )
+    # a row on a different scope must NOT leak into a scoped export
+    await db.execute(
+        "INSERT INTO model_traces (id, ts, scope, seat, backend, model, zone, messages_json, "
+        "response_text, parsed_ok, tokens_in, tokens_out, cost_usd, latency_ms, badge) VALUES "
+        "(:id, datetime('now'), 'job:OTHER', 'coder', 'local', 'glm-46', 'LOCAL', '[]', '', 1, "
+        "1, 1, 0.0, 1, 'mock')",
+        {"id": "trace_other"},
+    )
+
+    resp = await export_traces(scope="job:JX")
+    body = "".join([chunk async for chunk in resp.body_iterator])
+    lines = [ln for ln in body.splitlines() if ln.strip()]
+    assert len(lines) == 1, "scope filter should exclude other scopes"
+    row = json.loads(lines[0])
+    assert row["id"] == "trace_exp1" and row["seat"] == "planner"
+    assert row["model"] == "openai/gpt-5.6-sol" and row["zone"] == "EXTERNAL"
+    assert row["response_text"] == "hello" and row["badge"] == "fallback-serving"
+    assert row["tokens_in"] == 10 and row["cost_usd"] == 0.02 and row["latency_ms"] == 1234
+    assert "ts" in row and row["messages"][0]["role"] == "system"
+    assert "messages_json" not in row  # parsed into `messages`, not double-encoded

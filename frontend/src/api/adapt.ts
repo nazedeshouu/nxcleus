@@ -68,16 +68,19 @@ function toStage(v: unknown, fallback: Stage = 0): Stage {
   return fallback;
 }
 
-/** Display model + zone per seat, sourced from infra/models.yaml semantics. */
-export const SEAT_INFO: Record<string, { model: string; zone: Zone }> = {
-  trust: { model: "Gemma-4-26B", zone: "LOCAL" },
-  planner: { model: "Frontier planner", zone: "EXTERNAL" },
-  certifier: { model: "GLM-4.6", zone: "LOCAL" },
-  conductor: { model: "GLM-4.6", zone: "LOCAL" },
-  coder: { model: "Qwen3-Coder", zone: "LOCAL" },
-  consolidator: { model: "GLM-4.6", zone: "LOCAL" },
-  oracle: { model: "Gemma-4-31B", zone: "LOCAL" },
-  inspector: { model: "Gemma-4-31B", zone: "LOCAL" },
+/**
+ * Display model + zone per seat, sourced from infra/models.yaml semantics. `purpose` is the
+ * one-line "why this seat dispatches", surfaced in the trace inspector so each row is legible.
+ */
+export const SEAT_INFO: Record<string, { model: string; zone: Zone; purpose?: string }> = {
+  trust: { model: "Gemma-4-26B", zone: "LOCAL", purpose: "Runs intake, distills the policy, and masks PII at the boundary before anything leaves the box." },
+  planner: { model: "Frontier planner", zone: "EXTERNAL", purpose: "The one external call: compiles the sanitized brief into a decomposed, certifiable plan." },
+  certifier: { model: "GLM-4.6", zone: "LOCAL", purpose: "Certifies the plan — completes it, resolves findings, rehydrates identifiers, sets the goal." },
+  conductor: { model: "GLM-4.6", zone: "LOCAL", purpose: "Reviews each build wave for goal drift and green-flags the next wave." },
+  coder: { model: "Qwen3-Coder", zone: "LOCAL", purpose: "Writes one module's SQL/tool code and applies defect fixes." },
+  consolidator: { model: "GLM-4.6", zone: "LOCAL", purpose: "Merges the built modules and runs the consolidated test suite." },
+  oracle: { model: "Gemma-4-31B", zone: "LOCAL", purpose: "Independently recomputes each QA/run vector to score correctness (k-vote majority)." },
+  inspector: { model: "Gemma-4-31B", zone: "LOCAL", purpose: "Runs adversarial QA probes and the goal-fulfillment check." },
 };
 const seatModel = (s: string) => SEAT_INFO[s]?.model ?? s;
 const seatZone = (s: string): Zone => SEAT_INFO[s]?.zone ?? "LOCAL";

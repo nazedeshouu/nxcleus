@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.db.engine import db
 
@@ -32,6 +33,37 @@ async def list_traces(scope: str | None = None, seat: str | None = None,
         row["response_preview"] = (row.pop("response_text") or "")[:200]
         out.append(row)
     return {"traces": out}
+
+
+@router.get("/traces/export")
+async def export_traces(scope: str | None = None, seat: str | None = None) -> StreamingResponse:
+    """Stream every full trace row for a scope as JSONL (messages + response + ts/model/seat/
+    tokens/cost/latency/badge). Read-only, same LOCAL-only visibility as the other GETs — declared
+    before /traces/{trace_id} so 'export' isn't swallowed as an id."""
+    where, params = [], {}
+    if scope:
+        where.append("scope = :scope")
+        params["scope"] = scope
+    if seat:
+        where.append("seat = :seat")
+        params["seat"] = seat
+    sql = ("SELECT * FROM model_traces" + (" WHERE " + " AND ".join(where) if where else "")
+           + " ORDER BY ts, id")
+    # ponytail: a scope's traces are bounded (one job/run); fetchall is fine, no cursor streaming.
+    rows = await db.fetchall(sql, params)
+
+    async def gen():
+        for r in rows:
+            row = dict(r)
+            try:
+                row["messages"] = json.loads(row.pop("messages_json", None) or "[]")
+            except json.JSONDecodeError:
+                row["messages"] = []
+            yield json.dumps(row, ensure_ascii=False) + "\n"
+
+    fname = f"traces-{(scope or 'all')}.jsonl".replace(":", "_").replace("/", "_")
+    return StreamingResponse(gen(), media_type="application/x-ndjson",
+                             headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @router.get("/tools")

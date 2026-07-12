@@ -160,6 +160,12 @@
   font-size: 0.6rem;
   color: var(--text-faint);
 }
+.groupWhy {
+  padding: 0 4px 7px;
+  font-size: 0.64rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
 
 .row {
   text-align: left;
