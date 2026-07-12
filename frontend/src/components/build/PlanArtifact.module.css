@@ -1,0 +1,246 @@
+/* Plan artifact — the persisted work order, shown inside a cockpit Panel. Reads back richer than
+   the live PlanPanel: modules/steps with their generated sql, prompt specs, interfaces, BoM. */
+
+.tag { font-family: var(--font-mono); text-transform: none; }
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--ink);
+}
+.stat svg { width: 14px; height: 14px; color: var(--accent); }
+.stat em { color: var(--text-muted); font-style: normal; }
+
+.section { display: flex; flex-direction: column; gap: 10px; }
+.unitLine { font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: 2px; }
+.unitLine b { color: var(--ink); font-weight: 600; }
+
+.list { display: flex; flex-direction: column; gap: 6px; }
+
+.item {
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 11px;
+  cursor: pointer;
+}
+.itemHead:disabled { cursor: default; }
+.itemHead > svg { width: 11px; height: 11px; flex: none; color: var(--text-faint); }
+.dot { width: 4px; height: 4px; border-radius: 50%; background: var(--hairline); flex: none; margin: 0 3px; }
+.itemName {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cx {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunk);
+  color: var(--text-muted);
+  flex: none;
+}
+.perUnit {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-strong);
+  flex: none;
+}
+.kind {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  flex: none;
+}
+.kSql { background: var(--accent-wash); color: var(--accent-strong); }
+.kAnalysis { background: var(--zone-custom, var(--surface-sunk)); color: #fff; }
+.kJudge { background: var(--ok-wash); color: var(--ok); }
+
+.flags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.flag {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  color: var(--text-muted);
+}
+
+.itemPurpose {
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+  padding: 0 11px 9px 30px;
+  margin: 0;
+}
+.itemBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 11px 11px 30px;
+}
+.wires {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+.wires b { color: var(--accent-strong); font-weight: 600; margin-right: 4px; }
+
+.subLabelWrap { display: flex; flex-direction: column; gap: 4px; }
+.subLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+.subLabel svg { width: 12px; height: 12px; }
+
+.code {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border-radius: var(--r-xs);
+  background: var(--surface-sunk);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+}
+.assume {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.assume li { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.5; }
+
+.ifaces { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.ifaceRow { display: flex; flex-wrap: wrap; gap: 5px; }
+.iface {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  padding: 2px 8px;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.more {
+  align-self: flex-start;
+  font-size: var(--fs-xs);
+  color: var(--accent-strong);
+  padding: 4px 0;
+  margin-top: 2px;
+}
+.more:hover { text-decoration: underline; }
+
+.bom {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline-soft);
+}
+.bomRow {
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.bomSeat {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+.bomMid { min-width: 0; }
+.bomModel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink);
+}
+.bomWhy {
+  font-size: 0.66rem;
+  color: var(--text-faint);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bomCount { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink); }
+
+.risks {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.risks li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.risks svg { width: 13px; height: 13px; color: var(--warn); flex: none; margin-top: 2px; }
+
+.transcript {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 8px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  color: var(--accent-strong);
+  transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.transcript:hover { border-color: var(--accent); background: var(--accent-wash); }
+.transcript svg { width: 13px; height: 13px; }

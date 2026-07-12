@@ -13,6 +13,7 @@ import { IntakePanel } from "../components/build/IntakePanel";
 import { ClarifyPanel } from "../components/build/ClarifyPanel";
 import { StageGate } from "../components/build/StageGate";
 import { PlanPanel } from "../components/build/PlanPanel";
+import { PlanArtifact } from "../components/build/PlanArtifact";
 import { CertifyPanel } from "../components/build/CertifyPanel";
 import { AuditRail } from "../components/build/AuditRail";
 import { WaveBoard } from "../components/build/WaveBoard";
@@ -60,6 +61,7 @@ export function CockpitFrame({ view, top, jobId, completion }: { view: JobView; 
           <StageGate view={view} jobId={jobId} />
           <IntakePanel view={view} />
           <PlanPanel view={view} />
+          <PlanArtifact jobId={jobId} />
           <CertifyPanel view={view} />
           <WaveBoard view={view} />
           <ValidationWall view={view} />

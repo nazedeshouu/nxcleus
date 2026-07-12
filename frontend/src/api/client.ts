@@ -233,6 +233,68 @@ export interface ToolInfo {
   model?: string;
 }
 
+/* ---------- plan artifact (persisted plan body_json, exposed by GET /jobs/{id}/plan) ---------- */
+export interface PlanModule {
+  id: string;
+  name?: string;
+  purpose?: string;
+  algorithm?: string;
+  complexity?: "S" | "M" | "L";
+  consumes?: string[];
+  provides?: string[];
+  task_flags?: string[];
+  assumptions?: string[];
+  model?: string | null;
+}
+export interface PlanInterface {
+  id: string;
+  producer?: string;
+  consumers?: string[];
+  schema?: Record<string, unknown>;
+}
+export interface PlanStep {
+  id: string;
+  seat?: string | null;
+  per_unit?: boolean;
+  kind?: string | null; // "sql" | "analysis" | judgment (null)
+  sql?: string | null;
+  label?: string;
+  purpose?: string | null;
+  prompt_spec?: string;
+  task_flags?: string[];
+}
+export interface PlanBomSeat {
+  seat: string;
+  count?: number;
+  why?: string;
+  sampling?: number | null;
+}
+export interface PlanBody {
+  plan_id?: string;
+  job_id?: string;
+  version?: number;
+  mode?: string; // build | process | semi
+  modules?: PlanModule[];
+  interfaces?: PlanInterface[];
+  dag?: Array<{ task: string; module?: string; deps?: string[] }>;
+  topology?: {
+    unit?: { noun?: string; source?: string; schema?: Record<string, unknown> };
+    steps?: PlanStep[];
+  } | null;
+  model_bom?: {
+    seats?: PlanBomSeat[];
+    fleet?: { profile?: string; nodes?: number; parallel_width?: number };
+    conductor?: unknown;
+  };
+  estimates?: { frontier_tokens?: number; local_tokens?: number; gpu_hours?: number };
+  risks?: string[];
+}
+export interface JobPlan {
+  plan: PlanBody | null;
+  amendments?: unknown[];
+  consults?: unknown[];
+}
+
 export interface EgressRow {
   id: string;
   ts: string;
@@ -356,6 +418,8 @@ export const api = {
   traces: (params?: { scope?: string; seat?: string; limit?: number; offset?: number }) =>
     req<{ traces: TraceSummary[] }>(`/traces${qs(params)}`),
   trace: (id: string) => req<{ trace: TraceDetail }>(`/traces/${id}`).then((r) => r.trace),
+  /** Persisted plan body (body_json) + amendments/consults — 404 until stage 1 certifies a plan. */
+  plan: (jobId: string) => req<JobPlan>(`/jobs/${jobId}/plan`),
 
   /* runtime-commissioned tools (F7) */
   tools: (scope?: string) => req<{ tools: ToolInfo[] }>(`/tools${qs({ scope })}`),
@@ -381,6 +445,14 @@ export const api = {
     req<unknown>(`/connections/${id}/models`, { method: "POST", body: JSON.stringify(body), demo: true }),
   bindSeat: (seat: string, body: { model_key: string; scope?: string }) =>
     req<unknown>(`/seats/${seat}/binding`, { method: "PUT", body: JSON.stringify(body), demo: true }),
+  unbindSeat: (seat: string, scope = "global") =>
+    req<unknown>(`/seats/${seat}/binding?scope=${encodeURIComponent(scope)}`, { method: "DELETE", demo: true }),
+  /** Extract editable policy text from an uploaded PDF/image (feeds the composer's policy_text). */
+  extractPolicy: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return req<{ text: string; kind: string; name: string; chars: number }>("/policies/extract", { method: "POST", body: fd, demo: true });
+  },
 
   /* sandbox */
   sandboxCompanies: () => req<{ companies: CompanySummary[] }>("/sandbox/companies"),

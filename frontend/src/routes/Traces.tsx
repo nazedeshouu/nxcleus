@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, Copy, LockKey, Terminal, Wrench, CaretDown, CaretRight, CheckCircle, XCircle } from "@phosphor-icons/react";
+import {
+  ArrowLeft, Check, Copy, LockKey, Terminal, Wrench, CaretDown, CaretRight, CaretUp,
+  CheckCircle, XCircle, MagnifyingGlass, Brain,
+} from "@phosphor-icons/react";
 import { api, type ToolInfo, type TraceDetail, type TraceSummary } from "../api/client";
 import { API_BASE, MOCK_FORCED } from "../api/config";
 import { openEventStream } from "../api/sse";
 import { ZoneBadge } from "../components/ui/ZoneBadge";
 import { DataClassChip } from "../components/ui/DataClassChip";
+import { SEAT_INFO } from "../api/adapt";
 import { usePublicConfig } from "../components/shell/usePublicConfig";
 import { usd } from "../lib/format";
 import type { Zone } from "../lib/events";
@@ -39,67 +43,185 @@ function parseMessages(detail: TraceDetail): Array<{ role: string; content: stri
   );
 }
 
-function CopyBtn({ text }: { text: string }) {
+const hhmmss = (ts?: string) => ts?.slice(11, 19) ?? "";
+const secs = (ms?: number | null) => (ms != null ? `${(ms / 1000).toFixed(1)}s` : "");
+const modelOf = (t: TraceSummary) => t.model ?? SEAT_INFO[t.seat]?.model ?? t.backend;
+
+/** Pull <think>/<reasoning> spans out of an assistant reply so they render as a distinct block. */
+function splitReasoning(text: string): { reasoning: string[]; body: string } {
+  const reasoning: string[] = [];
+  const body = text
+    .replace(/<(think|reasoning|thinking)>([\s\S]*?)<\/\1>/gi, (_all, _tag, inner: string) => {
+      const t = inner.trim();
+      if (t) reasoning.push(t);
+      return "";
+    })
+    .trim();
+  return { reasoning, body };
+}
+
+/* ---------- lightweight, dependency-free markdown (code fences + json + inline) ---------- */
+function inlineMd(text: string, k: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  const re = /(`[^`]+`|\*\*[^*]+\*\*)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const tok = m[0];
+    if (tok.startsWith("`")) out.push(<code key={`${k}i${i}`} className={styles.inlineCode}>{tok.slice(1, -1)}</code>);
+    else out.push(<strong key={`${k}i${i}`}>{tok.slice(2, -2)}</strong>);
+    last = m.index + tok.length;
+    i++;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+function Prose({ text }: { text: string }) {
+  const lines = text.replace(/\n{3,}/g, "\n\n").split("\n");
+  return (
+    <>
+      {lines.map((ln, i) => {
+        const h = /^(#{1,3})\s+(.*)/.exec(ln);
+        if (h) return <div key={i} className={styles.mdH}>{inlineMd(h[2], `h${i}`)}</div>;
+        const b = /^\s*[-*]\s+(.*)/.exec(ln);
+        if (b) return <div key={i} className={styles.mdLi}>{inlineMd(b[1], `b${i}`)}</div>;
+        if (!ln.trim()) return <div key={i} className={styles.mdBr} />;
+        return <div key={i} className={styles.mdP}>{inlineMd(ln, `p${i}`)}</div>;
+      })}
+    </>
+  );
+}
+
+function Markdown({ text }: { text: string }) {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      return <pre className={styles.code}>{JSON.stringify(JSON.parse(trimmed), null, 2)}</pre>;
+    } catch {
+      /* not JSON — fall through to prose/code-fence rendering */
+    }
+  }
+  const parts = trimmed.split(/```(\w*)\n?([\s\S]*?)```/g);
+  const out: ReactNode[] = [];
+  for (let i = 0; i < parts.length; i += 3) {
+    const prose = parts[i];
+    if (prose && prose.trim()) out.push(<Prose key={`p${i}`} text={prose} />);
+    const code = parts[i + 2];
+    if (code != null) {
+      const lang = parts[i + 1];
+      out.push(
+        <pre key={`c${i}`} className={styles.code}>
+          {lang ? <span className={styles.codeLang}>{lang}</span> : null}
+          {code.replace(/\n$/, "")}
+        </pre>,
+      );
+    }
+  }
+  return <div className={styles.md}>{out}</div>;
+}
+
+function CopyBtn({ text, label }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
   return (
     <button
       className={styles.copy}
-      title="Copy"
-      onClick={() => {
+      title={label ? `Copy ${label}` : "Copy"}
+      onClick={(e) => {
+        e.stopPropagation();
         navigator.clipboard?.writeText(text).catch(() => undefined);
         setDone(true);
         setTimeout(() => setDone(false), 1200);
       }}
     >
       {done ? <Check weight="bold" /> : <Copy weight="regular" />}
+      {label && <span>{done ? "copied" : label}</span>}
     </button>
   );
 }
 
-function TracePane({ id }: { id: string }) {
+function MessageBlock({ role, content }: { role: string; content: string }) {
+  const isSystem = role === "system" || role === "developer";
+  const isAssistant = role === "assistant" || role === "response";
+  const [open, setOpen] = useState(!isSystem); // system prompts collapsed by default (long, stable)
+  const { reasoning, body } = isAssistant ? splitReasoning(content) : { reasoning: [], body: content };
+
+  return (
+    <div className={`${styles.msg} ${styles[`m_${role}`] ?? ""}`}>
+      <button className={styles.msgHead} onClick={() => setOpen((o) => !o)}>
+        {isSystem && (open ? <CaretDown weight="bold" className={styles.msgCaret} /> : <CaretRight weight="bold" className={styles.msgCaret} />)}
+        <span className={styles.msgRole}>{role}</span>
+        {isSystem && !open && <span className={styles.msgHint}>{content.length.toLocaleString()} chars — click to expand</span>}
+        <CopyBtn text={content} />
+      </button>
+      {open && (
+        <div className={styles.msgBody}>
+          {reasoning.map((r, i) => (
+            <div key={i} className={styles.reasoning}>
+              <span className={styles.reasoningTag}><Brain weight="fill" /> reasoning</span>
+              <Prose text={r} />
+            </div>
+          ))}
+          <Markdown text={body} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TracePane({
+  id, pos, onPrev, onNext, hasPrev, hasNext,
+}: {
+  id: string;
+  pos: string;
+  onPrev: () => void;
+  onNext: () => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+}) {
   const q = useQuery({ queryKey: ["trace", id], queryFn: () => api.trace(id), retry: 0 });
   const t = q.data;
   if (q.isLoading) return <div className={styles.paneEmpty}>Loading trace…</div>;
   if (!t) return <div className={styles.paneEmpty}>Trace unavailable.</div>;
   const messages = parseMessages(t);
   const parsedOk = t.badge === "parsed_ok" || t.badge?.includes("ok");
+  const rawAll = [
+    ...messages.map((m) => `### ${m.role}\n${m.content}`),
+    t.response_text ? `### response\n${t.response_text}` : "",
+  ].filter(Boolean).join("\n\n");
 
   return (
     <div className={styles.pane}>
       <div className={styles.paneHead}>
         <div className={styles.paneMeta}>
-          <span className={styles.seatArrow}>{t.seat} → {t.model ?? t.backend}</span>
+          <span className={styles.seatArrow}>{t.seat} → {modelOf(t)}</span>
           <ZoneBadge zone={t.zone as Zone} size="xs" />
           {t.badge && <span className={`${styles.badge} ${parsedOk ? styles.badgeOk : ""}`}>{t.badge}</span>}
         </div>
-        <div className={styles.paneNums}>
-          <span>{t.tokens_in.toLocaleString()} in</span>
-          <span>{t.tokens_out.toLocaleString()} out</span>
-          <span>{usd(t.cost_usd)}</span>
-          {t.latency_ms != null && <span>{(t.latency_ms / 1000).toFixed(1)}s</span>}
+        <div className={styles.paneRight}>
+          <div className={styles.paneNums}>
+            <span>{t.tokens_in.toLocaleString()} in</span>
+            <span>{t.tokens_out.toLocaleString()} out</span>
+            <span>{usd(t.cost_usd)}</span>
+            {t.latency_ms != null && <span>{secs(t.latency_ms)}</span>}
+          </div>
+          <CopyBtn text={rawAll} label="all" />
+          <div className={styles.nav}>
+            <button className={styles.navBtn} onClick={onPrev} disabled={!hasPrev} title="Previous (↑)"><CaretUp weight="bold" /></button>
+            <span className={styles.navPos}>{pos}</span>
+            <button className={styles.navBtn} onClick={onNext} disabled={!hasNext} title="Next (↓)"><CaretDown weight="bold" /></button>
+          </div>
         </div>
       </div>
 
       <div className={styles.msgs}>
-        {messages.length === 0 && <div className={styles.paneEmpty}>No message payload on this trace.</div>}
-        {messages.map((m, i) => (
-          <div className={`${styles.msg} ${styles[`m_${m.role}`] ?? ""}`} key={i}>
-            <div className={styles.msgHead}>
-              <span className={styles.msgRole}>{m.role}</span>
-              <CopyBtn text={m.content} />
-            </div>
-            <pre className={styles.msgBody}>{m.content}</pre>
-          </div>
-        ))}
-        {t.response_text && (
-          <div className={`${styles.msg} ${styles.m_assistant}`}>
-            <div className={styles.msgHead}>
-              <span className={styles.msgRole}>response</span>
-              <CopyBtn text={t.response_text} />
-            </div>
-            <pre className={styles.msgBody}>{t.response_text}</pre>
-          </div>
+        {messages.length === 0 && !t.response_text && (
+          <div className={styles.paneEmpty}>No message payload on this trace.</div>
         )}
+        {messages.map((m, i) => <MessageBlock key={i} role={m.role} content={m.content} />)}
+        {t.response_text && <MessageBlock role="response" content={t.response_text} />}
       </div>
     </div>
   );
@@ -132,7 +254,7 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
                 <span className={styles.msgRole}>args schema</span>
                 <CopyBtn text={JSON.stringify(tool.args_schema, null, 2)} />
               </div>
-              <pre className={styles.msgBody}>{JSON.stringify(tool.args_schema, null, 2)}</pre>
+              <pre className={styles.code}>{JSON.stringify(tool.args_schema, null, 2)}</pre>
             </div>
           )}
           {tool.code && (
@@ -141,7 +263,7 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
                 <span className={styles.msgRole}>code</span>
                 <CopyBtn text={tool.code} />
               </div>
-              <pre className={styles.msgBody}>{tool.code}</pre>
+              <pre className={styles.code}>{tool.code}</pre>
             </div>
           )}
         </div>
@@ -153,9 +275,11 @@ function ToolCard({ tool }: { tool: ToolInfo }) {
 export function Traces() {
   const [params] = useSearchParams();
   const scope = params.get("scope") ?? "";
+  const seatParam = params.get("seat");
   const { config } = usePublicConfig();
   const qc = useQueryClient();
-  const [seat, setSeat] = useState<string | null>(null);
+  const [seat, setSeat] = useState<string | null>(seatParam);
+  const [search, setSearch] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [tab, setTab] = useState<"dispatches" | "tools">("dispatches");
 
@@ -174,8 +298,50 @@ export function Traces() {
   });
   const tools = toolsQ.data?.tools ?? [];
   const all = useMemo(() => listQ.data?.traces ?? [], [listQ.data]);
-  const seats = useMemo(() => [...new Set(all.map((t) => t.seat))], [all]);
-  const traces = seat ? all.filter((t) => t.seat === seat) : all;
+  // chronological (oldest first) reads like a transcript and defines prev/next order
+  const chrono = useMemo(() => [...all].sort((a, b) => (a.ts ?? "").localeCompare(b.ts ?? "")), [all]);
+  const seats = useMemo(() => [...new Set(chrono.map((t) => t.seat))], [chrono]);
+
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return chrono.filter((t) => {
+      if (seat && t.seat !== seat) return false;
+      if (!needle) return true;
+      return (
+        t.seat.toLowerCase().includes(needle) ||
+        modelOf(t).toLowerCase().includes(needle) ||
+        (t.messages_preview ?? "").toLowerCase().includes(needle) ||
+        (t.response_preview ?? "").toLowerCase().includes(needle)
+      );
+    });
+  }, [chrono, seat, search]);
+
+  // group the filtered list by seat, preserving chronological order of first appearance
+  const groups = useMemo(() => {
+    const map = new Map<string, TraceSummary[]>();
+    for (const t of filtered) (map.get(t.seat) ?? map.set(t.seat, []).get(t.seat)!).push(t);
+    return [...map.entries()].map(([s, rows]) => ({ seat: s, model: modelOf(rows[0]), rows }));
+  }, [filtered]);
+
+  const selIdx = filtered.findIndex((t) => t.id === sel);
+  const go = (delta: number) => {
+    if (!filtered.length) return;
+    const next = selIdx < 0 ? 0 : Math.min(Math.max(selIdx + delta, 0), filtered.length - 1);
+    setSel(filtered[next].id);
+  };
+
+  // keyboard prev/next over the filtered list (ignore when typing in the search box)
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (tab !== "dispatches") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (document.activeElement === searchRef.current) return;
+      if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); go(1); }
+      else if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); go(-1); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   // live-append: model.trace / tool.created on the active scope refresh the lists
   useEffect(() => {
@@ -200,7 +366,7 @@ export function Traces() {
         <div>
           <h1 className={styles.title}><Terminal weight="bold" /> Trace inspector</h1>
           <p className={styles.sub}>
-            Every model dispatch: exact prompts, responses, tokens, cost, latency.
+            Every model dispatch: exact prompts, responses, reasoning, tokens, cost, latency.
           </p>
         </div>
         <span className={styles.localNote}>
@@ -229,9 +395,19 @@ export function Traces() {
         )}
         {tab === "dispatches" && (
           <>
+            <div className={styles.searchWrap}>
+              <MagnifyingGlass weight="bold" />
+              <input
+                ref={searchRef}
+                className={styles.search}
+                placeholder="Search prompts, responses, models…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
             <button className={`${styles.seatChip} ${seat == null ? styles.on : ""}`} onClick={() => setSeat(null)}>all seats</button>
             {seats.map((s) => (
-              <button key={s} className={`${styles.seatChip} ${seat === s ? styles.on : ""}`} onClick={() => setSeat(s)}>{s}</button>
+              <button key={s} className={`${styles.seatChip} ${seat === s ? styles.on : ""}`} onClick={() => setSeat((cur) => (cur === s ? null : s))}>{s}</button>
             ))}
           </>
         )}
@@ -242,39 +418,60 @@ export function Traces() {
           {tools.map((t) => <ToolCard key={t.id} tool={t} />)}
         </div>
       ) : (
-      <div className={styles.split}>
-        <div className={styles.list}>
-          {listQ.isLoading && <div className={styles.paneEmpty}>Loading traces…</div>}
-          {!listQ.isLoading && traces.length === 0 && (
-            <div className={styles.paneEmpty}>
-              {MOCK_FORCED
-                ? "Trace capture needs the live backend — fixtures don't carry prompts."
-                : "No traces recorded for this scope yet. They appear per model dispatch, live."}
-            </div>
-          )}
-          {traces.map((t: TraceSummary) => (
-            <button key={t.id} className={`${styles.row} ${sel === t.id ? styles.sel : ""}`} onClick={() => setSel(t.id)}>
-              <div className={styles.rowTop}>
-                <span className={styles.seatArrow}>{t.seat} → {t.model ?? t.backend}</span>
-                <span className={styles.rowTs}>{t.ts?.slice(11, 19)}</span>
+        <div className={styles.split}>
+          <div className={styles.list}>
+            {listQ.isLoading && <div className={styles.paneEmpty}>Loading traces…</div>}
+            {!listQ.isLoading && filtered.length === 0 && (
+              <div className={styles.paneEmpty}>
+                {MOCK_FORCED
+                  ? "Trace capture needs the live backend — fixtures don't carry prompts."
+                  : search || seat
+                    ? "No dispatches match this filter."
+                    : "No traces recorded for this scope yet. They appear per model dispatch, live."}
               </div>
-              <div className={styles.rowNums}>
-                <ZoneBadge zone={t.zone as Zone} size="xs" />
-                <span>{t.tokens_in.toLocaleString()}→{t.tokens_out.toLocaleString()} tok</span>
-                <span>{usd(t.cost_usd)}</span>
-                <span>{t.latency_ms != null ? `${(t.latency_ms / 1000).toFixed(1)}s` : ""}</span>
+            )}
+            {groups.map((g) => (
+              <div key={g.seat} className={styles.group}>
+                <div className={styles.groupHead}>
+                  <span className={styles.groupSeat}>{g.seat}</span>
+                  <span className={styles.groupModel}>{g.model}</span>
+                  <span className={styles.groupCount}>{g.rows.length}×</span>
+                </div>
+                {g.rows.map((t) => (
+                  <button key={t.id} className={`${styles.row} ${sel === t.id ? styles.sel : ""}`} onClick={() => setSel(t.id)}>
+                    <div className={styles.rowTop}>
+                      <span className={styles.rowTs}>{hhmmss(t.ts)}</span>
+                      <ZoneBadge zone={t.zone as Zone} size="xs" />
+                      <span className={styles.rowNums}>
+                        <span>{(t.tokens_in + t.tokens_out).toLocaleString()} tok</span>
+                        <span>{usd(t.cost_usd)}</span>
+                        {t.latency_ms != null && <span>{secs(t.latency_ms)}</span>}
+                      </span>
+                    </div>
+                    {(t.messages_preview || t.response_preview) && (
+                      <div className={styles.rowPrev}>{t.messages_preview ?? t.response_preview}</div>
+                    )}
+                  </button>
+                ))}
               </div>
-              {(t.messages_preview || t.response_preview) && (
-                <div className={styles.rowPrev}>{t.messages_preview ?? t.response_preview}</div>
-              )}
-            </button>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className={styles.detail}>
-          {sel ? <TracePane id={sel} /> : <div className={styles.paneEmpty}>Select a dispatch to read its full prompt and response.</div>}
+          <div className={styles.detail}>
+            {sel ? (
+              <TracePane
+                id={sel}
+                pos={selIdx >= 0 ? `${selIdx + 1} / ${filtered.length}` : ""}
+                onPrev={() => go(-1)}
+                onNext={() => go(1)}
+                hasPrev={selIdx > 0}
+                hasNext={selIdx >= 0 && selIdx < filtered.length - 1}
+              />
+            ) : (
+              <div className={styles.paneEmpty}>Select a dispatch to read its full prompt, reasoning, and response. Use ↑/↓ to move between dispatches.</div>
+            )}
+          </div>
         </div>
-      </div>
       )}
     </div>
   );
