@@ -12,6 +12,13 @@ from app.config import REPO_ROOT
 _SEEDS_DIR = REPO_ROOT / "infra" / "seeds" / "out"
 
 
+def builtin_corpus_present() -> bool:
+    """True if the builtin seed corpus shipped (any out/*.db). The seed DBs are gitignored and the
+    VM is a working-tree rsync, so a bad deploy can land here with an empty out/ — the boot check and
+    /health surface that instead of every table silently browsing empty."""
+    return _SEEDS_DIR.is_dir() and any(_SEEDS_DIR.glob("*.db"))
+
+
 def _custom_db_path(dataset_id: str) -> Path | None:
     """Sync read of a custom dataset's db_path from the platform-DB registry (BYOD). Read-only so
     it's safe against the async writer; falls through (None) when the table/row/file is absent."""

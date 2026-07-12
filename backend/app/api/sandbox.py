@@ -142,17 +142,20 @@ async def company_terms(company_id: str) -> dict:
 
 
 @router.get("/sandbox/companies/{company_id}/tables/{table}")
-async def browse_table(company_id: str, table: str, page: int = 0, page_size: int = 50) -> dict:
+async def browse_table(company_id: str, table: str, page: int = 1, page_size: int = 50) -> dict:
     from app.sandbox import seeds
     db_path = seeds.seed_db_path(company_id)      # resolves builtins AND custom BYOD datasets
     if db_path is None:
         return {"rows": [], "seeded": False}
     if not table.isidentifier():
         raise _err(400, "invalid table name")
+    # ponytail: page is 1-indexed (the only caller — the frontend DataBrowser — starts at page 1);
+    # clamp so page<=1 (and a stray 0) both mean the first page → OFFSET 0, not 50.
+    offset = max(page - 1, 0) * page_size
     con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     try:
-        cur = con.execute(f'SELECT * FROM "{table}" LIMIT ? OFFSET ?', (page_size, page * page_size))
+        cur = con.execute(f'SELECT * FROM "{table}" LIMIT ? OFFSET ?', (page_size, offset))
         rows = [dict(r) for r in cur.fetchall()]
     finally:
         con.close()

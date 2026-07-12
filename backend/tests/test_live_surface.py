@@ -149,3 +149,22 @@ async def test_staging_shim_serves_real_http(tmp_path):
                     ).status_code == 422  # missing required field
     finally:
         await h.stop()
+
+
+# ── sandbox pagination: page is 1-indexed; page 1 must be the FIRST page (regression) ──────────
+# Two user-reported bugs had one root cause: the frontend DataBrowser starts at page 1, the API
+# computed OFFSET = page*page_size, so page 1 => OFFSET 50. Big tables "started at id 51"; small
+# tables (ledger.entities has 20 rows) fell off the end and browsed EMPTY ("Aldgate has no entities").
+@pytest.mark.asyncio
+async def test_sandbox_browse_page1_is_first_page():
+    from app.api.sandbox import browse_table
+    from app.sandbox.seeds import builtin_corpus_present
+    if not builtin_corpus_present():
+        pytest.skip("seed corpus not generated (infra/seeds/out/*.db)")
+    page1 = await browse_table("ledger", "entities", page=1)
+    rows = page1["rows"]
+    assert rows, "ledger.entities page 1 came back empty — off-by-a-page offset regressed"
+    assert rows[0]["id"] == 1, f"page 1 should start at id 1, got {rows[0]['id']}"
+    assert len(rows) == 20, f"ledger.entities has 20 rows, page 1 returned {len(rows)}"
+    # page 0 clamps to the first page too (defensive), not a negative offset
+    assert (await browse_table("ledger", "entities", page=0))["rows"][0]["id"] == 1

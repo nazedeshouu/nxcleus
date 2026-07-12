@@ -143,7 +143,7 @@ function DataBrowser({ companyId }: { companyId: string }) {
               <CaretLeft weight="bold" style={{ width: 11, verticalAlign: "-1px" }} /> prev
             </button>
             <span className={styles.pagerInfo}>page {page}</span>
-            <button className={styles.pagerBtn} disabled={rows.length < 25} onClick={() => setPage((p) => p + 1)}>
+            <button className={styles.pagerBtn} disabled={rows.length < 50} onClick={() => setPage((p) => p + 1)}>
               next <CaretRight weight="bold" style={{ width: 11, verticalAlign: "-1px" }} />
             </button>
           </div>

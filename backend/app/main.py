@@ -19,6 +19,7 @@ from app.api import (
     economics,
     fleet,
     jobs,
+    policies,
     processes,
     proxy,
     runs,
@@ -40,6 +41,15 @@ async def lifespan(app: FastAPI):
         import sys
         print("[auth] WARNING: ADMIN_TOKEN is empty in non-mock mode — every demo/admin write "
               "endpoint is OPEN. Set a real token before judging.", file=sys.stderr)
+    # ponytail: corpus is ~660MB (a 655k-row table) — regenerating on boot is minutes, well over the
+    # 2-min auto-gen bar, so we only warn + surface it on /health; regen stays the deploy-time step.
+    from app.sandbox.seeds import builtin_corpus_present
+    if not builtin_corpus_present():
+        import sys
+        print("[corpus] WARNING: no seed DBs under infra/seeds/out/ — every sandbox table will browse "
+              "EMPTY. The DBs are gitignored; a plain working-tree rsync must include out/*.db, or run "
+              "`python scripts/seed.py` on the host. GET /api/health reports corpus:'missing'.",
+              file=sys.stderr)
     await db.connect()
     await db.apply_schema()
     await engine.start()
@@ -66,7 +76,7 @@ def create_app() -> FastAPI:
 
     for r in (jobs.router, processes.router, runs.router, fleet.router, sandbox.router,
               admin.router, economics.router, connections.router, datasets.router,
-              proxy.router, traces.router):
+              policies.router, proxy.router, traces.router):
         app.include_router(r, prefix="/api")
 
     @app.exception_handler(StarletteHTTPException)
@@ -96,7 +106,9 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     async def health() -> dict:
-        return {"status": "ok", "app": settings.app_name, "model_mode": settings.model_mode}
+        from app.sandbox.seeds import builtin_corpus_present
+        return {"status": "ok", "app": settings.app_name, "model_mode": settings.model_mode,
+                "corpus": "ok" if builtin_corpus_present() else "missing"}
 
     @app.get("/api/config/public")
     async def config_public() -> dict:

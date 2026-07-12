@@ -47,6 +47,11 @@ needs no edit (it reads `{$NXCLEUS_DOMAIN}`).
   public URL or `docker compose exec`.
 - `MODEL_MODE=auto`: real backends when a fleet node is registered + healthy or keys are present,
   else MockClient (badged). `mock` = fully offline; `live` = require real backends.
+- **Seed corpus must ship.** `infra/seeds/out/*.db` are **gitignored** (300MB+) but the sandbox needs
+  them — with an empty `out/` every company table browses empty. The working-tree rsync includes
+  them by default; do **not** pass `--exclude-from=.gitignore` / `--filter=':- .gitignore'` or they
+  get dropped. Verify after deploy: `curl -s https://$NXCLEUS_DOMAIN/api/health` reports
+  `"corpus":"ok"` (or `"missing"`); if missing, regen on the host with `python scripts/seed.py`.
 
 ## `.env` on the VM (secrets — scp'd to `/root/nxcleus/.env`, never committed)
 
