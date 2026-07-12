@@ -20,10 +20,12 @@ import wedgeImg from "../assets/img/wedge-dark.webp";
 import fieldImg from "../assets/img/field-light.webp";
 import styles from "./Landing.module.css";
 
-// The platform app deploys separately at amdplatform.nxcleus.tech; in dev it is
-// this same SPA, so keep in-app <Link> routing for local work and hand off to the
-// platform host in production. ponytail: env switch, no router coupling.
-const PLATFORM_ORIGIN = import.meta.env.PROD ? "https://amdplatform.nxcleus.tech" : "";
+// The platform app deploys separately at amdplatform.nxcleus.tech, but ONLY the
+// dedicated landing host hands off cross-origin — on every other host (nxcleus.tech,
+// sslip, localhost) this same SPA serves the platform routes, so stay in-app.
+// Runtime host check, not a build-time flag: one bundle serves all hosts.
+const CROSS_HOST = typeof window !== "undefined" && window.location.hostname === "amd.nxcleus.tech";
+const PLATFORM_ORIGIN = CROSS_HOST ? "https://amdplatform.nxcleus.tech" : "";
 
 function PlatformLink({ to, className, children }: { to: string; className?: string; children: ReactNode }) {
   return PLATFORM_ORIGIN ? (
