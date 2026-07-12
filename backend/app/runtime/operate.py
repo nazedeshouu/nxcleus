@@ -207,6 +207,10 @@ async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topolo
                 units = new_units
                 sql_rows = len(units)
 
+    # visible-zero backstop: a candidate step that ran but surfaced nothing is a query/literal mismatch,
+    # not a clean result — surfaced in the summary (like mock_dispatches) so no path ships a silent 0.
+    zero_candidate = bool(candidate_steps) and not units
+
     counts = {"ok": 0, "needs_review": 0, "error": 0}
     flagged: list[str] = []
     budget_stop = asyncio.Event()
@@ -229,7 +233,8 @@ async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topolo
             if done_n % 25 == 0 or done_n == len(units):
                 await emit_fn(E.RUN_PROGRESS, {"run_id": run_id, "done": done_n, "total": len(units)})
         return {"counts": counts, "flagged": flagged, "done": done_n, "total": len(units),
-                "partial": False, "sql_rows": sql_rows, "spot_checks": 0, "discrepancies": 0}
+                "partial": False, "sql_rows": sql_rows, "spot_checks": 0, "discrepancies": 0,
+                "zero_candidate": zero_candidate}
 
     # LLM-judged units respect the cap; sql steps above already ran the full table
     units = units[:settings.sandbox_max_units]
@@ -305,7 +310,8 @@ async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topolo
 
     return {"counts": counts, "flagged": flagged, "done": done_n, "total": len(units),
             "partial": budget_stop.is_set(), "sql_rows": sql_rows,
-            "spot_checks": spot_checks, "discrepancies": discrepancies}
+            "spot_checks": spot_checks, "discrepancies": discrepancies,
+            "zero_candidate": zero_candidate}
 
 
 async def run_process_fanout(ctx, plan: dict) -> None:
@@ -347,7 +353,12 @@ async def run_process_fanout(ctx, plan: dict) -> None:
     stats = {"units": summary["total"], "completed": summary["done"], **summary["counts"],
              "flagged_refs": summary["flagged"][:20], "partial": summary["partial"],
              "sql_rows": summary["sql_rows"],
+             "zero_candidate": summary.get("zero_candidate", False),
              "mock_dispatches": await meter.mock_dispatches(ctx.scope)}
+    if summary.get("zero_candidate"):
+        await ctx.emit(E.SYSTEM_NOTICE, {
+            "text": "candidate step ran but surfaced zero rows — 0 findings is a query/literal "
+                    "mismatch, not a clean result", "level": "error"})
     fanout_usd = round((await meter.scope_totals(ctx.scope))["cost_usd"] - baseline, 6)
     cost = {"total_usd": fanout_usd,
             "cost_per_unit": round(fanout_usd / max(1, summary["done"]), 6), "frontier_calls": 0}
@@ -435,7 +446,12 @@ async def _drive_run_inner(run: dict, run_id: str, scope: str, _emit) -> None:
              "flagged_refs": summary["flagged"][:20], "partial": summary["partial"],
              "sql_rows": summary["sql_rows"], "spot_checks": summary["spot_checks"],
              "discrepancies": summary["discrepancies"], "corpus": company,
+             "zero_candidate": summary.get("zero_candidate", False),
              "mock_dispatches": await meter.mock_dispatches(scope)}
+    if summary.get("zero_candidate"):
+        await _emit(E.SYSTEM_NOTICE, {
+            "text": "candidate step ran but surfaced zero rows — 0 findings is a query/literal "
+                    "mismatch, not a clean result", "level": "error"})
     cost = {"total_usd": totals["cost_usd"],
             "cost_per_unit": round(totals["cost_usd"] / max(1, summary["done"]), 6),
             "frontier_calls": 0}

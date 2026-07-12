@@ -4,6 +4,8 @@ LOCAL (sovereign). The planner receives ONLY the SanitizedSpec (planner brief) a
 """
 from __future__ import annotations
 
+import asyncio
+
 from app.events import E
 from app.ids import deterministic
 from app.orchestrator.seatlib import seat
@@ -20,6 +22,31 @@ _TOPOLOGY_REQUIRED = (
     "per-unit judgment. Only omit it if the request is genuinely impossible from this company's schema, "
     "in which case say so in risks."
 )
+
+
+# A candidate query whose SHAPE is right but whose filter LITERAL doesn't match the corpus's encoding
+# ('direction'='inflow' vs the seed's 'credit'/'debit') runs clean and returns ZERO rows — a silent
+# 0-findings "done". The guard dry-runs the sql candidate step(s) read-only; if the final set is empty
+# it replans ONCE to re-derive literals from the schema's stated values (Fix A surfaces them), then
+# blocks loudly rather than shipping the false clean. Generic — no per-company knowledge.
+_CANDIDATE_ZERO_ROWS = (
+    "REQUIRED FIX: your previous candidate query ran against the real corpus and returned ZERO rows, "
+    "so the run would report no findings. The query SHAPE is right but a filter LITERAL does not match "
+    "how the data encodes that value — re-derive every WHERE/HAVING literal from the values stated in "
+    "the schema brief (low-cardinality columns list their actual values, e.g. `direction (values: "
+    "credit, debit)`), not from the request's wording. Filter a direction/type/status column using one "
+    "of its listed values verbatim, never a synonym. Keep the same detection shape; only fix the literals."
+)
+
+
+def _sql_candidate_steps(plan: dict) -> list[dict]:
+    return [s for s in ((plan.get("topology") or {}).get("steps") or [])
+            if s.get("kind") == "sql" and s.get("sql")]
+
+
+def _has_analysis_candidate(plan: dict) -> bool:
+    return any(s.get("kind") == "analysis" and (s.get("purpose") or s.get("prompt_spec"))
+              for s in ((plan.get("topology") or {}).get("steps") or []))
 
 
 def _has_candidate_step(plan: dict) -> bool:
@@ -62,7 +89,7 @@ async def run(ctx) -> None:
             if extra_directive:
                 prompt = f"{prompt}\n\n{extra_directive}"
             return await sandbox_fn(ctx.complete, ctx.emit, prompt=prompt, company=company,
-                                    company_schema={"tables": seeds.company_schema(company)})
+                                    company_schema={"tables": seeds.company_schema(company, values=True)})
         b = {**brief, "topology_requirement": extra_directive} if extra_directive else brief
         return await planner.plan(ctx.complete, ctx.emit, brief=b)
 
@@ -94,6 +121,42 @@ async def run(ctx) -> None:
             await ctx.dao.update_job(ctx.job_id, status="blocked")
             await ctx.emit(E.JOB_BLOCKED, {"stage": "planning",
                            "reason": "no candidate topology for a corpus-bound detection request"})
+            return
+
+    # Zero-candidate guard (deterministic): a candidate step whose literal doesn't match the corpus's
+    # encoding returns 0 rows and ships a silent clean "done". Dry-run the sql candidate step(s)
+    # read-only; only the row COUNT is used locally (no row values cross to the planner), so this stays
+    # boundary-safe. Replan once, then block loudly if it still returns nothing.
+    async def _zero_candidates(p: dict) -> bool:
+        from app.config import settings
+        if settings.model_mode == "mock" or not company:
+            return False   # mock synthesizes plans; mirror the topology guard's live-only skip
+        steps = _sql_candidate_steps(p)
+        if not steps or _has_analysis_candidate(p):
+            return False   # nothing to dry-run, or an analysis step we can't evaluate at plan time
+        from app.sandbox import seeds
+        for s in steps:    # operate replaces units per step — the last step's rows are the candidates
+            try:
+                rows = await asyncio.to_thread(seeds.run_select, company, s["sql"], cap=1,
+                                               timeout_s=settings.sql_step_timeout_s)
+            except Exception:  # a broken query is the certifier's repair job, not this guard's
+                return False
+        return not rows
+
+    if await _zero_candidates(plan):
+        await ctx.emit(E.SYSTEM_NOTICE, {
+            "text": "candidate query returned zero rows against the corpus — a filter literal doesn't "
+                    "match the data's encoding; replanning to re-derive literals from the schema values",
+            "level": "warn"})
+        plan = await _author(_CANDIDATE_ZERO_ROWS)
+        if _missing_topology(plan) or await _zero_candidates(plan):
+            await ctx.emit(E.SYSTEM_NOTICE, {
+                "text": "candidate query still returns zero rows after a replan — blocking the job "
+                        "rather than delivering a false 0-findings result",
+                "level": "error"})
+            await ctx.dao.update_job(ctx.job_id, status="blocked")
+            await ctx.emit(E.JOB_BLOCKED, {"stage": "planning",
+                           "reason": "candidate topology returns zero rows (literals don't match corpus)"})
             return
 
     # deterministic plan id so a resumed stage upserts the same row (07 §4)

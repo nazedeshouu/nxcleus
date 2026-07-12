@@ -4,12 +4,45 @@ and by the process-mode fan-out (real corpus units instead of synthetic refs).
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 from pathlib import Path
 
 from app.config import REPO_ROOT
 
 _SEEDS_DIR = REPO_ROOT / "infra" / "seeds" / "out"
+
+# boundary: low-cardinality categorical TOKENS are schema VOCABULARY (a column's allowed values),
+# not records — safe to name in the sanitized planner brief so a value-blind planner filters on the
+# corpus's real encoding ('credit'/'debit') instead of guessing a synonym ('inflow'). Identity-ish
+# and free-text columns never cross: gated by an explicit deny list + a conservative token pattern +
+# a low-distinct-count cap, and the total values text per brief is char-capped.
+_ENUM_MAX_DISTINCT = 12
+_ENUM_CHAR_BUDGET = 1200
+_ENUM_VALUE_TOKEN = re.compile(r"^[A-Za-z0-9 _./-]{1,24}$")
+_ENUM_DENY = ("name", "email", "phone", "address", "owner", "holder", "memo", "note",
+              "description", "iban", "ssn", "national_id", "account_number", "counterparty")
+
+
+def _enum_values(con: sqlite3.Connection, table: str, col: str, decltype: str) -> list[str] | None:
+    """Distinct values of a TEXT column IF it reads as a low-cardinality enum (schema vocabulary),
+    else None. Conservative by design — see the boundary note on the constants above.
+    # ponytail: DISTINCT…LIMIT over seed-DB sizes; approximate-cardinality sample if corpora grow."""
+    low = col.lower()
+    if any(bad in low for bad in _ENUM_DENY):     # identity-ish / free-text names never cross
+        return None
+    dt = (decltype or "").lower()
+    if not any(a in dt for a in ("char", "text", "clob")):   # TEXT affinity only; skip numeric/date
+        return None
+    rows = con.execute(
+        f'SELECT DISTINCT "{col}" FROM "{table}" WHERE "{col}" IS NOT NULL AND "{col}" != \'\' '
+        "LIMIT ?", (_ENUM_MAX_DISTINCT + 1,)).fetchall()
+    vals = [str(r[0]) for r in rows]
+    if not vals or len(vals) > _ENUM_MAX_DISTINCT:
+        return None
+    if not all(_ENUM_VALUE_TOKEN.match(v) for v in vals):    # a stray free-text value disqualifies
+        return None
+    return vals
 
 
 def builtin_corpus_present() -> bool:
@@ -66,9 +99,12 @@ def _connect(path: Path) -> sqlite3.Connection:
     return con
 
 
-def company_schema(company: str | None) -> list[dict]:
+def company_schema(company: str | None, *, values: bool = False) -> list[dict]:
     """[{table, columns, row_count}] for the planner brief. Synthetic demo data — SANITIZED by
-    construction, safe in the brief."""
+    construction, safe in the brief. With values=True, low-cardinality categorical columns render
+    as "col (values: a, b, c)" so a value-blind planner filters on the corpus's real encoding
+    (boundary-gated — see _enum_values); default False keeps bare column names for every other
+    caller (certifier repair, files intake, the companies API)."""
     path = seed_db_path(company)
     if path is None:
         return []
@@ -77,9 +113,21 @@ def company_schema(company: str | None) -> list[dict]:
         tables = [r[0] for r in con.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
         out = []
+        budget = _ENUM_CHAR_BUDGET
         for t in tables:
-            cols = [r["name"] for r in con.execute(f"PRAGMA table_info({t})")]
+            info = list(con.execute(f"PRAGMA table_info({t})"))
             n = con.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
+            cols = []
+            for r in info:
+                name = r["name"]
+                vals = _enum_values(con, t, name, r["type"]) if values and budget > 0 else None
+                if vals:
+                    rendered = f"{name} (values: {', '.join(vals)})"
+                    if len(rendered) - len(name) <= budget:   # char cap: drop values, never the column
+                        budget -= len(rendered) - len(name)
+                        cols.append(rendered)
+                        continue
+                cols.append(name)
             out.append({"table": t, "columns": cols, "row_count": n})
         return out
     finally:

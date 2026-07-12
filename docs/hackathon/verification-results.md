@@ -265,3 +265,54 @@ A follow-up pass fixed the three defects issue-#1/#3 flagged above. All numbers 
 - Fix 1's block path is proven by unit test, not observed live (both cases self-corrected via the prompt).
 - The single `mock=1` on otherwise-clean bank/exchange runs is one transient certifier stub — exactly
   the silent degrade the Fix 3 chip now surfaces.
+
+## Schema-values pass (W7) — 2026-07-13
+
+Implements the two "recommended next fix / possible follow-up" items the W3-A gaps above left open.
+One live bank run (`MODEL_MODE=auto`, serial, isolated /tmp DB, cap $1.75, `SANDBOX_MAX_UNITS=60`).
+
+### Fix A — enum sample values in the planner's schema brief (the root fix for the v2 miss)
+- **Change:** `sandbox/seeds.py` `company_schema(company, values=True)` now appends a low-cardinality
+  column's distinct values inline — `direction (values: credit, debit)`, `status (values: dormant,
+  active)`. Boundary-gated (these tokens cross to the EXTERNAL planner): TEXT-affinity only, ≤12
+  distinct, a conservative token pattern, an identity/free-text deny list (name/email/memo/
+  counterparty/iban/…), and a ~1200-char/brief cap that drops values but never a column. Wired at the
+  single brief-build site for both sandbox plan and replan (`planning/stage1.py`) and the files/BYOD
+  intake brief (`boundary/intake.py`); every other caller (certifier repair, companies API,
+  `load_units`) keeps bare names via the default `values=False`.
+- **Live result** (job `job_01KXBVJ0EYPP3D6FYFBASQ77TD`, run `run_01KXBVW6WDBEP83PEBERW54BFE`, 603 s,
+  **$0.466**, 0 mock, `done`): the planner filtered `t.direction = 'credit'` and `a.status =
+  'dormant'` on the corpus's **real** literals (v2 had guessed `direction = 'inflow'` → 0 rows). It
+  built one `sql` candidate step "rank dormant-account reactivation candidates" (credit deposit/
+  transfer on a dormant account, ≥90-day dormancy, scored by amount/pep/dormancy/rapid-outflow).
+- **SQL recall vs the 15 planted reactivation accounts** (cross-checked by running the planner's own
+  query against `infra/seeds/out/bank.db`): **15/15 caught, 0 missed** — `[1, 4, 58, 60, 78, 84, 101,
+  105, 120, 130, 132, 142, 169, 181, 188]`. Candidate set: **101 rows / 64 distinct accounts** (the 15
+  planted + 49 extra dormant-account reactivations, all genuine phenomenon matches at lower magnitude,
+  ranked below the planted by `risk_score`). Judge flagged **60/60** of the sampled cap.
+- **Progression:** v1 145 cand / 10-of-15 / 135 extras (mostly wrong-direction `debit`); v2 0 cand /
+  0-of-15 (wrong literal); **W7 101 cand / 15-of-15 / 49 extras** (all real reactivations). Full recall,
+  real precision (extras are true lower-risk reactivations, not wrong-direction noise), correct literals.
+
+### Fix B — zero-candidate guard (deterministic backstop for the v2 silent zero)
+- **`planning/stage1.py`:** extends the topology guard — after confirming a candidate step exists, it
+  dry-runs the `sql` candidate step(s) read-only against the corpus (`cap=1`; only the row *count* is
+  used locally, so no row values cross to the planner — boundary-safe). If the final candidate set is
+  empty, it replans **once** with a directive to re-derive literals from the schema's stated values
+  (Fix A), then **blocks loudly** (`job.blocked` + `JOB_BLOCKED`) rather than shipping a silent
+  0-findings `done`. Skipped for analysis-only candidates (not dry-runnable at plan time) and in mock
+  mode, mirroring the existing guard.
+- **`runtime/operate.py`:** universal visible-zero marking at the point SQL materializes — `execute_
+  topology` returns `zero_candidate` (candidate steps ran but surfaced nothing); both callers stamp it
+  into run `stats` (surfaced on the summary API like `mock_dispatches`) and emit a loud error notice.
+  This covers the registered-process `drive_run` path, which skips stage-1 planning.
+- This run's guard behavior: `zero_candidate=False` (101 rows), so neither the replan nor the block
+  fired — expected, since Fix A gave the planner the right literals on the first draft. The guards'
+  classification is unit-tested (`tests/test_reliability_guards.py`); the live block path was not
+  exercised because Fix A pre-empted the zero-row condition it guards.
+
+### Tests / spend
+- `tests/test_reliability_guards.py`: added enum-gating (credit/debit-style column surfaced; name/
+  memo/counterparty and high-cardinality/numeric columns excluded; char cap respected, column list
+  never truncated) and zero-candidate classification. Full backend suite **159 passed, 2 skipped**.
+- Added spend this pass: **$0.47** (one bank run; 1 of the 2 allotted).

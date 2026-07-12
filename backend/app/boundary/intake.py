@@ -69,7 +69,8 @@ async def run(ctx) -> None:
     corpus_is_files = False
     if company:
         from app.sandbox import seeds
-        db_schemas += seeds.company_schema(company)   # files corpus -> the files(path,ext,...) table
+        db_schemas += seeds.company_schema(company, values=True)   # enum values so the planner filters
+        #   on the corpus's real encoding (boundary-gated); files corpus -> the files(path,ext,...) table
         dset = await ctx.dao.get_dataset(company)
         if dset and dset.get("kind") == "files":
             # CODEBASE corpus: inject its code_map so the planner scopes to files, not rows (hardening)
