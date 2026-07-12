@@ -26,7 +26,7 @@ export function StageGate({ view, jobId }: { view: JobView; jobId?: string }) {
       setDone(label); // the stream carries the real transition
     } catch (e) {
       const status = (e as { status?: number }).status;
-      setErr(status === 401 ? "Presenter token required." : status === 409 ? "Not allowed in this state." : (e as Error).message);
+      setErr(status === 401 ? "Sign in required." : status === 409 ? "Not allowed in this state." : (e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -66,7 +66,7 @@ export function StageGate({ view, jobId }: { view: JobView; jobId?: string }) {
           <button className="bv-gate-abort" disabled={!unlocked || busy} onClick={() => act("Job aborted", () => api.abort(jobId))}>
             <Prohibit weight="bold" style={{ width: 12, height: 12 }} /> Abort
           </button>
-          {!unlocked && <span className="bv-clarify-note">Presenter mode required.</span>}
+          {!unlocked && <span className="bv-clarify-note">Sign in required.</span>}
         </div>
         {err && <p className="bv-clarify-note" style={{ color: "var(--danger)", marginTop: 8 }}>{err}</p>}
       </Panel>
@@ -85,7 +85,7 @@ export function StageGate({ view, jobId }: { view: JobView; jobId?: string }) {
         >
           <ArrowRight weight="bold" style={{ width: 14, height: 14 }} /> Confirm spec & start planning
         </button>
-        {!unlocked && <span className="bv-clarify-note">Presenter mode required.</span>}
+        {!unlocked && <span className="bv-clarify-note">Sign in required.</span>}
       </div>
       {err && <p className="bv-clarify-note" style={{ color: "var(--danger)", marginTop: 8 }}>{err}</p>}
     </Panel>

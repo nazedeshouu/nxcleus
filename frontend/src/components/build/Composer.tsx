@@ -91,7 +91,7 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
     } catch (e) {
       const status = (e as { status?: number }).status;
       setErr(
-        status === 401 ? "Presenter mode required to extract PDFs/images — unlock top-right, or attach a .txt/.md."
+        status === 401 ? "Sign in required to extract PDFs/images — or attach a .txt/.md."
           : status === 413 ? "That file is too large — the cap is 8 MB."
             : `Could not read that policy file: ${(e as Error).message}. A .txt/.md still works.`,
       );
@@ -124,7 +124,7 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
       const status = (e as { status?: number }).status;
       setErr(
         status === 401
-          ? "Presenter token required — unlock top-right."
+          ? "Sign in required."
           : status === 429
             ? "At the sandbox budget or concurrency cap. Replay a completed run instead."
             : `Could not start: ${(e as Error).message}`,
@@ -288,7 +288,7 @@ export function Composer({ variant, boundCompany, suggestions, placeholder, subm
           )}
         </div>
 
-        <button className={styles.go} disabled={busy || !request.trim()} onClick={submit} title={unlocked ? "" : "May require Presenter mode"}>
+        <button className={styles.go} disabled={busy || !request.trim()} onClick={submit} title={unlocked ? "" : "Sign in required"}>
           {unlocked ? <Lightning weight="fill" /> : <Lock weight="regular" />} {busy ? "Starting…" : submitLabel}
         </button>
       </div>
@@ -341,7 +341,7 @@ function AddDataSource({ onClose, onAdded }: { onClose: () => void; onAdded: (d:
       setTimeout(() => onAdded(d), 900); // let the confirmation land before selecting
     } catch (e) {
       const status = (e as { status?: number }).status;
-      setErr(status === 401 ? "Presenter token required — unlock top-right." : `Could not register: ${(e as Error).message}`);
+      setErr(status === 401 ? "Sign in required." : `Could not register: ${(e as Error).message}`);
       setBusy(false);
     }
   };
@@ -434,7 +434,7 @@ function AddDataSource({ onClose, onAdded }: { onClose: () => void; onAdded: (d:
                   {busy ? "Registering…" : "Register source"}
                 </button>
               ) : (
-                <span className={styles.lockedNote}><Lock weight="regular" /> Unlock Presenter mode to register a data source.</span>
+                <span className={styles.lockedNote}><Lock weight="regular" /> Sign in to register a data source.</span>
               )}
             </footer>
           </>

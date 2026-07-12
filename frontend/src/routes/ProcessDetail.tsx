@@ -41,7 +41,7 @@ function ActionBar({ processId, version, process }: { processId: string; version
       setFlash({ kind: "ok", msg: `${label} accepted — a new job/run has started.` });
     } catch (e) {
       const status = (e as { status?: number }).status;
-      const code = status === 401 ? "401 — presenter token required" : status === 409 ? "409 — not allowed in this state" : (e as Error).message;
+      const code = status === 401 ? "401 — sign in required" : status === 409 ? "409 — not allowed in this state" : (e as Error).message;
       setFlash({ kind: "err", msg: `${label} rejected: ${code}` });
     } finally {
       setBusy(null);
@@ -102,7 +102,7 @@ function ActionBar({ processId, version, process }: { processId: string; version
           </button>
         </div>
       )}
-      {!unlocked && <div className={styles.hint}>Unlock Presenter mode (top-right) to run, instantiate, or refine.</div>}
+      {!unlocked && <div className={styles.hint}>Sign in to run, instantiate, or refine.</div>}
       {flash && <div className={`${styles.flash} ${flash.kind === "ok" ? styles.ok : styles.err}`}>{flash.msg}</div>}
     </div>
   );
@@ -325,7 +325,7 @@ function EvidenceDrawer({ unit, onClose, onReview, busy }: {
                 <button className={`${styles.reviewBtn} ${styles.approve}`} disabled={!unlocked || busy} onClick={() => onReview("approve", note)}>approve</button>
                 <button className={`${styles.reviewBtn} ${styles.reject}`} disabled={!unlocked || busy} onClick={() => onReview("reject", note)}>reject</button>
               </div>
-              {!unlocked && <span className={styles.hint}>Presenter mode required to review.</span>}
+              {!unlocked && <span className={styles.hint}>Sign in to review.</span>}
             </>
           )}
         </footer>
@@ -417,7 +417,7 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
       }
     } catch (e) {
       const status = (e as { status?: number }).status;
-      flashRun("err", status === 401 ? "Presenter token required." : `Action failed: ${(e as Error).message}`);
+      flashRun("err", status === 401 ? "Sign in required." : `Action failed: ${(e as Error).message}`);
     }
   };
 
@@ -500,10 +500,10 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
                         <span className={styles.verdictDone}>{u.review_verdict === "approve" ? "✓ approved" : "✗ rejected"}</span>
                       ) : (
                         <div className={styles.review}>
-                          <button className={`${styles.reviewBtn} ${styles.approve}`} disabled={!unlocked || reviewing === u.id} onClick={() => review(u.id, "approve")} title={unlocked ? "" : "Presenter mode required"}>
+                          <button className={`${styles.reviewBtn} ${styles.approve}`} disabled={!unlocked || reviewing === u.id} onClick={() => review(u.id, "approve")} title={unlocked ? "" : "Sign in required"}>
                             approve
                           </button>
-                          <button className={`${styles.reviewBtn} ${styles.reject}`} disabled={!unlocked || reviewing === u.id} onClick={() => review(u.id, "reject")} title={unlocked ? "" : "Presenter mode required"}>
+                          <button className={`${styles.reviewBtn} ${styles.reject}`} disabled={!unlocked || reviewing === u.id} onClick={() => review(u.id, "reject")} title={unlocked ? "" : "Sign in required"}>
                             reject
                           </button>
                         </div>
@@ -589,7 +589,7 @@ export function ProcessDetail() {
       <div className={styles.runs}>
         <div className={styles.cardTitle}>Run history — batch operations under warranty</div>
         {runs.length === 0 ? (
-          <p className={styles.diffNote}>No runs yet. Unlock Presenter mode and run a batch to see per-unit results and the semi-automated review queue.</p>
+          <p className={styles.diffNote}>No runs yet. Run a batch to see per-unit results and the semi-automated review queue.</p>
         ) : (
           runs.map((r) => <RunRow key={r.run_id} run={r} processId={id} version={process.current_version} />)
         )}

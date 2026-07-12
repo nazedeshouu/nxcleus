@@ -120,7 +120,7 @@ function QuickByok() {
       await qc.invalidateQueries({ queryKey: ["connections"] });
     } catch (e) {
       const status = (e as { status?: number }).status;
-      setFlash({ kind: "err", msg: status === 401 ? "Presenter token required — unlock top-right." : (e as Error).message });
+      setFlash({ kind: "err", msg: status === 401 ? "Sign in required." : (e as Error).message });
     } finally { setPhase("idle"); }
   };
 
@@ -209,7 +209,7 @@ function QuickByok() {
               </button>
             </div>
           ) : (
-            <span className={styles.locked}><Lock weight="regular" style={{ width: 11, verticalAlign: "-1px" }} /> Unlock Presenter mode to bring your own model.</span>
+            <span className={styles.locked}><Lock weight="regular" style={{ width: 11, verticalAlign: "-1px" }} /> Sign in to bring your own model.</span>
           )}
         </>
       )}
@@ -303,7 +303,7 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
       await qc.invalidateQueries({ queryKey: ["models"] });
     } catch (e) {
       const status = (e as { status?: number }).status;
-      setFlash({ kind: "err", msg: status === 401 ? "401 — presenter token required." : `Could not add: ${(e as Error).message}` });
+      setFlash({ kind: "err", msg: status === 401 ? "401 — sign in required." : `Could not add: ${(e as Error).message}` });
     } finally {
       setBusy(false);
     }
@@ -343,10 +343,10 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
                 ? <span className={styles.testOk}><CheckCircle weight="fill" /> {t.latency_ms != null ? `${t.latency_ms} ms` : "ok"}{t.model ? ` · ${t.model}` : ""}</span>
                 : <span className={styles.testErr} title={t.error}><XCircle weight="fill" /> {t.error ?? "failed"}</span>
             )}
-            <button className={styles.testBtn} disabled={!unlocked || t === "busy"} onClick={() => test(c.id)} title={unlocked ? "Ping this endpoint" : "Presenter mode required"}>
+            <button className={styles.testBtn} disabled={!unlocked || t === "busy"} onClick={() => test(c.id)} title={unlocked ? "Ping this endpoint" : "Sign in required"}>
               <Pulse weight="bold" style={{ width: 12, verticalAlign: "-2px" }} /> {t === "busy" ? "Testing…" : "Test"}
             </button>
-            <button className={styles.remove} disabled={!unlocked} onClick={() => remove(c.id)} title={unlocked ? "" : "Presenter mode required"}>
+            <button className={styles.remove} disabled={!unlocked} onClick={() => remove(c.id)} title={unlocked ? "" : "Sign in required"}>
               <Trash weight="regular" style={{ width: 12, verticalAlign: "-2px" }} /> remove
             </button>
           </div>
@@ -427,7 +427,7 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
             <Plug weight="fill" /> {busy ? "Registering…" : "Register connection"}
           </button>
         ) : (
-          <span className={styles.locked}><Lock weight="regular" style={{ width: 11, verticalAlign: "-1px" }} /> Unlock Presenter mode to add a connection.</span>
+          <span className={styles.locked}><Lock weight="regular" style={{ width: 11, verticalAlign: "-1px" }} /> Sign in to add a connection.</span>
         )}
       </div>
     </div>
@@ -450,7 +450,7 @@ function SeatCards({ models, connections }: { models: ModelInfo[]; connections: 
       setFlash((f) => ({ ...f, [seat]: { kind: "ok", msg: "rebound" } }));
     } catch (e) {
       const status = (e as { status?: number }).status;
-      setFlash((f) => ({ ...f, [seat]: { kind: "err", msg: status === 409 ? "ineligible (zone / data-class)" : status === 401 ? "presenter only" : "failed" } }));
+      setFlash((f) => ({ ...f, [seat]: { kind: "err", msg: status === 409 ? "ineligible (zone / data-class)" : status === 401 ? "sign in required" : "failed" } }));
     }
   };
 
@@ -487,7 +487,7 @@ function SeatCards({ models, connections }: { models: ModelInfo[]; connections: 
                 value=""
                 disabled={!unlocked}
                 onChange={(e) => e.target.value && rebind(seat, e.target.value)}
-                title={unlocked ? "Override this seat's binding" : "Presenter mode required"}
+                title={unlocked ? "Override this seat's binding" : "Sign in required"}
               >
                 <option value="">override…</option>
                 {modelKeys.map((k) => <option key={k} value={k}>{k}</option>)}
