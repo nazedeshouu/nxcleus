@@ -411,6 +411,17 @@
   border: 1px dashed var(--hairline);
   border-radius: var(--r-md);
 }
+/* the detail column has nothing selected yet — fill its height so it reads as a
+   deliberate panel beside the list, not a stub floating in an empty gutter */
+.detailEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 260px);
+  max-width: 42ch;
+  margin: 0 auto;
+  line-height: 1.6;
+}
 
 /* F7: runtime-commissioned tools */
 .tabs {

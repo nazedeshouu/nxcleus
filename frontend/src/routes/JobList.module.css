@@ -24,6 +24,8 @@
 .card {
   display: flex;
   flex-direction: column;
+  /* even rhythm: goal-less cards keep pace with 3-line ones so rows don't ripple */
+  min-height: 208px;
   padding: 22px;
   background: var(--surface);
   border: 1px solid var(--hairline);
@@ -93,6 +95,11 @@
   font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.55;
+  /* clamp so a long goal can't tower over its neighbours */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .cardActions {
   display: flex;

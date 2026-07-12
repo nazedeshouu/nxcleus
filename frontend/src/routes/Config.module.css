@@ -46,7 +46,9 @@
   padding: 6px 20px 18px;
 }
 .tableScroll {
-  overflow-x: auto;
+  overflow: auto;
+  /* long registries/ledgers scroll inside the panel instead of stretching the page */
+  max-height: 460px;
 }
 .table {
   width: 100%;
@@ -63,6 +65,11 @@
   font-weight: 500;
   padding: 12px 12px;
   border-bottom: 1px solid var(--hairline-soft);
+  /* keep the header in view while the capped body scrolls */
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
 }
 .table td {
   padding: 13px 12px;

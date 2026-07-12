@@ -468,7 +468,7 @@ export function Traces() {
                 hasNext={selIdx >= 0 && selIdx < filtered.length - 1}
               />
             ) : (
-              <div className={styles.paneEmpty}>Select a dispatch to read its full prompt, reasoning, and response. Use ↑/↓ to move between dispatches.</div>
+              <div className={`${styles.paneEmpty} ${styles.detailEmpty}`}>Select a dispatch to read its full prompt, reasoning, and response. Use ↑/↓ to move between dispatches.</div>
             )}
           </div>
         </div>

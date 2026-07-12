@@ -112,7 +112,8 @@ function Economics({ processes }: { processes: EconProcess[] }) {
 }
 
 function CostSpark({ runs }: { runs: EconProcess["runs"] }) {
-  if (!runs.length) return <span className={styles.num} style={{ color: "var(--text-faint)" }}>—</span>;
+  // a single run has no trend to draw — a lone dot reads as debris, so show a dash
+  if (runs.length < 2) return <span className={styles.num} style={{ color: "var(--text-faint)" }}>—</span>;
   const vals = runs.map((r) => r.cost_per_unit);
   const max = Math.max(...vals, 1e-9);
   const w = 68;
