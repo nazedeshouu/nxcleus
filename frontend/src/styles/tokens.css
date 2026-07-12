@@ -69,7 +69,11 @@
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 16px;
+  --r-xl: 22px;
   --r-pill: 999px;
+
+  /* Shared focus ring — one keyline, AA on both temperatures. */
+  --focus: rgba(28, 122, 163, 0.38);
 
   --shadow-sm: 0 1px 2px rgba(12, 20, 23, 0.05), 0 1px 3px rgba(12, 20, 23, 0.04);
   --shadow-md: 0 4px 16px rgba(12, 20, 23, 0.08), 0 1px 3px rgba(12, 20, 23, 0.05);
@@ -102,17 +106,21 @@
   --surface: #0a1a21;
   --surface-sunk: #071319;
   --surface-raised: #0d2029;
-  --hairline: #163542;
-  --hairline-soft: #112834;
+  /* Luminous, semi-transparent keylines — the premium "light border on dark"
+     signal; they layer organically over the sealed field instead of reading
+     as flat painted rules. */
+  --hairline: rgba(140, 182, 202, 0.16);
+  --hairline-soft: rgba(140, 182, 202, 0.09);
   --text: #dcebf0;
-  --text-muted: #85a0aa;
-  --text-faint: #567179;
+  --text-muted: #8ba6b0;
+  --text-faint: #5f7982;
 
   --accent: #38a6d2;
   --accent-strong: #85d3f0;
   --accent-mid: #216f92;
   --accent-pale: #0e2c3a;
-  --accent-wash: rgba(56, 166, 210, 0.09);
+  --accent-wash: rgba(56, 166, 210, 0.1);
+  --focus: rgba(56, 166, 210, 0.45);
 
   --zone-local: #4cb4dc;
   --zone-local-wash: rgba(76, 180, 220, 0.1);

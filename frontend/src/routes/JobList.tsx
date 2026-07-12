@@ -27,7 +27,11 @@ function JobCard({ job }: { job: JobSummary }) {
           {job.mode && <span className={styles.mode}>{job.mode} mode</span>}
         </div>
         <h2 className={styles.jobTitle}>{jobLabel(job)}</h2>
-        {job.goal && <p className={styles.goal}>{job.goal}</p>}
+        {job.goal ? (
+          <p className={styles.goal}>{job.goal}</p>
+        ) : (
+          <p className={styles.goalEmpty}>No description recorded.</p>
+        )}
       </Link>
       <div className={styles.cardActions}>
         <Link to={`/build/${job.id}`} className={styles.enter}>

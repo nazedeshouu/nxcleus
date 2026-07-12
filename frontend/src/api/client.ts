@@ -8,6 +8,7 @@ export interface PublicConfig {
   profile: string;
   demo: boolean;
   trace_prompts?: boolean; // prompt/response tracing enabled (LOCAL-only store)
+  signup_code_required?: boolean; // account creation gated behind an invite code
   keys?: { anthropic?: boolean; fireworks?: boolean };
   budgets?: { fireworks_daily_usd?: number; sandbox_run_usd?: number; sandbox_max_concurrent?: number };
 }
@@ -62,6 +63,7 @@ export interface EconRun {
   cost_usd: number;
   cost_per_unit: number;
   frontier_calls: number;
+  mock_dispatches?: number;
 }
 export interface EconProcess {
   process_id: string;
@@ -80,6 +82,7 @@ export interface RunStats {
   error: number;
   spot_checks: number;
   discrepancies: number;
+  mock_dispatches?: number;
 }
 export interface RunCost {
   total_usd: number;
@@ -363,6 +366,7 @@ function mapPublicConfig(raw: Record<string, unknown>): PublicConfig {
     profile: (raw.profile as string) ?? (raw.model_mode as string) ?? "demo",
     demo: (raw.demo as boolean) ?? !(raw.admin_required as boolean),
     trace_prompts: raw.trace_prompts as boolean | undefined,
+    signup_code_required: (raw.signup_code_required as boolean) ?? false,
     keys: { anthropic: keys.anthropic, fireworks: keys.fireworks },
     budgets: raw.budgets as PublicConfig["budgets"],
   };
@@ -520,5 +524,12 @@ export const authApi = {
   me: () => req<AuthSession>("/auth/me"),
   login: (username: string, password: string) =>
     req<AuthSession>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  // Account creation. Auto-logs-in on success (sets the same cookie as login).
+  // Errors surface via req()'s thrown Error.status: 409 taken, 400 weak, 403 bad invite code.
+  signup: (username: string, password: string, invite_code?: string) =>
+    req<AuthSession>("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(invite_code ? { username, password, invite_code } : { username, password }),
+    }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
 };

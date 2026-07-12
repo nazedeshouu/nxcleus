@@ -5,7 +5,9 @@
   color: var(--text);
   transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
 }
-/* the sealed interior: a faint architectural field behind the instrument panels */
+/* the sealed interior: a faint architectural field behind the instrument panels.
+   Heavily subdued — the vault reads as deep atmosphere, never a photo whose
+   perspective lines compete with the content sitting on top of it. */
 .app::before {
   content: "";
   position: fixed;
@@ -13,10 +15,11 @@
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(180deg, rgba(6, 15, 20, 0.82), rgba(6, 15, 20, 0.66) 40%, rgba(6, 15, 20, 0.88)),
+    radial-gradient(90% 60% at 50% 8%, rgba(56, 166, 210, 0.07), transparent 60%),
+    linear-gradient(180deg, rgba(6, 14, 19, 0.93), rgba(6, 14, 19, 0.9) 42%, rgba(5, 12, 16, 0.98)),
     url("../../assets/img/inside-field.webp");
   background-size: cover;
-  background-position: center;
+  background-position: center 18%;
 }
 
 /* ---------- sidebar ---------- */

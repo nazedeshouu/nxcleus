@@ -101,6 +101,11 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* keeps description-less cards from reading as broken voids */
+.goalEmpty {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
 .cardActions {
   display: flex;
   align-items: center;
