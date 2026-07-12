@@ -1,11 +1,7 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode, type PointerEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  ShieldCheck,
-  GraphicsCard,
-  Cpu,
-  Broadcast,
   StackSimple,
   ListChecks,
   UsersThree,
@@ -32,6 +28,16 @@ function PlatformLink({ to, className, children }: { to: string; className?: str
     <a className={className} href={PLATFORM_ORIGIN + to}>{children}</a>
   ) : (
     <Link className={className} to={to}>{children}</Link>
+  );
+}
+
+// The "Nx." landing wordmark: N + x in ink (flips on dark via tokens), the dot
+// in accent. Landing header only; the platform keeps the <Logo> mark.
+function Wordmark() {
+  return (
+    <span className={styles.wordmark} aria-label={BRAND.name}>
+      Nx<span className={styles.wordmarkDot}>.</span>
+    </span>
   );
 }
 
@@ -62,12 +68,25 @@ function MoneyChart() {
 }
 
 export function Landing() {
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  // Pointer-reactive hero: write cursor position (0..1) as CSS vars; the media
+  // and light layers read them. No re-render, no deps. Motion is user-driven, so
+  // it is exempt from the reduced-motion autoplay concern; the CSS still eases.
+  function onHeroMove(e: PointerEvent<HTMLDivElement>) {
+    const el = heroRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--px", String((e.clientX - r.left) / r.width));
+    el.style.setProperty("--py", String((e.clientY - r.top) / r.height));
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.nav}>
         <div className={styles.navInner}>
           <Link to="/" aria-label={`${BRAND.name} home`}>
-            <Logo size={20} />
+            <Wordmark />
           </Link>
           <nav className={styles.navLinks}>
             <a className={styles.navLink} href="#boundary">The boundary</a>
@@ -82,11 +101,19 @@ export function Landing() {
         </div>
       </header>
 
-      {/* ---------- hero ---------- */}
-      <section className={styles.container}>
-        <div className={styles.hero}>
+      {/* ---------- hero: full-bleed cinematic, copy bottom-left ---------- */}
+      <div className={styles.hero} ref={heroRef} onPointerMove={onHeroMove}>
+        <div className={styles.heroMedia} aria-hidden="true">
+          <img src={heroImg} alt="" width={1600} height={1200} fetchPriority="high" />
+          <div className={styles.heroDrift} />
+          <div className={styles.heroScrim} />
+        </div>
+        <div className={styles.heroHud} aria-hidden="true">
+          <span className={styles.heroMeterLbl}>egress monitor</span>
+          <span className={styles.heroMeterVal}><b>0</b> external calls</span>
+        </div>
+        <div className={styles.container}>
           <div className={styles.heroCopy}>
-            <span className={styles.heroKicker}><i /> Sovereign process automation</span>
             <h1 className={styles.heroTitle}>
               Run frontier intelligence <em>inside your walls</em>.
             </h1>
@@ -107,63 +134,34 @@ export function Landing() {
               <b>AMD MI300X</b> · ROCm + vLLM · raw data crossings: <b>0</b>
             </p>
           </div>
-          <div className={styles.heroArt}>
-            <div className={styles.heroShell}>
-              <div className={styles.heroFrame}>
-                <img src={heroImg} alt="An abstract luminous interior sealed by a curved wall, one precise seam of cyan light tracing the only threshold." width={1600} height={1200} fetchPriority="high" />
-                <span className={styles.heroArtChip}>
-                  <ShieldCheck weight="fill" /> sovereign by design
-                </span>
-              </div>
-            </div>
-            <div className={styles.heroMeter} aria-hidden="true">
-              <span className={styles.heroMeterLbl}>egress monitor</span>
-              <span className={styles.heroMeterVal}><b>0</b> external calls</span>
-            </div>
-          </div>
         </div>
-      </section>
-
-      {/* ---------- AMD strip ---------- */}
-      <section className={styles.container}>
-        <div className={styles.amdStrip}>
-          <span className={styles.amdLabel}>Runs entirely on AMD</span>
-          <div className={styles.amdItems}>
-            <span className={styles.amdItem}><GraphicsCard weight="fill" /> MI300X fleet · 8× scale profile</span>
-            <span className={styles.amdItem}><Cpu weight="fill" /> ROCm + vLLM</span>
-            <span className={styles.amdItem}><Broadcast weight="fill" /> Fireworks <span className="muted">fallback only</span></span>
-            <span className={styles.amdItem}>Live GPU telemetry in every build</span>
-          </div>
-        </div>
-      </section>
+      </div>
 
       {/* ---------- boundary moment ---------- */}
-      <section className={`${styles.container} ${styles.section}`} id="boundary">
-        <Reveal>
-          <div className={styles.sectionHead}>
-            <div className={styles.eyebrow}>The boundary</div>
-            <h2 className={styles.sectionTitle}>
-              One brief crosses. <em>Nothing else does.</em>
-            </h2>
-            <p className={styles.sectionLede}>
-              Every raw record, document, and identifier stays sealed on your AMD hardware. A frontier planner
-              sees only a sanitized brief, governed by your own confidentiality policy. Flip Sovereign Mode and
-              even that crossing disappears.
-            </p>
-          </div>
+      <section className={`${styles.container} ${styles.section} ${styles.boundary}`} id="boundary">
+        <Reveal className={styles.boundaryHead}>
+          <div className={styles.eyebrow}>The boundary</div>
+          <h2 className={styles.sectionTitle}>
+            One brief crosses. <em>Nothing else does.</em>
+          </h2>
+          <p className={styles.sectionLede}>
+            Every raw record, document, and identifier stays sealed on your AMD hardware. A frontier planner
+            sees only a sanitized brief, governed by your own confidentiality policy. Flip Sovereign Mode and
+            even that crossing disappears.
+          </p>
         </Reveal>
-        <Reveal className={styles.boundaryWrap}>
-          <div className={styles.boundaryShell}>
-            <BoundaryDiagram />
-          </div>
+        <Reveal className={styles.boundaryStage}>
+          <BoundaryDiagram />
         </Reveal>
       </section>
 
       {/* ---------- adaptive modes (bento) ---------- */}
-      <section className={`${styles.container} ${styles.section}`}>
+      <section className={`${styles.container} ${styles.section} ${styles.planner}`}>
         <Reveal>
           <div className={styles.sectionHead}>
-            <h2 className={styles.sectionTitle}>The planner designs the right shape for the work.</h2>
+            <h2 className={styles.sectionTitle}>
+              The planner designs the right <span className={styles.shapeHi}>shape</span> for the work.
+            </h2>
             <p className={styles.sectionLede}>One platform, three topologies, chosen per task and provisioned from the plan's own model bill of materials.</p>
           </div>
         </Reveal>
@@ -209,8 +207,8 @@ export function Landing() {
         <Reveal>
           <div className={styles.sectionHead}>
             <div className={styles.eyebrow}>The lifecycle</div>
-            <h2 className={styles.sectionTitle}>
-              Build once. <em>Operate forever.</em> Refine on demand.
+            <h2 className={`${styles.sectionTitle} ${styles.lifeTitle}`}>
+              Build once. <em>Operate <span className={styles.forever}>forever</span>.</em> Refine on demand.
             </h2>
           </div>
         </Reveal>
@@ -246,30 +244,39 @@ export function Landing() {
 
       {/* ---------- money slide ---------- */}
       <section className={`${styles.container} ${styles.section}`} id="economics">
-        <Reveal>
-          <div className={styles.money}>
-            <div>
-              <h2 className={styles.moneyStat}>
-                Frontier intelligence is a <em>capital expense,</em> not a marginal cost.
-              </h2>
-              <p className={styles.moneyLede}>
-                Paid once, at plan time, on sanitized specs. Every run after that is local and cheap. Competitors
-                pay frontier tokens and surrender data on every single run.
-              </p>
-            </div>
-            <div className={styles.chartShell}>
-              <div className={styles.chartCard}>
-                <div className={styles.chartLegend}>
-                  <span className={styles.legendItem}>
-                    <span className={styles.legendSwatch} style={{ background: "var(--accent)" }} /> Nxcleus, per run
-                  </span>
-                  <span className={styles.legendItem}>
-                    <span className={styles.legendSwatch} style={{ background: "var(--zone-external)" }} /> Chat / cloud agent, per run
-                  </span>
-                </div>
-                <MoneyChart />
-                <p className={styles.chartNote}>Illustrative. Build cost is paid once; local per-run cost stays flat.</p>
+        <Reveal className={styles.money}>
+          <div className={styles.moneyCopy}>
+            <div className={styles.eyebrow}>The economics</div>
+            <h2 className={styles.moneyStat}>
+              Frontier intelligence is a <em>capital expense,</em> not a marginal cost.
+            </h2>
+            <p className={styles.moneyLede}>
+              Paid once, at plan time, on sanitized specs. Every run after that is local and cheap. Competitors
+              pay frontier tokens and surrender data on every single run.
+            </p>
+            <div className={styles.moneyPair}>
+              <div className={styles.moneyItem}>
+                <span className={styles.moneyItemK}>Nxcleus</span>
+                <span className={styles.moneyItemV}>Build cost paid once, then flat local per-run.</span>
               </div>
+              <div className={styles.moneyItem}>
+                <span className={`${styles.moneyItemK} ${styles.moneyItemExt}`}>Chat / cloud agent</span>
+                <span className={styles.moneyItemV}>Frontier tokens and data surrendered every run.</span>
+              </div>
+            </div>
+          </div>
+          <div className={styles.chartShell}>
+            <div className={styles.chartCard}>
+              <div className={styles.chartLegend}>
+                <span className={styles.legendItem}>
+                  <span className={styles.legendSwatch} style={{ background: "var(--accent)" }} /> Nxcleus, per run
+                </span>
+                <span className={styles.legendItem}>
+                  <span className={styles.legendSwatch} style={{ background: "var(--zone-external)" }} /> Chat / cloud agent, per run
+                </span>
+              </div>
+              <MoneyChart />
+              <p className={styles.chartNote}>Illustrative. Build cost is paid once; local per-run cost stays flat.</p>
             </div>
           </div>
         </Reveal>
