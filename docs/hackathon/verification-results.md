@@ -203,3 +203,65 @@ than fix a *defect*, **insurer** is the alternative: run it at full depth (all 1
   resource — the billing API is the ground truth and it is empty.)
 - **User action:** pay the DO AMD outstanding balance to unlock own-MI300X fleet demos (P1/P2/P3 are
   validated and ready).
+
+## Deep-iteration outcomes (W3-A) — 2026-07-12
+
+A follow-up pass fixed the three defects issue-#1/#3 flagged above. All numbers are live
+(`MODEL_MODE=auto`), serial, isolated DB, per-run cap $1.75. Total added spend for this pass ≈ $2.9.
+
+### Fix 1 — Topology guard (reliability; was issue #1, the non-deterministic 0-flag build)
+- **Change:** the sandbox planner prompt now states the candidate-step requirement outright (a
+  detection request is a `sql`/`analysis` candidate step → optional per-unit judge, never a bare
+  per-row scan). A deterministic guard at plan acceptance (`planning/stage1.py`) replans once if a
+  corpus-bound detection plan ships no candidate step, then blocks the job loudly (`job.blocked`)
+  rather than delivering a silent 0-findings "done".
+- **Before → after (both were topology-less, 0/60 flagged):**
+  - lawfirm (auto-renew <60d): **0 candidates → 111** (`detect_auto_renewals`), 8 flagged, done $0.64.
+  - exchange (spoofing bursts): **0 candidates → 27** (`candidate_same_side_burst`), 27 flagged, done $0.59.
+- Both self-corrected at the strengthened prompt; the block path is the deterministic backstop
+  (classification unit-tested in `tests/test_reliability_guards.py`).
+
+### Fix 2 — Bank precision (was issue #1 secondary, the 8× over-flag)
+- **Change (generic, no per-company encoding):** the planner SQL directive now binds the candidate
+  to the request's named entities/state and event direction using the schema's own columns (not a
+  computed proxy), and encodes the request's quantitative qualifiers in WHERE/HAVING; the per-unit
+  judge frame (`runtime/operate.py` `_CANDIDATE_FRAME`) now confirms the *phenomenon* the request
+  describes, not merely the upstream thresholds (a scoping field that contradicts — wrong status,
+  wrong direction — forces `flagged=false`).
+- **Before:** 1,186 candidates → **124 flags vs 15 planted** (8× over-flag).
+- **After v1** (threshold-only tightening): 145 candidates (8× tighter count), 60/60 sampled flagged
+  — but the ground-truth cross-check (ran the planner's own SQL against `infra/seeds/out/bank.db`)
+  showed only **10/15 planted caught** and **135/145 extras were outbound `debit` transfers, 126 on
+  active accounts** — a loose per-txn LAG-gap net + a judge confirming thresholds, not the phenomenon.
+- **After v2** (entity/phenomenon binding): the planner correctly bound to the phenomenon — a `sql`
+  step *"Detect and rank dormant accounts with inflows"* filtering `status='dormant'` + a credit
+  inflow — but this non-deterministic draft guessed the wrong literal for the direction column
+  (`direction='inflow'`, while the seed encodes it `'credit'`/`'debit'`), so the query returned
+  **0 rows / 0 flags**.
+- **Root cause (both drafts):** the sandbox planner is given column *names only*
+  (`seeds.company_schema` → `{table, columns, row_count}`), never the values, so it cannot know a
+  column's encoding and guesses from the request wording. v1 over-flags on a loose net that ignores
+  direction; v2 under-flags on a right-shaped query with a wrong literal. Prompt-tuning alone can't
+  make a schema-blind planner deterministic here.
+- **Recommended next fix (not implemented — needs a run + a boundary check):** surface a few distinct
+  sample values for low-cardinality text columns in the planner's schema brief, so it filters on real
+  literals (`'credit'`, not `'inflow'`). Generic across every case. Caveat: column values crossing to
+  the EXTERNAL planner is a data-boundary concern for real (non-synthetic) corpora — gate to
+  sandbox / enum-like columns or sanitize first.
+
+### Fix 3 — Mock-serving visibility (was issue #3, the silent degrade under load)
+- **Change:** `meter.mock_dispatches(scope)` counts `model.call` badge='mock' from the events table;
+  stamped into run `stats.mock_dispatches`, exposed on `GET /jobs/{id}` and the economics run summary;
+  a red "N simulated" chip renders in the process run row and the live build cockpit.
+- **Proof:** a forced-mock run (Fireworks key broken in-shell only) completed `done` but the rollup
+  counted **23 simulated dispatches** — surfaced instead of passing as a clean live run.
+
+### Honest gaps
+- Bank precision is **not** cleanly solved: the schema-blind planner makes it non-deterministic
+  (v1 over-flags, v2 zero-flags). Real fix is the schema-values recommendation above, not more prompt text.
+- The topology guard checks a candidate step is *present*, not that it *returns rows* — a
+  phenomenon-correct-but-zero-row query (v2) still ships `done`. A candidate-returns-zero guard is a
+  possible follow-up.
+- Fix 1's block path is proven by unit test, not observed live (both cases self-corrected via the prompt).
+- The single `mock=1` on otherwise-clean bank/exchange runs is one transient certifier stub — exactly
+  the silent degrade the Fix 3 chip now surfaces.
