@@ -2,6 +2,8 @@
 
 **A plain-language request becomes a planned → certified → built → adversarially-QA'd → registered process automation — with your data never leaving hardware you control.**
 
+> **For judges: [JUDGES.md](JUDGES.md)** — sign-in credentials (no key needed), a 2-minute hands-on path, and what to look at.
+
 Nxcleus is a sovereign automation platform for businesses that legally *cannot* send their data to an external AI. You describe what you need in plain language — attach files, a codebase, database schemas, a confidentiality policy — and the platform designs the work, completes and certifies the plan against your real data, builds it on a fleet of parallel agents, attacks it with adversarial QA, and registers a process that then runs forever with **zero further frontier calls**. Exactly one step ever talks to an outside model: a stage-1 planner that sees only a PII-sanitized brief. Everything else runs inside the boundary, on AMD silicon.
 
 **Live:** https://nxcleus.tech
