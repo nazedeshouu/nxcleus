@@ -64,14 +64,15 @@ async def test_extract_pdf_endpoint():
     assert body["kind"] == "pdf" and "Coverage Rule 7" in body["text"]
 
 
-async def test_extract_image_endpoint_mock_router():
-    # mock mode (conftest) => planner routes to the mock client; proves the content-array passthrough
+async def test_extract_image_fails_closed_on_mock_serving():
+    # mock mode (conftest) => planner routes to the mock client; simulated text must NEVER be
+    # returned as the user's policy — the endpoint fails closed with a 503 pointing at BYOK.
     transport = ASGITransport(app=create_app())
     async with AsyncClient(transport=transport, base_url="http://t") as c:
         r = await c.post("/api/policies/extract",
                          files={"file": ("scan.png", _tiny_png(), "image/png")})
-    assert r.status_code == 200, r.text
-    assert r.json()["kind"] == "image" and r.json()["text"]
+    assert r.status_code == 503, r.text
+    assert "Bring your own model" in r.text
 
 
 async def test_extract_empty_and_oversize():

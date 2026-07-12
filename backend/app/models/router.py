@@ -269,7 +269,8 @@ class Router:
                 err2 = self._schema_error(result.parsed, schema)
                 if err2 is not None:
                     raise ValueError(f"structured output invalid after repair round: {err2}")
-        return Completion(text=result.text, parsed=result.parsed, usage=result.usage)
+        return Completion(text=result.text, parsed=result.parsed, usage=result.usage,
+                          served_by=f"{r.backend}:{r.model}", mock=r.use_mock)
 
     async def _record_dispatch(self, scope, seat, r, result, badge, *, messages=None,
                                latency_ms=0, schema=None) -> None:

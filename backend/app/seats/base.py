@@ -18,6 +18,8 @@ class Completion(BaseModel):
     text: str
     parsed: dict[str, Any] | None = None   # set when schema was provided
     usage: dict[str, int] = {}             # tokens_in, tokens_out
+    served_by: str | None = None           # "backend:model" of the hop that actually served
+    mock: bool = False                     # terminal mock hop served (simulated output)
 
 
 class CompleteFn(Protocol):

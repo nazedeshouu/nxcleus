@@ -60,6 +60,10 @@ async def _image_text(data: bytes, content_type: str) -> str:
     # planner seat is vision-capable and inherits any BYOK override; SANITIZED clears the boundary.
     out = await model_router.complete("planner", messages, scope="system",
                                       data_class="SANITIZED", max_tokens=4096)
+    if out.mock:
+        # fail closed: simulated text must never masquerade as the user's policy
+        raise _err(503, "no vision-capable model is reachable right now — connect a key under "
+                        "Settings → Bring your own model, or paste the policy as text")
     return (out.text or "").strip()
 
 
