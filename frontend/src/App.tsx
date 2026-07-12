@@ -3,6 +3,7 @@ import { Landing } from "./routes/Landing";
 import { PlatformLayout } from "./components/shell/PlatformLayout";
 import { JobList } from "./routes/JobList";
 import { BuildView } from "./routes/BuildView";
+import { RunMap } from "./routes/RunMap";
 import { Operations } from "./routes/Operations";
 import { ProcessDetail } from "./routes/ProcessDetail";
 import { Sandbox } from "./routes/Sandbox";
@@ -19,6 +20,7 @@ export function App() {
       <Route element={<PlatformLayout />}>
         <Route path="/build" element={<JobList />} />
         <Route path="/build/:jobId" element={<BuildView />} />
+        <Route path="/build/:jobId/map" element={<RunMap />} />
         <Route path="/operations" element={<Operations />} />
         <Route path="/operations/:id" element={<ProcessDetail />} />
         <Route path="/gallery" element={<Navigate to="/build" replace />} />

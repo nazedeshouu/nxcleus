@@ -528,3 +528,145 @@
   gap: 8px;
   padding: 4px 10px 8px;
 }
+
+/* ---------- the one boundary crossing: the planner's external dispatch ---------- */
+/* Among a stack of neutral local panes, this one reads as the wall being crossed:
+   external-tinted ring + a sealed-dark banner. Nothing here implies danger — the
+   crossing is designed and sanitized; the darkness is the boundary, not an alarm. */
+.paneExternal {
+  border-color: color-mix(in srgb, var(--zone-external) 42%, var(--hairline));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--zone-external) 18%, transparent), var(--shadow-md);
+}
+.crossing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+.crossing svg { width: 13px; height: 13px; flex: none; }
+.crossingLive { background: var(--seal); color: var(--seal-on); }
+.crossingLive svg { color: var(--seal-on); }
+.crossingSov {
+  background: var(--surface-sunk);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.crossingSov svg { color: var(--text-faint); }
+.paneHeadExternal { background: color-mix(in srgb, var(--zone-external-wash) 70%, var(--surface)); }
+
+/* the sanitization receipt, pinned above the exact outgoing prompt */
+.sanit {
+  border: 1px solid color-mix(in srgb, var(--ok) 22%, var(--hairline-soft));
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--ok-wash) 55%, var(--surface));
+  padding: 10px 12px;
+  margin-bottom: 4px;
+}
+.sanitHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.sanitHead svg { width: 13px; height: 13px; color: var(--ok); flex: none; }
+.sanitTitle {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ok);
+}
+.sanitSub {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+/* long policies (insurer runs carry ~17 rules) scroll inside the receipt, not the pane */
+.findings { display: flex; flex-direction: column; gap: 5px; max-height: 216px; overflow-y: auto; }
+.finding { display: flex; align-items: center; gap: 8px; font-size: 0.68rem; min-width: 0; }
+.fAction {
+  flex: none;
+  min-width: 84px;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  text-align: center;
+}
+.aNever { background: var(--seal); color: var(--seal-on); }
+.aDrop { background: var(--danger-wash); color: var(--danger-strong); }
+.aMask { background: var(--accent-wash); color: var(--accent-strong); }
+.aGen { background: var(--warn-wash); color: var(--warn); }
+.fLabel { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fCount {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  background: var(--surface-sunk);
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+}
+.fRule {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: var(--text-faint);
+}
+.neverRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed color-mix(in srgb, var(--ok) 22%, var(--hairline-soft));
+}
+.neverLabel {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.neverChips { display: flex; flex-wrap: wrap; gap: 5px; }
+.neverChip {
+  font-size: 0.62rem;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  color: var(--text-muted);
+}
+
+/* directional captions framing outgoing prompt vs inbound response */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.57rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 2px 2px 0;
+  margin-top: 2px;
+}
+.flow svg { width: 12px; height: 12px; color: var(--zone-external); flex: none; }
+
+/* list: the external seat group set apart from the local stack */
+.groupExt .groupSeat { color: var(--zone-external); }
+.groupExt .groupHead {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--zone-external-wash) 85%, var(--paper)) 78%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--zone-external) 45%, transparent);
+}

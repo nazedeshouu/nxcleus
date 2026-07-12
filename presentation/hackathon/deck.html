@@ -433,7 +433,7 @@
           <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">Full live build, stages 0 to 7.</strong> A KYC / AML onboarding process was planned, certified, fleet-built, QA'd and delivered to the registry in a single session on the MI300X cluster.</p>
         </div>
         <div style="border-top:1px solid var(--line); padding-top:13px;">
-          <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">136 of 138 planted patterns caught.</strong> The insurer sandbox seeds deliberately hard anomalies — identities split across records, inconsistencies invisible to regex or rule engines. Catching them takes reasoning, not string-matching.</p>
+          <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">All 138 planted duplicate-claim patterns surfaced as candidates — every one traceable to its planted row.</strong> The insurer sandbox plants duplicate claims for one incident — same date, amounts within 5%, different claim IDs — deliberately shaped to slip past regex or rule engines. Confirming them takes reasoning, not string-matching.</p>
         </div>
         <div style="border-top:1px solid var(--line); padding-top:13px;">
           <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2);"><strong style="color:var(--ink); font-weight:500;">Live GPU telemetry in every build.</strong> Per-node rocm-smi utilization, VRAM and tokens/sec stream straight into the cockpit. The AMD fleet is visible, not asserted.</p>
@@ -443,7 +443,7 @@
         <img src="assets/qr.svg" style="width:80px; height:80px; flex:none; filter:grayscale(1);">
         <div>
           <div class="mono" style="font-size:11px; letter-spacing:.16em; color:var(--accent-strong);">AMD.NXCLEUS.TECH</div>
-          <p style="font-size:12px; line-height:1.5; color:var(--ink2); margin-top:6px;">The MVP is live: build cockpit, operations registry, judge sandbox with three synthetic companies, and a Sovereign Mode toggle.</p>
+          <p style="font-size:12px; line-height:1.5; color:var(--ink2); margin-top:6px;">The MVP is live: build cockpit, operations registry, judge sandbox with eight synthetic companies, and a Sovereign Mode toggle.</p>
         </div>
       </div>
     </div>
@@ -454,7 +454,7 @@
       <div class="mono" style="font-size:8.5px; letter-spacing:.14em; color:var(--ink3); margin-top:10px; text-transform:uppercase;">The build cockpit: stages 0 to 7, goal anchor, AMD MI300X telemetry &amp; live egress ledger</div>
       <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
         <span class="chip amd">KYC 0→7 LIVE ON MI300X</span>
-        <span class="chip">136/138 CAUGHT</span>
+        <span class="chip">138/138 SURFACED</span>
         <span class="chip">EVENT-SOURCED · REPLAYABLE</span>
       </div>
     </div>
@@ -473,16 +473,16 @@
       <div class="mono" style="font-size:10px; letter-spacing:.16em; color:var(--accent-strong);">THE LIVE NUMBERS · AMDPLATFORM.NXCLEUS.TECH/OPERATIONS</div>
       <div style="display:flex; gap:28px; margin-top:16px;">
         <div>
-          <div style="font-weight:300; font-size:48px; letter-spacing:-.02em; color:var(--ink); line-height:1;">$0.54</div>
-          <div style="font-size:12px; color:var(--ink3); margin-top:6px;">to build, 1 frontier call ever</div>
+          <div style="font-weight:300; font-size:48px; letter-spacing:-.02em; color:var(--ink); line-height:1;">$0.41</div>
+          <div style="font-size:12px; color:var(--ink3); margin-top:6px;">insurer build + 138-unit run, live-measured · 1 frontier call ever</div>
         </div>
         <div style="width:1px; background:var(--line);"></div>
         <div>
           <div style="font-weight:300; font-size:48px; letter-spacing:-.02em; color:var(--ink); line-height:1;">$0.009</div>
-          <div style="font-size:12px; color:var(--ink3); margin-top:6px;">per applicant to run, 0 frontier calls</div>
+          <div style="font-size:12px; color:var(--ink3); margin-top:6px;">per record to run · measured · 0 frontier calls</div>
         </div>
       </div>
-      <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2); margin-top:16px;">One live KYC / AML process: plan, certify, fleet-build, QA and register ($1.26 at full corpus), then batch-run new applicants. A quote before the build; an exact per-token invoice after.</p>
+      <p style="font-size:var(--fs-body); line-height:1.55; color:var(--ink2); margin-top:16px;">One live process — the insurer duplicate-claim build: plan, certify, fleet-judge and register, then batch-run new records. A quote before the build; an exact per-token invoice after.</p>
       <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
         <span class="chip amd">QUOTE, THEN METERED INVOICE</span>
         <span class="chip amd">VERIFY LIVE AT /OPERATIONS</span>
@@ -503,7 +503,7 @@
   </div>
   <div style="margin-top:24px; padding:18px 26px; background:#fff; border-radius:var(--radius); border:1px solid var(--line-soft); display:flex; align-items:center; gap:22px;">
     <div style="font-size:20px; font-weight:600; color:var(--accent-strong); line-height:1.12; flex:none;">Zero frontier<br>calls per run.</div>
-    <p style="font-size:13.5px; line-height:1.55; color:var(--ink2);">The margin structure: ~$0.50 of frontier, paid once, ever. Runs meter at 3–5× over a $0.009 measured cost and still land under a nickel per applicant; pilot builds price at $2–10k against ~$1.26 of measured compute. Software margins, priced from live meters — and the $100k consultant becomes a line item.</p>
+    <p style="font-size:13.5px; line-height:1.55; color:var(--ink2);">The margin structure: a modeled ~$0.50 of frontier, paid once, ever. Runs meter at a modeled 3–5× over the ~$0.009 measured cost-per-record and still land under a nickel each; pilot builds price at $2–10k against ~$0.41 of live-measured build-plus-run compute. Software margins, priced from live meters — and the $100k consultant becomes a line item.</p>
   </div>
   <div class="footer"><span>Nxcleus · Oxys Studio</span><span>Economics &nbsp; <span class="pg">08 / 10</span></span></div>
 </section>

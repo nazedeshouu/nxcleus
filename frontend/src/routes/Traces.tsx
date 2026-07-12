@@ -4,16 +4,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Check, Copy, LockKey, Terminal, Wrench, CaretDown, CaretRight, CaretUp,
   CheckCircle, XCircle, MagnifyingGlass, Brain, DownloadSimple,
+  ArrowSquareOut, ShieldCheck, ArrowUpRight, ArrowDown,
 } from "@phosphor-icons/react";
 import { api, type ToolInfo, type TraceDetail, type TraceSummary } from "../api/client";
 import { API_BASE, MOCK_FORCED } from "../api/config";
 import { openEventStream } from "../api/sse";
 import { ZoneBadge } from "../components/ui/ZoneBadge";
 import { DataClassChip } from "../components/ui/DataClassChip";
-import { SEAT_INFO } from "../api/adapt";
+import { SEAT_INFO, normalizeEvent } from "../api/adapt";
 import { usePublicConfig } from "../components/shell/usePublicConfig";
 import { usd } from "../lib/format";
-import type { Zone } from "../lib/events";
+import type { Zone, BoundarySanitizedPayload } from "../lib/events";
 import styles from "./Traces.module.css";
 
 function scopeEventsPath(scope: string): string | null {
@@ -46,6 +47,30 @@ function parseMessages(detail: TraceDetail): Array<{ role: string; content: stri
 const hhmmss = (ts?: string) => ts?.slice(11, 19) ?? "";
 const secs = (ms?: number | null) => (ms != null ? `${(ms / 1000).toFixed(1)}s` : "");
 const modelOf = (t: TraceSummary) => t.model ?? SEAT_INFO[t.seat]?.model ?? t.backend;
+
+/** Pull readable text out of a message `content` (string, or multimodal text parts). */
+function contentText(c: unknown): string {
+  if (typeof c === "string") return c;
+  if (Array.isArray(c))
+    return c.map((p) => (p && typeof p === "object" && "text" in p ? String((p as { text: unknown }).text) : "")).filter(Boolean).join(" ");
+  return c == null ? "" : JSON.stringify(c);
+}
+/** The list preview is a raw messages-JSON string; surface the content, not the envelope. */
+function previewText(s?: string): string {
+  const t = (s ?? "").trim().replace(/\\+$/, ""); // previews cut mid-escape leave a dangling backslash
+  if (!(t.startsWith("[") || t.startsWith("{"))) return t;
+  try {
+    const v = JSON.parse(t);
+    const parts = (Array.isArray(v) ? v : [v]).map((m) => (m && typeof m === "object" ? contentText(m.content) : String(m))).filter(Boolean);
+    if (parts.length) return parts.join("  ·  ");
+  } catch { /* previews are truncated → invalid JSON; pull the content strings out by hand */ }
+  const clean = (x: string) => x.replace(/\\[nrt]/g, " ").replace(/\\"/g, '"').replace(/\\\\/g, "\\").trim();
+  const complete = [...t.matchAll(/"(?:content|text)"\s*:\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => clean(m[1])).filter(Boolean);
+  if (complete.length) return complete.join("  ·  ");
+  // a single content value truncated mid-string: take from the last opener to the end
+  const open = t.match(/"(?:content|text)"\s*:\s*"((?:[^"\\]|\\.)*)$/);
+  return open ? `${clean(open[1]).replace(/\.{2,}$/, "")}…` : t;
+}
 
 /** Pull <think>/<reasoning> spans out of an assistant reply so they render as a distinct block. */
 function splitReasoning(text: string): { reasoning: string[]; body: string } {
@@ -171,6 +196,60 @@ function MessageBlock({ role, content }: { role: string; content: string }) {
   );
 }
 
+/** Boundary action verbs the backend actually emits (free-form) -> friendly label + tone class. */
+const ACTION_META: Record<string, { label: string; cls: string }> = {
+  never_leak: { label: "never leaves", cls: "aNever" },
+  drop: { label: "dropped", cls: "aDrop" },
+  dropped: { label: "dropped", cls: "aDrop" },
+  mask: { label: "masked", cls: "aMask" },
+  masked: { label: "masked", cls: "aMask" },
+  generalize: { label: "generalized", cls: "aGen" },
+  abstracted: { label: "generalized", cls: "aGen" },
+};
+const actionMeta = (a: string) => ACTION_META[a] ?? { label: a.replace(/_/g, " "), cls: "aMask" };
+
+/**
+ * What the boundary stripped from this brief before it crossed the wall. Sourced
+ * from the job's `boundary.sanitized` event — the same findings the cockpit shows,
+ * pinned here beside the exact outgoing prompt so the crossing reads as supervised.
+ */
+function SanitizationStrip({ p }: { p: BoundarySanitizedPayload }) {
+  return (
+    <div className={styles.sanit}>
+      <div className={styles.sanitHead}>
+        <ShieldCheck weight="fill" />
+        <span className={styles.sanitTitle}>Sanitized at the boundary</span>
+        <span className={styles.sanitSub}>
+          {p.brief_tokens > 0 ? `${p.brief_tokens.toLocaleString()} tokens crossed` : "before this crossed"}
+        </span>
+      </div>
+      {p.findings.length > 0 && (
+        <div className={styles.findings}>
+          {p.findings.map((f, i) => {
+            const m = actionMeta(String(f.action));
+            return (
+              <div key={i} className={styles.finding}>
+                <span className={`${styles.fAction} ${styles[m.cls] ?? ""}`}>{m.label}</span>
+                <span className={styles.fLabel}>{f.label}</span>
+                {f.count > 0 && <span className={styles.fCount}>{f.count.toLocaleString()}</span>}
+                <span className={styles.fRule}>{f.rule_id}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {p.never_leaves.length > 0 && (
+        <div className={styles.neverRow}>
+          <span className={styles.neverLabel}>frontier never sees</span>
+          <span className={styles.neverChips}>
+            {p.never_leaves.map((n, i) => <span key={i} className={styles.neverChip}>{n}</span>)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TracePane({
   id, pos, onPrev, onNext, hasPrev, hasNext,
 }: {
@@ -183,8 +262,28 @@ function TracePane({
 }) {
   const q = useQuery({ queryKey: ["trace", id], queryFn: () => api.trace(id), retry: 0 });
   const t = q.data;
+  // the planner's brief is what crosses the wall — pull the job's sanitization
+  // receipt (boundary.sanitized) to pin beside the exact outgoing prompt.
+  const isBoundarySeat = t?.seat === "planner" || t?.zone === "EXTERNAL";
+  const boundaryScope = t?.scope ?? "";
+  const boundaryQ = useQuery({
+    queryKey: ["boundary", boundaryScope],
+    queryFn: async (): Promise<BoundarySanitizedPayload | null> => {
+      const r = await api.replay(boundaryScope);
+      const last = (r.events ?? [])
+        .map((e) => normalizeEvent(e as never))
+        .reverse()
+        .find((e) => e?.type === "boundary.sanitized");
+      return last ? (last.payload as BoundarySanitizedPayload) : null;
+    },
+    enabled: isBoundarySeat && boundaryScope.startsWith("job:") && !MOCK_FORCED,
+    retry: 0,
+    staleTime: Infinity,
+  });
   if (q.isLoading) return <div className={styles.paneEmpty}>Loading trace…</div>;
   if (!t) return <div className={styles.paneEmpty}>Trace unavailable.</div>;
+  const isCrossing = t.zone === "EXTERNAL";
+  const isMock = (t.badge ?? "").toLowerCase().includes("mock");
   const messages = parseMessages(t);
   const parsedOk = t.badge === "parsed_ok" || t.badge?.includes("ok");
   const rawAll = [
@@ -193,8 +292,21 @@ function TracePane({
   ].filter(Boolean).join("\n\n");
 
   return (
-    <div className={styles.pane}>
-      <div className={styles.paneHead}>
+    <div className={`${styles.pane} ${isCrossing ? styles.paneExternal : ""}`}>
+      {isBoundarySeat && (
+        <div className={`${styles.crossing} ${isCrossing ? styles.crossingLive : styles.crossingSov}`}>
+          {isCrossing ? (
+            isMock ? (
+              <><ArrowSquareOut weight="bold" /> The one boundary crossing — simulated in this run; live, only this call leaves the box</>
+            ) : (
+              <><ArrowSquareOut weight="bold" /> The one call that leaves the box — everything else stays on-box</>
+            )
+          ) : (
+            <><LockKey weight="fill" /> Sovereign — the planner ran on-box; nothing left</>
+          )}
+        </div>
+      )}
+      <div className={`${styles.paneHead} ${isCrossing ? styles.paneHeadExternal : ""}`}>
         <div className={styles.paneMeta}>
           <span className={styles.seatArrow}>{t.seat} → {modelOf(t)}</span>
           <ZoneBadge zone={t.zone as Zone} size="xs" />
@@ -217,10 +329,21 @@ function TracePane({
       </div>
 
       <div className={styles.msgs}>
+        {isBoundarySeat && boundaryQ.data && <SanitizationStrip p={boundaryQ.data} />}
         {messages.length === 0 && !t.response_text && (
           <div className={styles.paneEmpty}>No message payload on this trace.</div>
         )}
+        {isBoundarySeat && messages.length > 0 && (
+          <div className={styles.flow}>
+            <ArrowUpRight weight="bold" /> Outgoing — the sanitized brief that crossed the wall
+          </div>
+        )}
         {messages.map((m, i) => <MessageBlock key={i} role={m.role} content={m.content} />)}
+        {isBoundarySeat && t.response_text && (
+          <div className={styles.flow}>
+            <ArrowDown weight="bold" /> Inbound — returned from the frontier
+          </div>
+        )}
         {t.response_text && <MessageBlock role="response" content={t.response_text} />}
       </div>
     </div>
@@ -284,9 +407,18 @@ export function Traces() {
   const [tab, setTab] = useState<"dispatches" | "tools">("dispatches");
 
   const listQ = useQuery({
-    queryKey: ["traces", scope],
-    queryFn: () => api.traces({ scope: scope || undefined, limit: 200 }),
+    queryKey: ["traces", scope, seat],
+    queryFn: () => api.traces({ scope: scope || undefined, seat: seat || undefined, limit: 200 }),
     enabled: !MOCK_FORCED,
+    retry: 0,
+  });
+  // The backend caps /traces at 200 rows oldest-first; intake's trust dispatches flood
+  // that window and bury the planner — the one external call this inspector exists to show.
+  // Pin the planner rows explicitly so they surface in the all-seats view regardless.
+  const plannerQ = useQuery({
+    queryKey: ["traces", scope, "planner-pin"],
+    queryFn: () => api.traces({ scope: scope || undefined, seat: "planner", limit: 50 }),
+    enabled: !MOCK_FORCED && !seat,
     retry: 0,
   });
   // ponytail: 404 from a backend without the tools endpoint = query error = tab hidden
@@ -297,7 +429,13 @@ export function Traces() {
     retry: 0,
   });
   const tools = toolsQ.data?.tools ?? [];
-  const all = useMemo(() => listQ.data?.traces ?? [], [listQ.data]);
+  const all = useMemo(() => {
+    const base = listQ.data?.traces ?? [];
+    if (seat) return base; // server already filtered to this seat
+    const pin = plannerQ.data?.traces ?? [];
+    const seen = new Set(base.map((t) => t.id));
+    return [...base, ...pin.filter((t) => !seen.has(t.id))];
+  }, [listQ.data, plannerQ.data, seat]);
   // chronological (oldest first) reads like a transcript and defines prev/next order
   const chrono = useMemo(() => [...all].sort((a, b) => (a.ts ?? "").localeCompare(b.ts ?? "")), [all]);
   const seats = useMemo(() => [...new Set(chrono.map((t) => t.seat))], [chrono]);
@@ -440,10 +578,13 @@ export function Traces() {
                     : "No traces recorded for this scope yet. They appear per model dispatch, live."}
               </div>
             )}
-            {groups.map((g) => (
-              <div key={g.seat} className={styles.group}>
+            {groups.map((g) => {
+              const groupExt = g.rows.some((r) => r.zone === "EXTERNAL");
+              return (
+              <div key={g.seat} className={`${styles.group} ${groupExt ? styles.groupExt : ""}`}>
                 <div className={styles.groupHead}>
                   <span className={styles.groupSeat}>{g.seat}</span>
+                  {groupExt && <ZoneBadge zone="EXTERNAL" size="xs" />}
                   <span className={styles.groupModel}>{g.model}</span>
                   <span className={styles.groupCount}>{g.rows.length}×</span>
                 </div>
@@ -462,12 +603,13 @@ export function Traces() {
                       </span>
                     </div>
                     {(t.messages_preview || t.response_preview) && (
-                      <div className={styles.rowPrev}>{t.messages_preview ?? t.response_preview}</div>
+                      <div className={styles.rowPrev}>{previewText(t.messages_preview ?? t.response_preview)}</div>
                     )}
                   </button>
                 ))}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className={styles.detail}>

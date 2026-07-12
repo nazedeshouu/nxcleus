@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { WarningOctagon, Warning, Play, ArrowRight, MagnifyingGlass } from "@phosphor-icons/react";
+import { WarningOctagon, Warning, Play, ArrowRight, MagnifyingGlass, TreeStructure } from "@phosphor-icons/react";
 
 import "../components/build/build.css";
 import { useBreadcrumb } from "../components/shell/breadcrumbs";
@@ -49,6 +49,20 @@ export function CockpitFrame({ view, top, jobId, completion }: { view: JobView; 
       )}
 
       {top}
+      {jobId && (
+        <Link
+          to={`/build/${jobId}/map`}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 7, alignSelf: "flex-start",
+            margin: "0 0 4px", padding: "8px 14px", borderRadius: "var(--r-pill)",
+            border: "1px solid color-mix(in srgb, var(--accent) 38%, transparent)",
+            background: "var(--accent-wash)", color: "var(--accent-strong)",
+            fontSize: "var(--fs-xs)", fontWeight: 600, textDecoration: "none",
+          }}
+        >
+          <TreeStructure weight="bold" style={{ width: 15, height: 15 }} /> View run map — live agent graph
+        </Link>
+      )}
       {completion}
 
       <div className="bv-grid">
