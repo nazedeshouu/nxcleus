@@ -430,6 +430,22 @@ async def incr_sandbox_runs(session_id: str) -> None:
                      {"id": session_id})
 
 
+# ============================================================ users (self-serve accounts)
+async def create_user(*, username: str, password_hash: str, salt: str, role: str = "judge") -> str:
+    # username must already be lowercased/validated by the caller (app.api.auth).
+    uid = new_id("user")
+    await db.execute(
+        "INSERT INTO users (id, username, password_hash, salt, role, created_at) "
+        "VALUES (:id, :u, :ph, :salt, :role, :ts)",
+        {"id": uid, "u": username, "ph": password_hash, "salt": salt, "role": role, "ts": now_iso()},
+    )
+    return uid
+
+
+async def get_user(username: str) -> dict | None:
+    return await db.fetchone("SELECT * FROM users WHERE username = :u", {"u": username.strip().lower()})
+
+
 # ============================================================ connections / custom models / overrides
 async def create_connection(*, name: str, base_url: str, api_key_ref: str, zone: str = "CUSTOM",
                             data_class_ceiling: str = "SANITIZED", counts_as_local: bool = False,

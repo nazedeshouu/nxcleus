@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import secrets
 import time
 
@@ -21,6 +22,7 @@ from pydantic import BaseModel
 
 from app.api.deps import _err
 from app.config import settings
+from app.db import dao
 
 router = APIRouter(tags=["auth"])
 
@@ -29,6 +31,43 @@ _MAX_AGE = 7 * 86400  # 7-day session
 # random-at-boot fallback signing key: used only when neither AUTH_SECRET nor ADMIN_TOKEN is set.
 # Consequence: restarting the process invalidates existing sessions (users re-login). Acceptable.
 _BOOT_SECRET = secrets.token_hex(32)
+
+# self-serve accounts ---------------------------------------------------------------------------
+_RESERVED = {"admin", "judge"}                 # env-user names; a db signup may never shadow them
+_USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{2,31}$")  # 3–32 chars, lowercased before match
+_PW_MIN, _PW_MAX = 8, 1024                     # max caps scrypt cost against a giant-password DoS
+_SCRYPT = {"n": 2**14, "r": 8, "p": 1}         # ~16MB work factor, under OpenSSL's 32MB maxmem
+# in-memory per-IP signup limiter — ponytail: in-memory limiter, move to redis if multi-process
+_RATE_MAX, _RATE_WINDOW = 5, 3600.0            # 5 signups / hour / IP
+_signup_hits: dict[str, list[float]] = {}
+
+
+def _hash_password(password: str, salt: bytes) -> str:
+    return hashlib.scrypt(password.encode(), salt=salt, dklen=32, **_SCRYPT).hex()
+
+
+def _verify_password(password: str, salt: bytes, expected_hex: str) -> bool:
+    return hmac.compare_digest(_hash_password(password, salt), expected_hex)
+
+
+def _client_ip(request: Request) -> str:
+    # Caddy fronts the app and appends the real client to X-Forwarded-For; trust the first hop only.
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff.strip():
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_ok(ip: str) -> bool:
+    """Record one signup attempt for ip; False once it exceeds the window budget."""
+    now = time.time()
+    hits = [t for t in _signup_hits.get(ip, []) if now - t < _RATE_WINDOW]
+    if len(hits) >= _RATE_MAX:
+        _signup_hits[ip] = hits
+        return False
+    hits.append(now)
+    _signup_hits[ip] = hits
+    return True
 
 
 def _secret() -> bytes:
@@ -87,21 +126,60 @@ def _is_https(request: Request) -> bool:
         request.headers.get("x-forwarded-proto", "").split(",")[0].strip() == "https"
 
 
+def _issue_session(response: Response, request: Request, username: str, role: str) -> None:
+    exp = int(time.time()) + _MAX_AGE
+    token = _sign(f"{username}|{role}|{exp}")
+    response.set_cookie(COOKIE, token, httponly=True, samesite="lax",
+                        secure=_is_https(request), max_age=_MAX_AGE, path="/")
+
+
 class LoginBody(BaseModel):
     username: str
     password: str
 
 
+class SignupBody(BaseModel):
+    username: str
+    password: str
+    invite_code: str | None = None
+
+
 @router.post("/auth/login")
 async def login(body: LoginBody, request: Request, response: Response) -> dict:
-    role = _authenticate(body.username, body.password)
+    # env users first (exact 'admin'/'judge'), then the db users table (case-insensitive).
+    role, username = _authenticate(body.username, body.password), body.username
+    if not role:
+        user = await dao.get_user(body.username)
+        if user and _verify_password(body.password, bytes.fromhex(user["salt"]), user["password_hash"]):
+            role, username = user["role"], user["username"]
     if not role:
         raise _err(401, "invalid username or password")
-    exp = int(time.time()) + _MAX_AGE
-    token = _sign(f"{body.username}|{role}|{exp}")
-    response.set_cookie(COOKIE, token, httponly=True, samesite="lax",
-                        secure=_is_https(request), max_age=_MAX_AGE, path="/")
-    return {"username": body.username, "role": role, "auth_enabled": True}
+    _issue_session(response, request, username, role)
+    return {"username": username, "role": role, "auth_enabled": True}
+
+
+@router.post("/auth/signup")
+async def signup(body: SignupBody, request: Request, response: Response) -> dict:
+    if not settings.auth_enabled:
+        # dev/mock deployments have no user store wall — /auth/me already reports a synthetic admin.
+        raise _err(409, "self-serve signup is disabled on this deployment (auth is off)")
+    if not _rate_ok(_client_ip(request)):
+        raise _err(429, "too many signups from this address; try again later")
+    if settings.auth_signup_code and not hmac.compare_digest(
+            body.invite_code or "", settings.auth_signup_code):
+        raise _err(403, "invalid invite code")
+    username = body.username.strip().lower()
+    if not _USERNAME_RE.match(username):
+        raise _err(400, "username must be 3–32 chars: a–z, 0–9, '-', '_' (start alphanumeric)")
+    if not (_PW_MIN <= len(body.password) <= _PW_MAX):
+        raise _err(400, f"password must be {_PW_MIN}–{_PW_MAX} characters")
+    if username in _RESERVED or await dao.get_user(username):
+        raise _err(409, "username is taken")  # ponytail: UNIQUE index is the backstop for the TOCTOU race
+    salt = secrets.token_bytes(16)
+    await dao.create_user(username=username, password_hash=_hash_password(body.password, salt),
+                          salt=salt.hex(), role="judge")
+    _issue_session(response, request, username, "judge")
+    return {"username": username, "role": "judge", "auth_enabled": True}
 
 
 @router.post("/auth/logout")
@@ -135,4 +213,11 @@ if __name__ == "__main__":  # ponytail: smallest runnable check for the signing/
     assert _authenticate("admin", "pw") == "admin"
     assert _authenticate("admin", "bad") is None
     assert _authenticate("judge", "pw") is None, "unset user must fail"
+    salt = secrets.token_bytes(16)
+    h = _hash_password("correct horse battery", salt)
+    assert _verify_password("correct horse battery", salt, h), "round-trip must verify"
+    assert not _verify_password("wrong", salt, h), "wrong password must fail"
+    assert _USERNAME_RE.match("judge_01") and not _USERNAME_RE.match("ab"), "username rule"
+    ip = "203.0.113.7"
+    assert all(_rate_ok(ip) for _ in range(_RATE_MAX)) and not _rate_ok(ip), "limiter trips at cap"
     print("auth self-check ok")

@@ -32,6 +32,7 @@ PREFIX = {
     "custom_model": "cm",
     "seat_override": "so",
     "message": "msg",
+    "user": "usr",
 }
 
 

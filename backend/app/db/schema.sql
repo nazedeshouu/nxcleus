@@ -209,3 +209,12 @@ CREATE TABLE IF NOT EXISTS model_traces (
   cost_usd REAL, latency_ms INTEGER, badge TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_model_traces_scope ON model_traces(scope, ts);
+
+-- self-serve accounts (06 §1 extension): db-backed users alongside the env `admin`/`judge`.
+-- username stored lowercased so UNIQUE gives case-insensitive uniqueness. password_hash is a
+-- scrypt digest over `salt`; neither is ever serialized outward. role defaults to 'judge'.
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL, salt TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'judge', created_at TEXT
+);

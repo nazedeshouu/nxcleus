@@ -105,8 +105,12 @@ cat >> .env <<'EOF'
 AUTH_ADMIN_PASSWORD=<strong-admin-password>
 AUTH_JUDGE_PASSWORD=<strong-judge-password>
 # AUTH_SECRET=<optional 32+ hex; only if you want to rotate away from ADMIN_TOKEN>
+# AUTH_SIGNUP_CODE=<optional invite code; set => POST /api/auth/signup requires it, unset => open self-serve signup (role 'judge')>
 EOF
 ```
+
+`AUTH_SIGNUP_CODE` flows through `env_file` like the other `AUTH_*` secrets — no compose change needed.
+Self-serve signup only functions once auth is enabled (i.e. one of the passwords above is set).
 
 > Alternative (equivalent): `export AUTH_ADMIN_PASSWORD=... AUTH_JUDGE_PASSWORD=...` in the deploy
 > shell before step 4 — the key-only compose entries pick up an exported value and it wins over `.env`.

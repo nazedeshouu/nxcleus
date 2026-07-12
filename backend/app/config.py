@@ -100,6 +100,7 @@ class Settings(BaseSettings):
     auth_admin_password: str = ""               # user 'admin'  (role admin) — full access
     auth_judge_password: str = ""               # user 'judge'  (role judge) — demo writes, no admin ops
     auth_secret: str = ""                        # session cookie signing key; empty => admin_token, else random-at-boot
+    auth_signup_code: str = ""                  # invite code for /auth/signup; set => required, empty => open signup
     fernet_key: str = ""                        # BYOK secret encryption; empty => ephemeral dev key
     discord_webhook_url: str = ""
 
@@ -181,6 +182,7 @@ class Settings(BaseSettings):
             },
             "admin_required": bool(self.admin_token),
             "auth_enabled": self.auth_enabled,
+            "signup_code_required": bool(self.auth_signup_code),
         }
 
 
