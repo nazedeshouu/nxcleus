@@ -8,16 +8,18 @@ export function Panel({
   icon: IconCmp,
   status = "default",
   tag,
+  className,
   children,
 }: {
   title: string;
   icon: Icon;
   status?: PanelStatus;
   tag?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <section className={`bv-panel ${status}`}>
+    <section className={`bv-panel ${status}${className ? ` ${className}` : ""}`}>
       <header className="bv-panel-head">
         <IconCmp weight="regular" />
         <span className="bv-panel-title">{title}</span>

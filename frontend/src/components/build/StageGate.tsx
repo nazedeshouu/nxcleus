@@ -44,7 +44,7 @@ export function StageGate({ view, jobId }: { view: JobView; jobId?: string }) {
 
   if (atQuote) {
     return (
-      <Panel title="Quote — your approval gate" icon={Receipt} status="active" tag="stage 3 · parked">
+      <Panel title="Quote — your approval gate" icon={Receipt} status="active" tag="stage 3 · parked" className="bv-gate-money">
         {view.quote.lines.length > 0 && (
           <div className="bv-gate-lines">
             {view.quote.lines.map((l, i) => (

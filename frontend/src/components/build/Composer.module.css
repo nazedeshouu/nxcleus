@@ -86,13 +86,13 @@
   gap: 3px;
   padding: 10px 13px;
   border-radius: var(--r-md);
-  border: 1px solid var(--hairline);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: var(--surface-sunk);
   cursor: pointer;
   transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
 }
 .chip:hover {
-  border-color: var(--accent-mid);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-wash);
 }
 .chipText {

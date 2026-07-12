@@ -45,10 +45,30 @@
 .body {
   padding: 6px 20px 18px;
 }
+/* CSS-only scroll shade (Lea Verou technique): the surface-colored covers hide the
+   inner shadows until content actually overflows, so a short list shows nothing and
+   a long one gets a soft "more below / above" cue — no JS, no scroll listeners. */
+.scrollShade {
+  background:
+    linear-gradient(var(--surface) 30%, transparent) top / 100% 34px no-repeat,
+    linear-gradient(transparent, var(--surface) 70%) bottom / 100% 34px no-repeat,
+    radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--ink) 14%, transparent), transparent) top / 100% 12px no-repeat,
+    radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--ink) 14%, transparent), transparent) bottom / 100% 12px no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
 .tableScroll {
+  composes: scrollShade;
   overflow: auto;
   /* long registries/ledgers scroll inside the panel instead of stretching the page */
   max-height: 460px;
+}
+/* the connections list caps + scrolls so seed rows never stretch the page */
+.connScroll {
+  composes: scrollShade;
+  max-height: 344px;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
 }
 .table {
   width: 100%;
@@ -271,10 +291,22 @@
 }
 
 /* add form */
+.formHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline-soft);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+.formHead svg { width: 13px; height: 13px; color: var(--text-faint); }
 .form {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px dashed var(--hairline);
+  margin-top: 14px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;

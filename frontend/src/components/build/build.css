@@ -109,6 +109,15 @@
 .bv-conn.closed { color: var(--text-faint); }
 .bv-conn.open i { animation: bv-pulse 2s var(--ease) infinite; }
 @keyframes bv-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+/* honesty chip: model calls that fell through to a simulated (mock) backend — not a clean live run */
+.bv-simchip {
+  display: inline-flex; align-items: center; gap: 0.35em;
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600;
+  padding: 2px 9px; border-radius: var(--r-pill);
+  background: var(--danger-wash); color: var(--danger-strong);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+}
+.bv-simchip i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
 /* stage rail */
 .bv-stagerail {
@@ -241,7 +250,7 @@
 /* ---- three-column cockpit ---- */
 .bv-grid {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 344px;
+  grid-template-columns: 284px minmax(0, 1fr) 324px;
   gap: 16px;
   align-items: start;
 }
@@ -432,6 +441,26 @@
 }
 .bv-gate-abort:hover:not(:disabled) { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
 .bv-gate-abort:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* the money shot: quote approval reads as a deliberate, calm decision — a beat
+   the whole demo builds to, so it carries more presence than a routine panel */
+.bv-panel.bv-gate-money {
+  border-color: color-mix(in srgb, var(--accent) 52%, transparent);
+  box-shadow: var(--glow-accent), 0 0 0 4px var(--accent-wash), var(--shadow-lg);
+}
+.bv-panel.bv-gate-money .bv-panel-head {
+  padding: 14px 16px;
+  background: linear-gradient(180deg, var(--accent-wash), transparent);
+  border-bottom-color: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.bv-panel.bv-gate-money .bv-panel-title { font-size: var(--fs-sm); font-weight: 650; }
+.bv-panel.bv-gate-money .bv-panel-body { padding: 16px; }
+.bv-panel.bv-gate-money .bv-gate-total {
+  border-left: 2px solid var(--accent);
+  background: var(--accent-wash);
+  color: var(--text);
+}
+.bv-panel.bv-gate-money .bv-clarify-submit { padding: 11px 20px; font-size: var(--fs-body); }
 
 /* ---- certification panel ---- */
 .bv-cert-checks { display: flex; flex-direction: column; }

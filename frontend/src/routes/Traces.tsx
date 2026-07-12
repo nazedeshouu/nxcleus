@@ -481,7 +481,14 @@ export function Traces() {
                 hasNext={selIdx >= 0 && selIdx < filtered.length - 1}
               />
             ) : (
-              <div className={`${styles.paneEmpty} ${styles.detailEmpty}`}>Select a dispatch to read its full prompt, reasoning, and response. Use ↑/↓ to move between dispatches.</div>
+              <div className={styles.detailEmpty}>
+                <span className={styles.detailEmptyIcon}><Terminal weight="bold" /></span>
+                <span className={styles.detailEmptyTitle}>Read any dispatch in full</span>
+                <p className={styles.detailEmptyHint}>
+                  Select a dispatch to inspect its exact prompt, reasoning, and response.
+                  Use <span className={styles.detailEmptyKeys}>↑ ↓</span> to move between them.
+                </p>
+              </div>
             )}
           </div>
         </div>

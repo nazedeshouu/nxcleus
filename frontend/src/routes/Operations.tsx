@@ -8,8 +8,10 @@ import { usd } from "../lib/format";
 import styles from "./Operations.module.css";
 
 /** Modeled contrast only — a frontier-API approach re-pays per run AND re-exposes
- *  data each run. Real Nxcleus numbers come from /economics/summary. */
-const MODELED_FRONTIER_PER_RUN = 0.03;
+ *  data each run. Real Nxcleus numbers come from /economics/summary.
+ *  Basis: a 60-unit batch with one frontier call per unit at ~$0.02/call (GPT-5.6-class
+ *  list pricing) ≈ $1.20/run — vs our measured ~$0.07/run on AMD-hosted serving. */
+const MODELED_FRONTIER_PER_RUN = 1.2;
 const HORIZON = 240; // project the cost curves across this many runs
 
 function MoneyChart({ buildCapex, perRun }: { buildCapex: number; perRun: number }) {

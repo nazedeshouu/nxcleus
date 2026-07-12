@@ -321,6 +321,7 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
   return (
     <div className={styles.body}>
       {connections.length === 0 && <div className={styles.empty}>No BYOK connections yet — add one below, or the built-in local fleet serves every seat.</div>}
+      <div className={connections.length > 6 ? styles.connScroll : undefined}>
       {connections.map((c) => {
         const t = tests[c.id];
         return (
@@ -352,7 +353,12 @@ function Connections({ connections }: { connections: ConnectionInfo[] }) {
           </div>
         );
       })}
+      </div>
 
+      <div className={styles.formHead}>
+        <Plug weight="regular" />
+        <span>Add a connection</span>
+      </div>
       <div className={styles.form}>
         <div className={`${styles.field} ${styles.full}`}>
           <label className={styles.label}>Provider preset</label>
