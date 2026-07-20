@@ -352,13 +352,13 @@
   font-weight: 600;
 }
 
-/* ask column — wraps the shared Composer */
-.askCol {
+/* matched columns keep the data browser and process composer on one baseline */
+.splitCol {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.askHeading {
+.colHeading {
   font-family: var(--font-mono);
   font-size: var(--fs-micro);
   text-transform: uppercase;

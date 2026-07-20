@@ -170,8 +170,8 @@ function AskPanel({ company }: { company: CompanySummary }) {
   };
 
   return (
-    <div className={styles.askCol}>
-      <div className={styles.askHeading}>Ask {company.name} to build a process</div>
+    <div className={styles.splitCol}>
+      <div className={styles.colHeading}>Ask {company.name} to build a process</div>
       <Composer
         variant="sandbox"
         boundCompany={company}
@@ -275,7 +275,10 @@ export function Sandbox() {
 
       {selected ? (
         <div className={styles.split}>
-          <DataBrowser companyId={selected.id} />
+          <div className={styles.splitCol}>
+            <div className={styles.colHeading}>Browse {selected.name}'s private data</div>
+            <DataBrowser companyId={selected.id} />
+          </div>
           <AskPanel company={selected} />
         </div>
       ) : (
