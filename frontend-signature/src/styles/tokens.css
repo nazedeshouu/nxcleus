@@ -1,0 +1,138 @@
+:root {
+  /* The Aperture — warm institutional paper, carbon, one copper signal. */
+  --ink: #171411;
+  --ink-2: #302b27;
+  --paper: #eeeae1;
+  --surface: #f6f2ea;
+  --surface-sunk: #e6e0d6;
+  --surface-raised: #fbf8f1;
+  --hairline: #beb7ac;
+  --hairline-soft: #d7d0c5;
+  --text: #171411;
+  --text-muted: #625c55;
+  --text-faint: #6f6861;
+
+  --accent: #b55f36;
+  --accent-strong: #8d3f20;
+  --accent-mid: #c98c6c;
+  --accent-pale: #ead4c7;
+  --accent-wash: #f3e6dc;
+
+  --zone-local: #245f55;
+  --zone-local-wash: #dfe9e4;
+  --zone-amd: #8c6737;
+  --zone-amd-wash: #eee4d4;
+  --zone-custom: #596476;
+  --zone-custom-wash: #e5e8ec;
+  --zone-external: #a65334;
+  --zone-external-wash: #f0dfd6;
+
+  --raw: #171411;
+  --raw-on: #f3eee4;
+  --sanitized: #245f55;
+
+  --ok: #2e725c;
+  --ok-wash: #e0eee8;
+  --warn: #a96b2e;
+  --warn-wash: #f3e7d7;
+  --danger: #b4443f;
+  --danger-wash: #f4dfdd;
+  --danger-strong: #8d2925;
+
+  --sov-bg: #151310;
+  --sov-surface: #211e1a;
+  --sov-hairline: #484139;
+  --sov-seal: #d28a63;
+  --sov-text: #efe9df;
+
+  --font-sans: "Lenia Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-mono: "CS Arcel Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --fs-display: clamp(3.6rem, 8vw, 8.6rem);
+  --fs-h1: clamp(3rem, 6vw, 6.4rem);
+  --fs-h2: clamp(2.4rem, 4.8vw, 5.4rem);
+  --fs-h3: clamp(1.45rem, 2.2vw, 2.25rem);
+  --fs-lead: clamp(1.05rem, 1.35vw, 1.28rem);
+  --fs-body: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-xs: 0.78rem;
+  --fs-micro: 0.74rem;
+
+  --r-xs: 0;
+  --r-sm: 2px;
+  --r-md: 4px;
+  --r-lg: 6px;
+  --r-xl: 8px;
+  --r-pill: 999px;
+
+  --focus: rgba(181, 95, 54, 0.35);
+  --shadow-sm: 0 1px 0 rgba(23, 20, 17, 0.08);
+  --shadow-md: 0 12px 32px rgba(23, 20, 17, 0.08);
+  --shadow-lg: 0 30px 80px rgba(23, 20, 17, 0.13);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-1: 0.16s;
+  --dur-2: 0.34s;
+  --dur-3: 0.72s;
+
+  --maxw: 1440px;
+  --nav-h: 72px;
+  --seal: #171411;
+  --seal-on: #f3eee4;
+  --glow-accent: none;
+}
+
+/* The application is light by design. “Inside” changes semantics, not theme. */
+[data-temp="inside"] {
+  --ink: #171411;
+  --ink-2: #302b27;
+  --paper: #eeeae1;
+  --surface: #f6f2ea;
+  --surface-sunk: #e6e0d6;
+  --surface-raised: #fbf8f1;
+  --hairline: #beb7ac;
+  --hairline-soft: #d7d0c5;
+  --text: #171411;
+  --text-muted: #625c55;
+  --text-faint: #6f6861;
+  --accent: #b55f36;
+  --accent-strong: #8d3f20;
+  --accent-mid: #c98c6c;
+  --accent-pale: #ead4c7;
+  --accent-wash: #f3e6dc;
+  --focus: rgba(181, 95, 54, 0.35);
+  --zone-local: #245f55;
+  --zone-local-wash: #dfe9e4;
+  --zone-amd: #8c6737;
+  --zone-amd-wash: #eee4d4;
+  --zone-custom: #596476;
+  --zone-custom-wash: #e5e8ec;
+  --zone-external: #a65334;
+  --zone-external-wash: #f0dfd6;
+  --raw: #171411;
+  --raw-on: #f3eee4;
+  --ok: #2e725c;
+  --ok-wash: #e0eee8;
+  --warn: #a96b2e;
+  --warn-wash: #f3e7d7;
+  --danger: #b4443f;
+  --danger-wash: #f4dfdd;
+  --danger-strong: #8d2925;
+  --seal: #171411;
+  --seal-on: #f3eee4;
+  --shadow-sm: 0 1px 0 rgba(23, 20, 17, 0.08);
+  --shadow-md: 0 12px 32px rgba(23, 20, 17, 0.08);
+  --shadow-lg: 0 30px 80px rgba(23, 20, 17, 0.13);
+  --glow-accent: none;
+  color-scheme: light;
+}
+
+[data-temp="inside"][data-sovereign="true"] {
+  --accent: #9f4c2a;
+  --accent-strong: #78341d;
+  --accent-wash: #efe0d5;
+  --hairline: #b7ab9d;
+  --hairline-soft: #d1c8bc;
+}

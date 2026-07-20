@@ -1,0 +1,193 @@
+.wrap {
+  width: min(calc(100% - 80px), var(--maxw));
+  margin-inline: auto;
+  padding: clamp(58px, 7vw, 104px) 0 110px;
+}
+
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.55fr);
+  align-items: end;
+  gap: 56px;
+  margin-bottom: 54px;
+}
+
+.title {
+  font-size: clamp(4.8rem, 9vw, 9rem);
+  line-height: 0.82;
+}
+
+.sub {
+  max-width: 54ch;
+  color: var(--text-muted);
+  font-size: var(--fs-lead);
+  line-height: 1.5;
+}
+
+.grid {
+  display: grid;
+  margin-top: 78px;
+  border-top: 1px solid var(--ink);
+}
+
+.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main actions"
+    "main meta";
+  gap: 14px 40px;
+  min-height: 172px;
+  padding: 26px 20px;
+  border-bottom: 1px solid var(--hairline);
+  transition: background var(--dur-2) ease, padding-left var(--dur-2) var(--ease);
+}
+
+.card:hover {
+  padding-left: 28px;
+  background: var(--surface-sunk);
+}
+
+.cardMain {
+  grid-area: main;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(130px, 0.34fr) minmax(230px, 0.78fr) minmax(260px, 1.2fr);
+  align-items: center;
+  gap: 28px;
+}
+
+.cardTop {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.status svg { width: 7px; height: 7px; }
+.s_done { color: var(--ok); }
+.s_building,
+.s_qa,
+.s_quoted { color: var(--accent-strong); }
+.s_blocked { color: var(--danger); }
+.s_awaiting_input { color: var(--warn); }
+
+.mode {
+  padding-left: 10px;
+  border-left: 1px solid var(--hairline);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.jobTitle {
+  font-size: clamp(1.8rem, 2.6vw, 3rem);
+  line-height: 1;
+}
+
+.goal,
+.goalEmpty {
+  max-width: 58ch;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.52;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.goalEmpty { color: var(--text-faint); }
+
+.cardActions {
+  grid-area: actions;
+  align-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+}
+
+.enter,
+.replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.enter { color: var(--accent-strong); }
+.enter svg,
+.replay svg { width: 14px; }
+.enter svg { transition: transform var(--dur-2) var(--ease); }
+.card:hover .enter svg { transform: translateX(5px); }
+
+.cardMeta {
+  grid-area: meta;
+  align-self: start;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+}
+
+.empty {
+  position: relative;
+  margin-top: 78px;
+  padding: 42px 36px;
+  border-block: 1px solid var(--hairline);
+  border-left: 3px solid var(--accent);
+}
+
+.emptyLead {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 3.2rem);
+  line-height: 1;
+}
+
+.emptySub {
+  max-width: 54ch;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 1000px) {
+  .head { grid-template-columns: 1fr; gap: 26px; }
+  .cardMain { grid-template-columns: 150px minmax(220px, 0.8fr) 1fr; }
+}
+
+@media (max-width: 780px) {
+  .wrap { width: calc(100% - 40px); }
+  .card {
+    grid-template-columns: 1fr;
+    grid-template-areas: "main" "actions" "meta";
+  }
+  .cardMain { grid-template-columns: 1fr; gap: 16px; }
+  .cardTop { flex-direction: row; }
+  .cardActions,
+  .cardMeta { justify-content: flex-start; }
+}
+
+@media (max-width: 520px) {
+  .wrap { width: calc(100% - 28px); padding-top: 48px; }
+  .title { font-size: clamp(4.5rem, 24vw, 7rem); }
+  .card { padding-inline: 8px; }
+  .card:hover { padding-left: 12px; }
+}
