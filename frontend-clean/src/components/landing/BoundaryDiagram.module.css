@@ -1,0 +1,228 @@
+.wrap {
+  background: transparent;
+  border-block: 1px solid var(--hairline);
+  padding-block: clamp(20px, 3vw, 30px);
+  transition: background var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.sov {
+  background: var(--sov-surface);
+  border-color: var(--sov-hairline);
+  padding-inline: clamp(18px, 3vw, 30px);
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: clamp(10px, 2vw, 24px);
+  align-items: stretch;
+}
+
+.zone {
+  padding: 18px;
+  background: color-mix(in srgb, var(--zone-local-wash) 56%, transparent);
+  min-width: 0;
+}
+.zone.external {
+  background: color-mix(in srgb, var(--zone-external-wash) 52%, transparent);
+}
+.sov .zone {
+  background: color-mix(in srgb, var(--sov-bg) 55%, transparent);
+}
+.sov .zone.external {
+  background: color-mix(in srgb, var(--sov-bg) 60%, transparent);
+  border-color: var(--sov-hairline);
+}
+
+.zoneHead {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 14px;
+}
+.zoneTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  width: fit-content;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.05em;
+  padding: 0;
+}
+.tagDot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.local { color: var(--zone-local); }
+.ext { color: var(--zone-external); }
+.sov .ext { color: var(--sov-text); }
+.zoneSub { font-size: var(--fs-micro); color: var(--text-muted); }
+.sov .zoneSub { color: color-mix(in srgb, var(--sov-text) 60%, transparent); }
+
+.rawStack { display: flex; flex-direction: column; gap: 7px; }
+.rawItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom: 1px solid var(--hairline-soft);
+  font-size: var(--fs-xs);
+}
+.rawItem svg { width: 15px; height: 15px; opacity: 0.85; }
+.rawLock { margin-left: auto; width: 13px !important; height: 13px !important; opacity: 0.7 !important; }
+.sov .rawItem {
+  background: color-mix(in srgb, var(--sov-bg) 78%, transparent);
+  color: var(--sov-text);
+  border-bottom-color: var(--sov-hairline);
+}
+
+.trust {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: transparent;
+  border-left: 2px solid var(--accent);
+}
+.trust > svg { width: 20px; height: 20px; color: var(--accent); flex: none; }
+.trustTitle { font-size: var(--fs-xs); font-weight: 600; color: var(--ink); }
+.trustSub { font-size: var(--fs-micro); color: var(--text-muted); }
+.sov .trustTitle { color: var(--sov-text); }
+.sov .trustSub { color: color-mix(in srgb, var(--sov-text) 62%, transparent); }
+
+.localPlanner {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 10px; padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--sov-seal) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sov-seal) 40%, transparent);
+  color: var(--sov-seal);
+  font-size: var(--fs-xs); font-weight: 500;
+}
+.localPlanner svg { width: 15px; height: 15px; }
+
+/* the wall */
+.wall {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 118px;
+  padding: 0 4px;
+}
+.wallLine {
+  position: absolute;
+  top: 8px; bottom: 30px;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, var(--hairline) 12%, var(--hairline) 88%, transparent);
+}
+.sov .wallLine { background: linear-gradient(180deg, transparent, var(--sov-seal) 12%, var(--sov-seal) 88%, transparent); opacity: 0.5; }
+.aperture {
+  position: relative;
+  z-index: 1;
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 2px dashed color-mix(in srgb, var(--accent) 50%, transparent);
+  display: grid; place-items: center;
+}
+.sov .aperture { border-style: solid; border-color: var(--sov-seal); background: var(--sov-bg); }
+.aperture svg { width: 15px; height: 15px; color: var(--sov-seal); }
+
+.brief {
+  position: absolute;
+  z-index: 2;
+  left: -6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  white-space: nowrap;
+  animation: cross 4.6s var(--ease) infinite;
+}
+.brief svg { width: 12px; height: 12px; }
+@keyframes cross {
+  0% { transform: translateX(-56px); opacity: 0; }
+  16% { opacity: 1; }
+  46% { transform: translateX(50px); opacity: 1; }
+  60% { transform: translateX(50px); opacity: 0; }
+  100% { transform: translateX(50px); opacity: 0; }
+}
+.wallLabel {
+  position: absolute;
+  bottom: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+.sov .wallLabel { color: var(--sov-seal); }
+
+.frontier {
+  padding: 14px;
+  background: var(--surface);
+  border-left: 2px solid var(--zone-external);
+  transition: opacity var(--dur-2) var(--ease);
+}
+.sov .frontier { background: color-mix(in srgb, var(--sov-bg) 40%, transparent); border-color: var(--sov-hairline); }
+.frontier.dim { opacity: 0.4; }
+.frontierModel { font-size: var(--fs-sm); font-weight: 600; color: var(--ink); }
+.sov .frontierModel { color: var(--sov-text); }
+.frontierNote { font-size: var(--fs-micro); color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+.sov .frontierNote { color: color-mix(in srgb, var(--sov-text) 60%, transparent); }
+
+/* controls */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+.sov .controls { border-top-color: var(--sov-hairline); }
+.controlText { display: flex; flex-direction: column; gap: 2px; }
+.controlText strong { font-size: var(--fs-sm); color: var(--ink); }
+.sov .controlText strong { color: var(--sov-text); }
+.controlText span { font-size: var(--fs-xs); color: var(--text-muted); }
+.sov .controlText span { color: color-mix(in srgb, var(--sov-text) 62%, transparent); }
+
+.switch {
+  width: 52px; height: 30px;
+  border-radius: 9px;
+  background: var(--hairline);
+  padding: 3px;
+  flex: none;
+  transition: background var(--dur-2) var(--ease);
+}
+.switchOn { background: var(--sov-seal); }
+.knob {
+  display: block;
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-2) var(--ease);
+}
+.switchOn .knob { transform: translateX(22px); }
+
+@media (max-width: 620px) {
+  /* zones stack; the wall becomes a compact centered crossing indicator between
+     them — aperture, brief, label reading downward. No strike-through line. */
+  .stage { grid-template-columns: 1fr; gap: 14px; }
+  .wall { min-width: 0; height: auto; gap: 9px; padding: 8px 0; }
+  .wallLine { display: none; }
+  .brief { position: static; animation: none; box-shadow: none; }
+  .wallLabel { position: static; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brief { animation: none; transform: translateX(50px); opacity: 1; left: auto; right: -6px; }
+}

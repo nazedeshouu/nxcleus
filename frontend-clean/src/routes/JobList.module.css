@@ -1,0 +1,186 @@
+.wrap {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: clamp(28px, 5vh, 56px) clamp(16px, 3vw, 32px);
+}
+.head {
+  margin-bottom: 28px;
+}
+.title {
+  font-size: var(--fs-h1);
+}
+.sub {
+  margin-top: 8px;
+  color: var(--text-muted);
+  max-width: 56ch;
+  line-height: 1.6;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+  margin-top: 28px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  /* even rhythm: goal-less cards keep pace with 3-line ones so rows don't ripple */
+  min-height: 208px;
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-mid);
+}
+.cardMain {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.status svg {
+  width: 7px;
+  height: 7px;
+}
+.s_done {
+  color: var(--ok);
+}
+.s_building,
+.s_qa {
+  color: var(--accent);
+}
+.s_blocked {
+  color: var(--danger);
+}
+.s_quoted {
+  color: var(--accent-strong);
+}
+/* parked, waiting on the customer — distinct from progress and from failure */
+.s_awaiting_input {
+  color: var(--warn);
+}
+.mode {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+}
+.jobTitle {
+  font-size: var(--fs-h3);
+  letter-spacing: -0.015em;
+}
+.goal {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.55;
+  /* clamp so a long goal can't tower over its neighbours */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* keeps description-less cards from reading as broken voids */
+.goalEmpty {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline-soft);
+}
+.enter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--accent-strong);
+}
+.enter svg {
+  width: 0.95em;
+  height: 0.95em;
+  transition: transform var(--dur-1) var(--ease);
+}
+.card:hover .enter svg {
+  transform: translateX(3px);
+}
+.replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color var(--dur-1) var(--ease);
+}
+.replay:hover {
+  color: var(--ink);
+}
+.replay svg {
+  width: 0.85em;
+  height: 0.85em;
+}
+
+/* muted footer: readable time + demoted ULID (hover for full, click to copy) */
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: var(--fs-micro);
+  color: var(--text-faint);
+}
+.cardMeta > span {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.empty {
+  margin-top: 40px;
+  padding: 44px 32px;
+  text-align: center;
+  border: 1px dashed var(--hairline);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+}
+.emptyLead {
+  font-size: var(--fs-h3);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.emptySub {
+  margin: 8px auto 0;
+  max-width: 46ch;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* the composer owns the front-door entry now (components/build/Composer) */

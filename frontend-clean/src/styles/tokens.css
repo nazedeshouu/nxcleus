@@ -1,0 +1,175 @@
+:root {
+  /* ---- Neutrals (cool, never pure black/white) ---- */
+  --ink: #121917;
+  --ink-2: #26312e;
+  --paper: #f3f3ee;
+  --surface: #fbfcf8;
+  --surface-sunk: #e9ece7;
+  --surface-raised: #ffffff;
+  --hairline: #d5dcd6;
+  --hairline-soft: #e3e7e2;
+  --text: #121917;
+  --text-muted: #64706c;
+  --text-faint: #8a9691;
+
+  /* ---- Accent (the one accent) ---- */
+  --accent: #356f6a;
+  --accent-strong: #285651;
+  --accent-mid: #9dbdb8;
+  --accent-pale: #dce8e4;
+  --accent-wash: #edf3f0;
+
+  /* ---- Zones (temperature = position vs. the wall) ---- */
+  --zone-local: #356f6a;
+  --zone-local-wash: #e5efec;
+  --zone-amd: #9b7445;
+  --zone-amd-wash: #f2ebe1;
+  --zone-custom: #687181;
+  --zone-custom-wash: #ebedf0;
+  --zone-external: #68706d;
+  --zone-external-wash: #eceeec;
+
+  /* ---- Data class ---- */
+  --raw: #0c1417;
+  --raw-on: #dceff6;
+  --sanitized: #356f6a;
+
+  /* ---- Semantic ---- */
+  --ok: #2f9e6b;
+  --ok-wash: #e7f5ee;
+  --warn: #cf8a3a;
+  --warn-wash: #faf1e4;
+  --danger: #e5484d;
+  --danger-wash: #fdecec;
+  --danger-strong: #c2282d;
+
+  /* ---- Sovereign mode ---- */
+  --sov-bg: #0a1110;
+  --sov-surface: #111c1a;
+  --sov-hairline: #2a3d39;
+  --sov-seal: #81b2aa;
+  --sov-text: #d7e4e0;
+
+  /* ---- Type ---- */
+  --font-sans: "Lenia Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "CS Arcel Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --fs-display: clamp(2.6rem, 5.6vw, 5rem);
+  --fs-h1: clamp(2rem, 3.6vw, 3.1rem);
+  --fs-h2: clamp(1.5rem, 2.4vw, 2.1rem);
+  --fs-h3: clamp(1.15rem, 1.5vw, 1.4rem);
+  --fs-lead: clamp(1.05rem, 1.4vw, 1.3rem);
+  --fs-body: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-xs: 0.78rem;
+  --fs-micro: 0.7rem;
+
+  /* ---- Space / radius / motion ---- */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* Shared focus ring — one keyline, AA on both temperatures. */
+  --focus: rgba(53, 111, 106, 0.36);
+
+  --shadow-sm: 0 1px 2px rgba(12, 20, 23, 0.05), 0 1px 3px rgba(12, 20, 23, 0.04);
+  --shadow-md: 0 4px 16px rgba(12, 20, 23, 0.08), 0 1px 3px rgba(12, 20, 23, 0.05);
+  --shadow-lg: 0 18px 48px rgba(12, 20, 23, 0.12), 0 2px 8px rgba(12, 20, 23, 0.06);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-1: 0.16s;
+  --dur-2: 0.34s;
+  --dur-3: 0.6s;
+
+  --maxw: 1240px;
+  --nav-h: 68px;
+
+  /* ---- Sealed fills (dark blocks that stay dark in every theme) ---- */
+  --seal: var(--ink);
+  --seal-on: var(--raw-on);
+  --glow-accent: 0 0 0 0 transparent;
+}
+
+/* =====================================================================
+   Inside the walls — the platform lives in sealed midnight.
+   Same semantic tokens, remapped: every module stylesheet that speaks
+   var(--surface)/var(--text-muted)/washes flips with zero edits.
+   ===================================================================== */
+[data-temp="inside"] {
+  --ink: #e9eeec;
+  --ink-2: #cbd5d1;
+  --paper: #0b1213;
+  --surface: #111a1c;
+  --surface-sunk: #080f10;
+  --surface-raised: #172224;
+  /* Luminous, semi-transparent keylines — the premium "light border on dark"
+     signal; they layer organically over the sealed field instead of reading
+     as flat painted rules. */
+  --hairline: rgba(196, 215, 209, 0.13);
+  --hairline-soft: rgba(196, 215, 209, 0.075);
+  --text: #e2e9e6;
+  --text-muted: #98a7a2;
+  --text-faint: #65746f;
+
+  --accent: #78aaa4;
+  --accent-strong: #abd0ca;
+  --accent-mid: #426d68;
+  --accent-pale: #17302d;
+  --accent-wash: rgba(120, 170, 164, 0.085);
+  --focus: rgba(120, 170, 164, 0.42);
+
+  --zone-local: #86b7b0;
+  --zone-local-wash: rgba(134, 183, 176, 0.085);
+  --zone-amd: #c5a06f;
+  --zone-amd-wash: rgba(197, 160, 111, 0.09);
+  --zone-custom: #98a2b8;
+  --zone-custom-wash: rgba(152, 162, 184, 0.08);
+  --zone-external: #9aa6a2;
+  --zone-external-wash: rgba(154, 166, 162, 0.07);
+
+  --raw: #030a0e;
+  --raw-on: #d1e2de;
+
+  --ok: #4bcb90;
+  --ok-wash: rgba(75, 203, 144, 0.1);
+  --warn: #e2a35e;
+  --warn-wash: rgba(226, 163, 94, 0.1);
+  --danger: #ff5f65;
+  --danger-wash: rgba(255, 95, 101, 0.1);
+  --danger-strong: #ff888c;
+
+  --seal: #030a0e;
+  --seal-on: #d1e2de;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 10px rgba(0, 0, 0, 0.35);
+  --glow-accent: none;
+
+  color-scheme: dark;
+}
+
+/* Sovereign Mode deepens the interior: shields up, everything re-tints
+   to the sealed teal. Sits on the same element as data-temp. */
+[data-temp="inside"][data-sovereign="true"] {
+  --paper: #080e0d;
+  --surface: #0d1715;
+  --surface-sunk: #070d0c;
+  --surface-raised: #13201d;
+  --hairline: #263a35;
+  --hairline-soft: #1a2a26;
+
+  --accent: #7fb4ab;
+  --accent-strong: #b0d2cc;
+  --accent-mid: #456f68;
+  --accent-pale: #17302b;
+  --accent-wash: rgba(127, 180, 171, 0.075);
+  --zone-local: #7fb4ab;
+  --zone-local-wash: rgba(127, 180, 171, 0.085);
+
+  --glow-accent: none;
+}

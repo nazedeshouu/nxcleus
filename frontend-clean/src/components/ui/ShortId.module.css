@@ -1,0 +1,13 @@
+.id {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  vertical-align: baseline;
+  transition: color var(--dur-1) var(--ease);
+}
+.id:hover { color: var(--accent-strong); }

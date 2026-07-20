@@ -1,0 +1,45 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.04em;
+  padding: 3px 8px 3px 6px;
+  border-radius: var(--r-pill);
+  border: 1px solid;
+  white-space: nowrap;
+  line-height: 1;
+}
+.xs {
+  font-size: 0.64rem;
+  padding: 2px 6px 2px 5px;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.LOCAL {
+  color: var(--zone-local);
+  background: var(--zone-local-wash);
+  border-color: color-mix(in srgb, var(--zone-local) 30%, transparent);
+}
+.AMD_HOSTED {
+  color: var(--zone-amd);
+  background: var(--zone-amd-wash);
+  border-color: color-mix(in srgb, var(--zone-amd) 34%, transparent);
+}
+.CUSTOM {
+  color: var(--zone-custom);
+  background: var(--zone-custom-wash);
+  border-color: color-mix(in srgb, var(--zone-custom) 34%, transparent);
+}
+.EXTERNAL {
+  color: var(--zone-external);
+  background: var(--zone-external-wash);
+  border-color: color-mix(in srgb, var(--zone-external) 34%, transparent);
+}

@@ -1,0 +1,310 @@
+.app {
+  min-height: 100dvh;
+  display: flex;
+  background: var(--paper);
+  color: var(--text);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+/* the sealed interior: a faint architectural field behind the instrument panels.
+   Heavily subdued — the vault reads as deep atmosphere, never a photo whose
+   perspective lines compete with the content sitting on top of it. */
+.app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(90% 60% at 50% 8%, rgba(120, 170, 164, 0.035), transparent 60%),
+    linear-gradient(180deg, rgba(8, 14, 15, 0.965), rgba(8, 14, 15, 0.94) 42%, rgba(7, 12, 13, 0.99)),
+    url("../../assets/img/inside-field.webp");
+  background-size: cover;
+  background-position: center 18%;
+}
+
+/* ---------- sidebar ---------- */
+.sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  flex: none;
+  width: 236px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 14px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-sunk) 72%, transparent);
+  border-right: 1px solid var(--hairline-soft);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  transition: width var(--dur-2) var(--ease);
+}
+[data-collapsed="true"] .sidebar {
+  width: 68px;
+}
+.sidebarTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 0;
+}
+.brand {
+  display: inline-flex;
+}
+.railToggle {
+  display: inline-flex;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.railToggle:hover {
+  color: var(--ink);
+  background: var(--surface-sunk);
+}
+.railToggle svg {
+  width: 17px;
+  height: 17px;
+}
+/* collapsed: stack the mark and the toggle so the rail can still be reopened */
+[data-collapsed="true"] .sidebarTop {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 4px 0 0;
+}
+
+/* New process — a native cockpit control, not a marketing button */
+.cta {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.cta:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--ink);
+}
+.cta svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+[data-collapsed="true"] .cta {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.link {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.link:hover {
+  color: var(--ink);
+  background: var(--surface-sunk);
+}
+.active {
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+}
+.linkIcon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+[data-collapsed="true"] .link {
+  justify-content: center;
+  padding: 9px 0;
+}
+[data-collapsed="true"] .ctaLabel,
+[data-collapsed="true"] .linkLabel {
+  display: none;
+}
+
+/* ---------- content column ---------- */
+.content {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: var(--nav-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 clamp(16px, 3vw, 32px);
+  background: color-mix(in srgb, var(--paper) 74%, transparent);
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.crumbSep {
+  width: 11px;
+  height: 11px;
+  color: var(--text-faint);
+  flex: none;
+}
+.crumbLink {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color var(--dur-1) var(--ease);
+}
+a.crumbLink:hover {
+  color: var(--accent-strong);
+}
+.crumbHere {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- header right cluster: preview badge + session ---------- */
+.headRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+.session {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 11px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline-soft);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+.sessionName {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+.sessionRole {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+}
+.signout {
+  display: inline-flex;
+  padding: 5px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.signout:hover {
+  color: var(--danger);
+  background: var(--danger-wash);
+}
+.signout svg {
+  width: 15px;
+  height: 15px;
+}
+@media (max-width: 720px) {
+  .sessionName { display: none; }
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  animation: enterInside 0.6s var(--ease) both;
+}
+@keyframes enterInside {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* narrow screens: force the sidebar to a slim icon rail so nav stays reachable */
+@media (max-width: 720px) {
+  .sidebar {
+    width: 60px;
+    gap: 12px;
+    padding: 14px 8px;
+  }
+  .railToggle,
+  .ctaLabel,
+  .linkLabel {
+    display: none;
+  }
+  .cta,
+  .link {
+    justify-content: center;
+    padding: 9px 0;
+  }
+  .sidebarTop {
+    justify-content: center;
+    padding: 4px 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .connLive .pulse {
+    animation: none;
+  }
+  .main {
+    animation: none;
+  }
+  .sidebar {
+    transition: none;
+  }
+}
