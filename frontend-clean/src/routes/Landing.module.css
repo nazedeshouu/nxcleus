@@ -25,17 +25,13 @@
   padding-inline: clamp(18px, 4vw, 40px);
 }
 
-/* ---------- nav: a quiet institutional header, not a floating patch ---------- */
+/* ---------- nav: placed directly on the hero image ---------- */
 .nav {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   z-index: 60;
   width: 100%;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  backdrop-filter: saturate(120%) blur(18px);
-  -webkit-backdrop-filter: saturate(120%) blur(18px);
-  border-bottom: 1px solid color-mix(in srgb, var(--hairline) 72%, transparent);
   animation: navDrop 0.8s var(--ease) both;
 }
 .navInner {
@@ -45,32 +41,34 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 68px;
+  min-height: 82px;
   padding-inline: clamp(18px, 4vw, 40px);
 }
 .navLinks { display: flex; align-items: center; gap: 2px; }
 .navLink {
   font-size: var(--fs-sm);
   font-weight: 500;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.68);
   padding: 7px 13px;
-  border-radius: var(--r-pill);
+  border-radius: 7px;
   transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
 }
-.navLink:hover { color: var(--ink); background: var(--surface-sunk); }
+.navLink:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
 .navCta {
   display: inline-flex;
   align-items: center;
   gap: 0.55em;
   font-size: var(--fs-sm);
   font-weight: 500;
-  color: var(--paper);
-  background: var(--ink);
+  color: #121917;
+  background: rgba(255, 255, 255, 0.92);
   padding: 8px 8px 8px 16px;
   border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow: 0 10px 30px rgba(5, 11, 11, 0.13);
   transition: background var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
 }
-.navCta:hover { background: var(--accent-strong); }
+.navCta:hover { background: #fff; }
 .navCta:active { transform: scale(0.98); }
 @keyframes navDrop {
   from { opacity: 0; transform: translateY(-12px); }
@@ -80,25 +78,21 @@
   .navLinks { display: none; }
 }
 
-/* ---------- "Nx." wordmark (landing header) ---------- */
+/* ---------- "Nx." wordmark: no badge, no plaque, just the mark on the image ---------- */
 .wordmark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: 1.18rem;
   font-weight: 700;
-  letter-spacing: -0.045em;
-  color: var(--ink);
+  letter-spacing: -0.055em;
+  color: #fff;
   line-height: 0.9;
-  padding: 0 1px 1px 0;
-  border: 1px solid var(--hairline);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  padding: 8px 0;
+  text-shadow: 0 2px 18px rgba(3, 10, 10, 0.3);
 }
-.wordmarkDot { color: var(--accent); margin-left: 0.02em; }
+.wordmarkDot { color: var(--accent-mid); margin-left: 0.02em; }
 
 /* The arrow departs and returns on hover: a compact cue for entering the app. */
 .btnCoin {
@@ -112,9 +106,11 @@
   background: rgba(255, 255, 255, 0.16);
   transition: background var(--dur-2) var(--ease);
 }
+.navCta .btnCoin { background: rgba(18, 25, 23, 0.08); }
 .btnCoin svg { width: 13px; height: 13px; }
 .navCta:hover .btnCoin,
 .btnPrimary:hover .btnCoin { background: rgba(255, 255, 255, 0.24); }
+.navCta:hover .btnCoin { background: rgba(18, 25, 23, 0.12); }
 .navCta:hover .btnCoin svg,
 .btnPrimary:hover .btnCoin svg { animation: arrowDepart 0.55s var(--ease); }
 @keyframes arrowDepart {
@@ -148,6 +144,7 @@
   inset: 0;
   pointer-events: none;
   background:
+    linear-gradient(to bottom, rgba(9, 14, 13, 0.42) 0%, rgba(9, 14, 13, 0.12) 16%, transparent 34%),
     linear-gradient(to top, rgba(9, 14, 13, 0.9) 0%, rgba(9, 14, 13, 0.44) 44%, rgba(9, 14, 13, 0.08) 72%),
     linear-gradient(to right, rgba(9, 14, 13, 0.7) 0%, rgba(9, 14, 13, 0.32) 42%, transparent 72%);
 }

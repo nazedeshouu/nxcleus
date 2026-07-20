@@ -1,180 +1,148 @@
 .app {
+  --nav-h: 114px;
   min-height: 100dvh;
-  display: flex;
+  position: relative;
+  isolation: isolate;
   background: var(--paper);
   color: var(--text);
-  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
 }
-/* the sealed interior: a faint architectural field behind the instrument panels.
-   Heavily subdued — the vault reads as deep atmosphere, never a photo whose
-   perspective lines compete with the content sitting on top of it. */
+
+/* A quiet workspace field. Content, not chrome, carries the hierarchy. */
 .app::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
-  background-image:
-    radial-gradient(90% 60% at 50% 8%, rgba(120, 170, 164, 0.035), transparent 60%),
-    linear-gradient(180deg, rgba(8, 14, 15, 0.965), rgba(8, 14, 15, 0.94) 42%, rgba(7, 12, 13, 0.99)),
-    url("../../assets/img/inside-field.webp");
-  background-size: cover;
-  background-position: center 18%;
+  background:
+    radial-gradient(70% 42% at 18% 0%, rgba(120, 170, 164, 0.045), transparent 68%),
+    radial-gradient(45% 34% at 92% 18%, rgba(120, 170, 164, 0.025), transparent 72%),
+    linear-gradient(180deg, #0d1516 0%, var(--paper) 34%, #091011 100%);
 }
 
-/* ---------- sidebar ---------- */
-.sidebar {
+/* ---------- primary navigation ---------- */
+.shellHeader {
   position: sticky;
   top: 0;
-  z-index: 40;
-  flex: none;
-  width: 236px;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 18px 14px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--surface-sunk) 72%, transparent);
-  border-right: 1px solid var(--hairline-soft);
-  backdrop-filter: saturate(140%) blur(14px);
-  -webkit-backdrop-filter: saturate(140%) blur(14px);
-  transition: width var(--dur-2) var(--ease);
+  z-index: 50;
+  border-bottom: 1px solid var(--hairline-soft);
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  backdrop-filter: saturate(120%) blur(22px);
+  -webkit-backdrop-filter: saturate(120%) blur(22px);
 }
-[data-collapsed="true"] .sidebar {
-  width: 68px;
-}
-.sidebarTop {
-  display: flex;
+.shellInner {
+  width: 100%;
+  max-width: 1480px;
+  min-height: 72px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 34px);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px 0;
+  gap: clamp(18px, 3vw, 38px);
 }
 .brand {
   display: inline-flex;
-}
-.railToggle {
-  display: inline-flex;
-  padding: 6px;
-  border: none;
-  background: transparent;
-  border-radius: var(--r-sm);
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
-}
-.railToggle:hover {
-  color: var(--ink);
-  background: var(--surface-sunk);
-}
-.railToggle svg {
-  width: 17px;
-  height: 17px;
-}
-/* collapsed: stack the mark and the toggle so the rail can still be reopened */
-[data-collapsed="true"] .sidebarTop {
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 14px;
-  padding: 4px 0 0;
-}
-
-/* New process — a native cockpit control, not a marketing button */
-.cta {
-  display: flex;
   align-items: center;
-  gap: 0.55em;
-  padding: 10px 12px;
-  border-radius: var(--r-sm);
-  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
-  background: var(--accent-wash);
-  color: var(--accent-strong);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+  min-width: max-content;
 }
-.cta:hover {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--ink);
-}
-.cta svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-[data-collapsed="true"] .cta {
-  justify-content: center;
-  padding: 10px 0;
-}
+.brandMark { display: none; }
 
 .nav {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.link {
-  display: flex;
   align-items: center;
-  gap: 0.7em;
+  gap: 3px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav::-webkit-scrollbar { display: none; }
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 9px 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-muted);
   font-size: var(--fs-sm);
   font-weight: 500;
-  color: var(--text-muted);
-  padding: 9px 12px;
-  border-radius: var(--r-sm);
-  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+  white-space: nowrap;
+  transition:
+    color var(--dur-1) var(--ease),
+    background var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease),
+    transform var(--dur-1) var(--ease);
 }
 .link:hover {
   color: var(--ink);
-  background: var(--surface-sunk);
+  background: color-mix(in srgb, var(--surface-raised) 58%, transparent);
 }
+.link:active { transform: translateY(1px); }
 .active {
-  color: var(--accent-strong);
-  background: var(--accent-wash);
+  color: var(--ink);
+  border-color: var(--hairline-soft);
+  background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 .linkIcon {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   flex: none;
 }
-[data-collapsed="true"] .link {
-  justify-content: center;
-  padding: 9px 0;
-}
-[data-collapsed="true"] .ctaLabel,
-[data-collapsed="true"] .linkLabel {
-  display: none;
-}
 
-/* ---------- content column ---------- */
-.content {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-  z-index: 1;
+.headerActions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: max-content;
 }
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 32%, transparent);
+  border-radius: 9px;
+  background: var(--accent-strong);
+  color: #071010;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transition: transform var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.cta:hover { background: #c0ded9; }
+.cta:active { transform: translateY(1px) scale(0.99); }
+.cta svg { width: 14px; height: 14px; }
 
+/* ---------- context row ---------- */
+.content {
+  position: relative;
+  min-width: 0;
+}
 .bar {
   position: sticky;
-  top: 0;
-  z-index: 30;
-  min-height: var(--nav-h);
+  top: 72px;
+  z-index: 35;
+  border-bottom: 1px solid var(--hairline-soft);
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.barInner {
+  width: 100%;
+  max-width: 1480px;
+  min-height: 42px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 34px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 0 clamp(16px, 3vw, 32px);
-  background: color-mix(in srgb, var(--paper) 74%, transparent);
-  backdrop-filter: saturate(160%) blur(16px);
-  -webkit-backdrop-filter: saturate(160%) blur(16px);
-  border-bottom: 1px solid var(--hairline-soft);
 }
-
 .crumbs {
   display: flex;
   align-items: center;
@@ -189,47 +157,36 @@
   min-width: 0;
 }
 .crumbSep {
-  width: 11px;
-  height: 11px;
-  color: var(--text-faint);
+  width: 10px;
+  height: 10px;
   flex: none;
+  color: var(--text-faint);
+}
+.crumbLink,
+.crumbHere {
+  font-size: var(--fs-xs);
+  white-space: nowrap;
 }
 .crumbLink {
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-  white-space: nowrap;
+  color: var(--text-faint);
   transition: color var(--dur-1) var(--ease);
 }
-a.crumbLink:hover {
-  color: var(--accent-strong);
-}
+a.crumbLink:hover { color: var(--accent-strong); }
 .crumbHere {
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  color: var(--ink);
-  white-space: nowrap;
   overflow: hidden;
+  color: var(--text-muted);
   text-overflow: ellipsis;
 }
 
-/* ---------- header right cluster: preview badge + session ---------- */
-.headRight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: none;
-}
+/* ---------- authenticated session ---------- */
 .session {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 4px 4px 11px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--hairline-soft);
-  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  gap: 7px;
+  color: var(--text-muted);
 }
 .sessionName {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--ink);
 }
@@ -238,73 +195,60 @@ a.crumbLink:hover {
   font-size: var(--fs-micro);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--accent-strong);
-  background: var(--accent-wash);
-  padding: 1px 7px;
-  border-radius: var(--r-pill);
+  color: var(--text-faint);
 }
 .signout {
   display: inline-flex;
-  padding: 5px;
-  border: none;
-  background: transparent;
-  border-radius: 50%;
+  padding: 6px;
+  border-radius: 7px;
   color: var(--text-faint);
-  cursor: pointer;
   transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
 }
 .signout:hover {
   color: var(--danger);
   background: var(--danger-wash);
 }
-.signout svg {
-  width: 15px;
-  height: 15px;
-}
-@media (max-width: 720px) {
-  .sessionName { display: none; }
-}
+.signout svg { width: 15px; height: 15px; }
 
 .main {
-  flex: 1;
-  min-height: 0;
-  animation: enterInside 0.6s var(--ease) both;
+  min-height: calc(100dvh - 114px);
+  animation: enterInside 0.5s var(--ease) both;
 }
 @keyframes enterInside {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
 
-/* narrow screens: force the sidebar to a slim icon rail so nav stays reachable */
-@media (max-width: 720px) {
-  .sidebar {
-    width: 60px;
-    gap: 12px;
-    padding: 14px 8px;
-  }
-  .railToggle,
-  .ctaLabel,
-  .linkLabel {
-    display: none;
-  }
-  .cta,
-  .link {
-    justify-content: center;
-    padding: 9px 0;
-  }
-  .sidebarTop {
-    justify-content: center;
-    padding: 4px 0 0;
-  }
+@media (max-width: 1120px) {
+  .session { display: none; }
 }
+
+@media (max-width: 900px) {
+  .shellInner { gap: 14px; }
+  .link { padding-inline: 9px; }
+}
+
+@media (max-width: 680px) {
+  .app { --nav-h: 104px; }
+  .shellInner {
+    min-height: 64px;
+    padding-inline: 12px;
+    gap: 8px;
+  }
+  .brandFull { display: none; }
+  .brandMark { display: inline-flex; }
+  .nav { gap: 1px; }
+  .link { padding: 8px 9px; }
+  .cta { padding: 9px; }
+  .ctaLabel,
+  .session { display: none; }
+  .bar { top: 64px; }
+  .barInner { min-height: 40px; padding-inline: 14px; }
+  .main { min-height: calc(100dvh - 104px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .connLive .pulse {
-    animation: none;
-  }
-  .main {
-    animation: none;
-  }
-  .sidebar {
-    transition: none;
-  }
+  .main { animation: none; }
+  .link,
+  .cta { transition: none; }
 }

@@ -5,9 +5,11 @@ An independent frontend copy for testing a calmer, lower-complexity visual direc
 The experiment keeps the same routes, API client, state model, fixtures, and tests. Its design changes focus on:
 
 - a quieter institutional palette with one muted accent;
+- landing navigation and the Nx. mark placed directly on the hero image;
+- a compact top-navigation shell instead of a permanent sidebar;
 - progressive disclosure in Build Job;
 - an explained, auto-selected Model Activity flow with plain-language summaries and optional audit detail;
-- a calmer landing hero and boundary presentation.
+- a registry-first Operations view with cost detail disclosed on demand.
 
 Run the backend on port `8000`, then:
 

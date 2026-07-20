@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Circle, ShieldCheck } from "@phosphor-icons/react";
+import { ArrowRight, CaretDown, Circle, Plus, ShieldCheck } from "@phosphor-icons/react";
 import { api, type EconProcess, type EconRun, type ProcessSummary } from "../api/client";
 import { MOCK_FORCED } from "../api/config";
 import { usd } from "../lib/format";
@@ -73,10 +73,10 @@ function MoneyChart({ buildCapex, perRun }: { buildCapex: number; perRun: number
       </svg>
       <div className={styles.chartCap}>
         <span className={styles.legend}>
-          <i className={styles.swatch} style={{ background: "var(--accent)" }} /> Nxcleus — measured build cost + verified average run cost
+          <i className={styles.swatch} style={{ background: "var(--accent)" }} /> Nxcleus — measured build and local run cost
         </span>
         <span className={styles.legend}>
-          <i className={styles.swatch} style={{ background: "var(--zone-external)" }} /> Modeled frontier-per-run comparison
+          <i className={styles.swatch} style={{ background: "var(--zone-external)" }} /> Typical cloud model — estimated cost paid every run
         </span>
       </div>
     </div>
@@ -111,35 +111,45 @@ function Economics({ processes }: { processes: EconProcess[] }) {
     <section className={styles.econ}>
       <div className={styles.econHead}>
         <div>
-          <div className={styles.econKicker}>The economics</div>
+          <div className={styles.econKicker}>Cost details</div>
           <h2 className={styles.econTitle}>
-            Frontier intelligence as <em>capex</em>, not marginal cost
+            Build once, then pay only for <em>local runs</em>
           </h2>
+          <p className={styles.econLede}>Verified build and run costs, kept separate from the day-to-day process list.</p>
         </div>
       </div>
-      <div className={styles.econGrid}>
-        <MoneyChart buildCapex={agg.buildCapex} perRun={agg.perRun} />
-        <div className={styles.tiles}>
-          <div className={styles.tile}>
-            <div className={styles.tileNum}>{agg.procCount}</div>
-            <div className={styles.tileLbl}>certified processes in the registry</div>
+      <div className={styles.tiles}>
+        <div className={styles.tile}>
+          <div className={styles.tileNum}>{agg.procCount}</div>
+          <div className={styles.tileLbl}>processes measured</div>
+        </div>
+        <div className={styles.tile}>
+          <div className={styles.tileNum}>{usd(agg.buildCapex)}</div>
+          <div className={styles.tileLbl}>total build cost</div>
+        </div>
+        <div className={styles.tile}>
+          <div className={styles.tileNum}>{usdOrDash(agg.perRun)}</div>
+          <div className={styles.tileLbl}>average local run cost · {agg.verifiedCostRuns}/{agg.runCount} verified</div>
+        </div>
+        <div className={styles.tile}>
+          <div className={`${styles.tileNum} ${agg.frontierPerRun === 0 ? styles.good : ""}`}>
+            {agg.frontierPerRun == null ? "—" : agg.frontierPerRun.toFixed(1)}
           </div>
-          <div className={styles.tile}>
-            <div className={styles.tileNum}>{usd(agg.buildCapex)}</div>
-            <div className={styles.tileLbl}>one-time build cost, all processes</div>
-          </div>
-          <div className={styles.tile}>
-            <div className={styles.tileNum}>{usdOrDash(agg.perRun)}</div>
-            <div className={styles.tileLbl}>average measured cost per run · {agg.verifiedCostRuns}/{agg.runCount} verified samples</div>
-          </div>
-          <div className={styles.tile}>
-            <div className={`${styles.tileNum} ${agg.frontierPerRun === 0 ? styles.good : ""}`}>
-              {agg.frontierPerRun == null ? "—" : agg.frontierPerRun.toFixed(1)}
-            </div>
-            <div className={styles.tileLbl}>average measured frontier calls per run · {agg.verifiedFrontierRuns}/{agg.runCount} verified samples</div>
-          </div>
+          <div className={styles.tileLbl}>external model calls per run · {agg.verifiedFrontierRuns}/{agg.runCount} verified</div>
         </div>
       </div>
+      <details className={styles.curve}>
+        <summary>
+          <span>
+            <small>Optional cost projection</small>
+            <strong>View cost over {HORIZON} runs</strong>
+          </span>
+          <CaretDown weight="bold" />
+        </summary>
+        <div className={styles.curveBody}>
+          <MoneyChart buildCapex={agg.buildCapex} perRun={agg.perRun} />
+        </div>
+      </details>
     </section>
   );
 }
@@ -183,71 +193,81 @@ export function Operations() {
     }
     return m;
   }, [ticketsQ.data]);
-
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
-        <h1 className={styles.title}>Operations</h1>
-        <p className={styles.sub}>
-          The registry. Every delivered process, versioned and metered, running inside the walls under continuous warranty.
-        </p>
+        <div>
+          <div className={styles.eyebrow}>Process registry</div>
+          <h1 className={styles.title}>Operations</h1>
+          <p className={styles.sub}>
+            See what is running, what needs attention, and the latest run history.
+          </p>
+        </div>
       </div>
+
+      <section className={styles.registry}>
+        <div className={styles.registryHead}>
+          <div>
+            <div className={styles.sectionKicker}>Process registry</div>
+            <h2 className={styles.registryTitle}>Delivered processes</h2>
+          </div>
+          <Link to="/build" className={styles.buildLink}><Plus weight="bold" /> New process</Link>
+        </div>
+        <div className={styles.tableWrap}>
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Process</th>
+                  <th>State</th>
+                  <th>Runs</th>
+                  <th>Cost / unit</th>
+                  <th aria-label="open" />
+                </tr>
+              </thead>
+              <tbody>
+                {processes.map((p: ProcessSummary) => {
+                  const e = econByProc.get(p.id);
+                  const runCount = e?.runs.length ?? 0;
+                  const open = openTicketsByScope.get(p.id) ?? 0;
+                  return (
+                    <tr key={p.id} onClick={() => navigate(`/operations/${p.id}`)}>
+                      <td>
+                        <div className={styles.procName}>{p.name}</div>
+                        <div className={styles.procMeta}>
+                          <span>{p.slug}</span><span>{p.mode}</span><span>v{p.current_version}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.stateStack}>
+                          <span className={`${styles.statusChip} ${p.status === "active" ? "" : styles.paused}`}>
+                            <Circle weight="fill" /> {p.status}
+                          </span>
+                          <span className={`${styles.warranty} ${open ? styles.open : ""}`}>
+                            <ShieldCheck weight="fill" /> {open ? `${open} issue${open === 1 ? "" : "s"} open` : "No issues"}
+                          </span>
+                        </div>
+                      </td>
+                      <td><span className={styles.num}>{runCount}</span></td>
+                      <td>{e ? <CostSpark runs={e.runs} /> : <span className={styles.num} style={{ color: "var(--text-faint)" }}>—</span>}</td>
+                      <td><ArrowRight weight="bold" className={styles.arrow} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {processes.length === 0 && (
+            <div className={styles.empty} role={procsQ.isError ? "alert" : undefined}>
+              <strong>{procsQ.isError ? "The registry could not be loaded" : procsQ.isLoading ? "Loading the registry" : "No delivered processes yet"}</strong>
+              <p>{procsQ.isError ? "Check the backend connection and try again." : "Build a process and it will appear here with its runs, cost, and warranty status."}</p>
+              {!procsQ.isError && !procsQ.isLoading && <Link to="/build"><Plus weight="bold" /> Create the first process</Link>}
+            </div>
+          )}
+        </div>
+      </section>
 
       {econ.length > 0 && <Economics processes={econ} />}
-
-      <div className={styles.tableWrap}>
-        <div className={styles.tableScroll}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Process</th>
-                <th>Mode</th>
-                <th>Version</th>
-                <th>Status</th>
-                <th>Runs</th>
-                <th>Cost / unit trend</th>
-                <th>Warranty</th>
-                <th aria-label="open" />
-              </tr>
-            </thead>
-            <tbody>
-              {processes.map((p: ProcessSummary) => {
-                const e = econByProc.get(p.id);
-                const runCount = e?.runs.length ?? 0;
-                const open = openTicketsByScope.get(p.id) ?? 0;
-                return (
-                  <tr key={p.id} onClick={() => navigate(`/operations/${p.id}`)}>
-                    <td>
-                      <div className={styles.procName}>{p.name}</div>
-                      <div className={styles.procSlug}>{p.slug}</div>
-                    </td>
-                    <td><span className={styles.mode}>{p.mode}</span></td>
-                    <td><span className={styles.ver}>v{p.current_version}</span></td>
-                    <td>
-                      <span className={`${styles.statusChip} ${p.status === "active" ? "" : styles.paused}`}>
-                        <Circle weight="fill" /> {p.status}
-                      </span>
-                    </td>
-                    <td><span className={styles.num}>{runCount}</span></td>
-                    <td>{e ? <CostSpark runs={e.runs} /> : <span className={styles.num} style={{ color: "var(--text-faint)" }}>—</span>}</td>
-                    <td>
-                      <span className={`${styles.warranty} ${open ? styles.open : ""}`}>
-                        <ShieldCheck weight="fill" /> {open ? `${open} open` : "clear"}
-                      </span>
-                    </td>
-                    <td><ArrowRight weight="bold" className={styles.arrow} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {processes.length === 0 && (
-          <div className={styles.empty}>
-            {procsQ.isLoading ? "Loading the registry…" : <>No processes yet. <Link to="/build">Build one</Link> to populate the registry.</>}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

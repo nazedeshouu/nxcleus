@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { NavLink, Outlet, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Cube, Stack, Flask, Terminal, Gear, Plus, SidebarSimple, CaretRight, SignOut,
+  Cube, Stack, Flask, Brain, Gear, Plus, CaretRight, SignOut,
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { Logo } from "../../brand/Logo";
@@ -15,10 +15,10 @@ import { BreadcrumbProvider, useCrumbs } from "./breadcrumbs";
 import styles from "./PlatformLayout.module.css";
 
 const NAV: { to: string; label: string; icon: Icon }[] = [
-  { to: "/build", label: "Build", icon: Cube },
+  { to: "/build", label: "Builds", icon: Cube },
   { to: "/operations", label: "Operations", icon: Stack },
   { to: "/sandbox", label: "Sandbox", icon: Flask },
-  { to: "/traces", label: "Traces", icon: Terminal },
+  { to: "/traces", label: "Model activity", icon: Brain },
   { to: "/config", label: "Settings", icon: Gear },
 ];
 
@@ -68,9 +68,6 @@ export function PlatformLayout() {
   const { session, needsLogin } = useAuth();
   const location = useLocation();
   const sovereign = config.sovereign; // backend-driven; default standard, no manual toggle
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem("nxcleus.rail") === "1"; } catch { return false; }
-  });
 
   // ponytail: hidden presenter unlock until real auth lands — ?presenter=<token> stores it, then strips the param
   useEffect(() => {
@@ -83,58 +80,48 @@ export function PlatformLayout() {
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
   }, []);
 
-  const toggleRail = () => {
-    setCollapsed((c) => {
-      const next = !c;
-      try { localStorage.setItem("nxcleus.rail", next ? "1" : "0"); } catch { /* ignore */ }
-      return next;
-    });
-  };
-
   // real login wall: only trips when auth is enabled backend-side (dev/mock get a synthetic session)
   if (needsLogin) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
 
   return (
     <BreadcrumbProvider>
-      <div className={styles.app} data-temp="inside" data-sovereign={sovereign ? "true" : "false"} data-collapsed={collapsed ? "true" : "false"}>
-        <aside className={styles.sidebar}>
-          <div className={styles.sidebarTop}>
+      <div className={styles.app} data-temp="inside" data-sovereign={sovereign ? "true" : "false"}>
+        <header className={styles.shellHeader}>
+          <div className={styles.shellInner}>
             <Link to="/" className={styles.brand} aria-label="Nxcleus home">
-              <Logo size={19} tone="invert" markOnly={collapsed} />
+              <Logo size={18} tone="invert" className={styles.brandFull} />
+              <Logo size={18} tone="invert" markOnly className={styles.brandMark} />
             </Link>
-            <button className={styles.railToggle} onClick={toggleRail} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label="Toggle sidebar">
-              <SidebarSimple weight="regular" />
-            </button>
-          </div>
-
-          <NavLink to="/build" className={styles.cta}>
-            <Plus weight="bold" />
-            <span className={styles.ctaLabel}>New process</span>
-          </NavLink>
-
-          <nav className={styles.nav}>
-            {NAV.map((n) => (
-              <NavLink
-                key={n.to}
-                to={n.to}
-                className={({ isActive }) => `${styles.link} ${isActive ? styles.active : ""}`}
-                title={n.label}
-              >
-                <n.icon weight="regular" className={styles.linkIcon} />
-                <span className={styles.linkLabel}>{n.label}</span>
+            <nav className={styles.nav} aria-label="Platform navigation">
+              {NAV.map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  className={({ isActive }) => `${styles.link} ${isActive ? styles.active : ""}`}
+                  title={n.label}
+                >
+                  <n.icon weight="regular" className={styles.linkIcon} />
+                  <span className={styles.linkLabel}>{n.label}</span>
+                </NavLink>
+              ))}
+            </nav>
+            <div className={styles.headerActions}>
+              {session?.auth_enabled && <SessionChip session={session} />}
+              <NavLink to="/build" className={styles.cta}>
+                <Plus weight="bold" />
+                <span className={styles.ctaLabel}>New process</span>
               </NavLink>
-            ))}
-          </nav>
-        </aside>
+            </div>
+          </div>
+        </header>
 
         <div className={styles.content}>
-          <header className={styles.bar}>
-            <TopBar />
-            <div className={styles.headRight}>
+          <div className={styles.bar}>
+            <div className={styles.barInner}>
+              <TopBar />
               <MaturityBadge label="Preview build" tip="Demo build — not production-ready" />
-              {session?.auth_enabled && <SessionChip session={session} />}
             </div>
-          </header>
+          </div>
 
           <main className={styles.main}>
             <Outlet />

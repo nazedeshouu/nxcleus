@@ -9,7 +9,7 @@ Short and decisive. The build follows this doc; if the build and this doc disagr
 Two temperatures, one wall (redesign, 2026-07-09):
 
 - **Landing** (`/`) — the daylight approach to a sealed system. Light editorial, layered generated imagery, film grain, island nav. Trust-first for a bank's compliance officer. `VARIANCE 6 / MOTION 5 / DENSITY 3`.
-- **The platform** (everything behind "Enter the platform") — *inside the walls*. The entire app chrome lives in sealed midnight (`[data-temp="inside"]`): luminous cyan telemetry, mono numerals, a faint architectural field behind the panels. Crossing into the app IS crossing the boundary; the wedge band on the landing is the one glimpse inside. Sovereign Mode deepens the same interior to absolute dark + teal seal. `DENSITY 7` in the cockpit.
+- **The platform** (everything behind "Enter the platform") — *inside the walls*. The app chrome lives in restrained graphite (`[data-temp="inside"]`) with one horizontal navigation layer and a thin context row. Crossing into the app IS crossing the boundary, but evidence density is progressive: operational meaning first, technical records on demand. Sovereign Mode deepens the same interior to absolute dark + teal seal. Default `DENSITY 4`; advanced audit views may reach `DENSITY 7` when opened.
 
 ## 1. Brand token
 
@@ -70,13 +70,13 @@ Cool near-white base, one deep-cyan accent, temperature-coded zones. Not AI-purp
 
 ## 6. Imagery
 
-Raster art uses exact palette anchors: `hero-archive-crossing.jpg` is the full-bleed archive threshold in the hero; `wedge-dark.webp` is the midnight landing wedge; `inside-field.webp` is the quieter platform backdrop; `field-light.webp` closes the landing CTA. Abstract architectural sovereignty only: no robots, brains, or circuit-board clichés. No text in images. Below-the-fold assets are lazy. Functional icons and diagrams stay SVG/DOM (Phosphor, one family). The boundary diagram is DOM/SVG because it communicates data and animates once.
+Raster art uses exact palette anchors: `hero-vault-door.jpg` is the full-bleed institutional threshold in the hero; `wedge-dark.webp` is the midnight landing wedge; `field-light.webp` closes the landing CTA. The platform uses a quiet CSS light field rather than another photograph. Abstract architectural sovereignty only: no robots, brains, or circuit-board clichés. No text in images. Below-the-fold assets are lazy. Functional icons and diagrams stay SVG/DOM (Phosphor, one family). The boundary diagram is DOM/SVG because it communicates data and animates once.
 
 ## 7. Per-view layout intent
 
 ### 7.1 Landing (`/`)
 Narrative spine = the pitch from `IDEA.md`, in order:
-1. **Hero** — one-viewport, full-bleed archive threshold: copy anchored bottom-left, actions on the same baseline, and a compact boundary monitor in the open upper-right field. Primary CTA "Enter the platform" + secondary "Judge sandbox". AMD/ROCm/vLLM credibility line present (legible < 30s).
+1. **Hero** — one-viewport, full-bleed institutional threshold: copy anchored bottom-left; the `Nx.` wordmark and navigation sit directly on the photograph without a plaque. Primary CTA "Enter the platform" + secondary "Judge sandbox". AMD/ROCm/vLLM credibility line present (legible < 30s).
 2. **The boundary moment** — the hero diagram: raw context stays sealed in LOCAL; a single *sanitized brief* crosses to EXTERNAL; Sovereign Mode = zero crossings. Animated once on view. This is the astonish beat.
 3. **The lifecycle** — Build once / Operate forever / Refine on demand. Three phases, not three equal cards; a horizontal timeline with weight on "Operate forever."
 4. **Money slide** — frontier intelligence as capex not marginal cost: a small honest chart, build cost once vs. flat per-run local opex, vs. competitors paying tokens *and* surrendering data every run.
@@ -89,9 +89,9 @@ At least 4 distinct layout families; ≤ 2 eyebrows total; zero em-dashes; no sc
 ### 7.2 Build view (`/build/:jobId`) — mission control
 Composed, choreographed, not 12 equal boxes. Persistent frame + stage-driven hero focus:
 - **Top:** stage rail (0-7, live), goal pin ("what we promised"), connection + sovereign indicators, quote/cost meter.
-- **Center (stage-driven hero):** whatever the current stage makes primary — intake dialogue + sanitization report at stage 0; plan stream + BoM at 1-2; wave board with worker panels at 4; validation wall + defect board at 5-6; delivery at 7.
-- **Left rail:** amendment log (hash-chained audit ticker), consults with sanitization receipts.
-- **Right rail:** GPU telemetry strip (the AMD-legible-in-30s surface) + egress/network monitor (violation = unmissable red banner across the top).
+- **Center:** three progressive sections: request and plan, build and verification, technical record. The active decision opens automatically.
+- **Technical record:** amendment log, consults, telemetry, and egress remain available but collapsed until requested.
+- **Delivery:** once complete, the delivered result leads the page; a violation remains an unmissable red banner.
 The UI state for a job **is a fold of its events** (`reduce(events) -> view`), which makes replay and ×16 fixtures free and identical to live.
 
 ## 8. Stack
@@ -138,6 +138,6 @@ The UI state for any scope IS `reduce(events)`. To build a new live view (a run,
 
 ## Guardrails (do not regress)
 - Only `SANITIZED` ever shows crossing to `EXTERNAL`; `RAW` chips stay sealed/LOCAL. Keep the boundary legible.
-- Zero em-dashes in any rendered copy. One accent. Landing stays light; cockpit stays dense.
+- Zero em-dashes in any rendered copy. One accent. Landing stays image-led; the platform stays calm by default and reveals density on demand.
 - `fonts/` at repo root is READ-ONLY source; copy into `frontend/`, never modify it.
 - Respect `prefers-reduced-motion` (all motion already gates on it).
