@@ -7,6 +7,7 @@ Process-mode jobs (plan.topology present) run the corpus fan-out via the operate
 from __future__ import annotations
 
 import asyncio
+import re
 
 from app.conduct import conductor
 from app.events import E
@@ -18,24 +19,61 @@ from app.orchestrator import codeexec
 from app.orchestrator.seatlib import seat
 from app.runtime import workspace
 
+_MODULE_ID_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*$"
+_MODULE_ID_RE = re.compile(_MODULE_ID_PATTERN)
+
+
+def _modules_by_id(modules: list) -> dict[str, dict]:
+    indexed: dict[str, dict] = {}
+    for module in modules:
+        module_id = module.get("id") if isinstance(module, dict) else None
+        if not isinstance(module_id, str) or _MODULE_ID_RE.fullmatch(module_id) is None:
+            raise ValueError("plan contains an invalid module id")
+        if module_id in indexed:
+            raise ValueError(f"plan contains duplicate module id: {module_id}")
+        indexed[module_id] = module
+    return indexed
+
 
 def waves_from_dag(dag: list, modules: list) -> list[list[dict]]:
-    """Kahn topological levels. Falls back to one wave per module list if no dag."""
+    """Return Kahn topological levels and reject malformed or cyclic dependency graphs."""
+    module_ids = set(_modules_by_id(modules))
     if not dag:
         return [[{"task": f"t_{m['id']}", "module": m["id"]} for m in modules]] if modules else []
+    for task in dag:
+        module_id = task.get("module") if isinstance(task, dict) else None
+        if not isinstance(module_id, str) or _MODULE_ID_RE.fullmatch(module_id) is None:
+            raise ValueError("build DAG task contains an invalid module id")
+        if module_id not in module_ids:
+            raise ValueError(f"build DAG references unknown module: {module_id}")
+    module_refs = [task["module"] for task in dag]
+    duplicate_refs = sorted({module_id for module_id in module_refs
+                             if module_refs.count(module_id) > 1})
+    if duplicate_refs:
+        raise ValueError(
+            f"build DAG contains duplicate module references: {', '.join(duplicate_refs)}")
+    missing_modules = sorted(module_ids - set(module_refs))
+    if missing_modules:
+        raise ValueError(
+            f"build DAG does not cover plan modules: {', '.join(missing_modules)}")
     tasks = {t["task"]: t for t in dag}
-    indeg = {t: len(tasks[t].get("deps", [])) for t in tasks}
-    remaining = dict(indeg)
+    if len(tasks) != len(dag):
+        raise ValueError("build DAG contains duplicate task ids")
+    missing = sorted({dep for task in dag for dep in task.get("deps", []) if dep not in tasks})
+    if missing:
+        raise ValueError(f"build DAG references unknown dependencies: {', '.join(missing)}")
+    remaining = set(tasks)
     waves: list[list[dict]] = []
     done: set[str] = set()
     while remaining:
-        ready = [t for t, d in remaining.items() if all(dep in done for dep in tasks[t].get("deps", []))]
-        if not ready:                      # cycle guard — emit the rest as one wave
-            ready = list(remaining)
+        ready = sorted(t for t in remaining
+                       if all(dep in done for dep in tasks[t].get("deps", [])))
+        if not ready:                      # a remaining graph with no ready node is cyclic
+            raise ValueError(f"build DAG contains a cycle involving: {', '.join(sorted(remaining))}")
         waves.append([tasks[t] for t in ready])
         for t in ready:
             done.add(t)
-            remaining.pop(t, None)
+            remaining.remove(t)
     return waves
 
 
@@ -50,11 +88,25 @@ async def run(ctx) -> None:
     if plan.get("topology"):               # process mode — corpus fan-out (03 §8)
         from app.runtime.operate import run_process_fanout
 
-        await run_process_fanout(ctx, plan)
+        result = await run_process_fanout(ctx, plan)
+        verification = result.get("verification") if isinstance(result, dict) else None
+        reasons = result.get("reasons") if isinstance(result, dict) else None
+        reason_text = "; ".join(reasons) if isinstance(reasons, list) else "missing evidence"
+        if verification == "failed":
+            raise RuntimeError(f"process fan-out failed: {reason_text}")
+        if verification == "unverified":
+            override = (
+                result.get("demo_override") is True
+                and codeexec.unverified_demo_delivery_allowed()
+            )
+            if not override:
+                raise RuntimeError(f"process fan-out unverified: {reason_text}")
+        elif verification != "passed":
+            raise RuntimeError("process fan-out returned malformed verification evidence")
         await ctx.advance("delivering")
         return
 
-    modules = {m["id"]: m for m in plan.get("modules", [])}
+    modules = _modules_by_id(plan.get("modules", []))
     tests = await ctx.get_checkpoint("tests") or []
     waves = waves_from_dag(plan.get("dag", []), plan.get("modules", []))
     total = len(waves)
@@ -135,8 +187,36 @@ async def _build_task(ctx, task, module, plan, tests, coder_pool, load, slots) -
         test_result = await codeexec.run_tests(
             workspace=str(workspace.agent_dir(ctx.job_id, module_id)),
             tests=module_tests, module_id=module_id)
-        await ctx.emit(E.TASK_TESTS, {"module": module_id, "passed": test_result["passed"],
-                                      "failed": test_result["failed"], "total": test_result["total"]})
+        await ctx.emit(E.TASK_TESTS, {
+            "module": module_id,
+            "passed": test_result["passed"],
+            "failed": test_result["failed"],
+            "total": test_result["total"],
+            "verification": test_result["verification"],
+            "sandboxed": test_result["sandboxed"],
+            "reason": test_result.get("reason", ""),
+        })
+
+        verification = test_result["verification"]
+        blocked_unverified = (
+            verification == "unverified" and not codeexec.unverified_demo_delivery_allowed()
+        )
+        if verification == "failed" or blocked_unverified or verification not in {
+            "passed", "unverified"
+        }:
+            reason = test_result.get("reason") or f"verification {verification}"
+            await ctx.dao.upsert_build_task(
+                task_id=task_id, job_id=ctx.job_id, module_id=module_id,
+                wave=task.get("_wave", 0), status="failed",
+                assigned_backend=chosen.model, attempts=1,
+                workspace_path=str(workspace.job_dir(ctx.job_id)),
+            )
+            await ctx.emit(E.TASK_FAILED, {
+                "task": task.get("task"), "module": module_id, "backend": chosen.model,
+                "verification": verification, "sandboxed": test_result["sandboxed"],
+                "error": reason,
+            })
+            raise RuntimeError(f"module {module_id} verification blocked delivery: {reason}")
 
         await ctx.dao.upsert_build_task(task_id=task_id, job_id=ctx.job_id, module_id=module_id,
                                         wave=task.get("_wave", 0), status="done",

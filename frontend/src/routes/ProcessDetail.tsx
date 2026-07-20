@@ -15,6 +15,11 @@ import styles from "./ProcessDetail.module.css";
 
 type Flash = { kind: "ok" | "err"; msg: string } | null;
 
+const finite = (value: number | null | undefined): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+const moneyOrDash = (value: number | null | undefined): string => finite(value) ? usd(value) : "—";
+const numberOrDash = (value: number | null | undefined): string => finite(value) ? String(value) : "—";
+
 /** The process may carry its corpus binding under a couple of names. */
 function boundCompany(process: ProcessSummary): string {
   const raw = process as unknown as Record<string, unknown>;
@@ -65,7 +70,11 @@ function ActionBar({ processId, version, process }: { processId: string; version
         <button
           className={`${styles.action} ${styles.primary}`}
           disabled={!unlocked || busy != null}
-          onClick={() => run("Run batch", () => api.runBatch(processId, { input_ref: "100", version, ...(company ? { corpus: { company } } : {}) }))}
+          onClick={() => run("Run batch", () => api.runBatch(processId, {
+            version,
+            sample: { mode: "first", n: 100 },
+            ...(company ? { corpus: { company } } : {}),
+          }))}
         >
           {unlocked ? <Lightning weight="fill" /> : <Lock weight="regular" />} Run a batch
         </button>
@@ -199,7 +208,7 @@ function PackageCard({ processId, version }: { processId: string; version: numbe
             <span className={styles.invTotalNum}>{usd(inv.total_usd)}</span>
           </div>
           <div className={styles.invMeta}>
-            <span className={styles.invBadge}><ShieldCheck weight="fill" /> {inv.frontier_calls} frontier calls · sanitized brief only</span>
+            <span className={styles.invBadge}><ShieldCheck weight="fill" /> {inv.frontier_calls} measured frontier calls</span>
             {under && <span className={styles.invBadge}><CheckCircle weight="fill" /> {usd(Math.abs(inv.delta_vs_quote!))} under quote</span>}
           </div>
         </>
@@ -428,6 +437,11 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
   const statuses = [...new Set(units.map((u) => u.status))];
   const shown = filter ? units.filter((u) => u.status === filter) : units;
   const artifacts = runQ.data?.run.artifacts ?? [];
+  const artifactEvidence = runQ.data?.run.stats?.artifact;
+  const artifactVerification = artifactEvidence?.verification;
+  const artifactLabel = artifactVerification === "passed"
+    ? "verified"
+    : artifactVerification === "unverified" ? "unverified" : "verification unavailable";
   const reportUrl = artifacts.find((a) => a.kind === "report")?.url ?? `/api/runs/${run.run_id}/report`;
   const csvUrl = artifacts.find((a) => a.kind === "csv")?.url ?? `/api/runs/${run.run_id}/export.csv`;
 
@@ -459,13 +473,23 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
           break;
         case "rerun":
           // params like {sample:{mode,n}} / {budget} pass through opaquely
+          {
+          const rerunParams = { ...(params as Record<string, unknown>) };
+          delete rerunParams.input_ref;
+          const requested = params.sample as Record<string, unknown> | undefined;
+          const sample = requested
+            && (requested.mode === "first" || requested.mode === "random")
+            && Number.isInteger(requested.n) && Number(requested.n) > 0
+              ? { mode: requested.mode as "first" | "random", n: Number(requested.n) }
+              : { mode: "first" as const, n: 100 };
           await api.runBatch(processId, {
-            ...(params as Record<string, unknown>),
-            input_ref: (params.input_ref as string) ?? "100",
+            ...rerunParams,
+            sample,
             version,
           });
           flashRun("ok", "Re-run accepted — watch the run history.");
           break;
+          }
       }
     } catch (e) {
       const status = (e as { status?: number }).status;
@@ -479,10 +503,14 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
         {open ? <CaretDown weight="bold" style={{ width: 13, color: "var(--accent)" }} /> : <CaretRight weight="bold" style={{ width: 13, color: "var(--text-faint)" }} />}
         <ShortId id={run.run_id} />
         <div className={styles.runStat}>
-          <span><b>{run.units}</b> units</span>
-          <span className="good"><b className="good">{usd(run.cost_usd)}</b></span>
-          <span>{usd(run.cost_per_unit)}/unit</span>
-          <span className={styles.frontierZero}><b className={styles.frontierZero}>{run.frontier_calls}</b> frontier</span>
+          <span><b>{numberOrDash(run.units)}</b> units</span>
+          <span className={run.cost_verification === "passed" && finite(run.cost_usd) ? styles.runMetricGood : styles.runMetricMuted}>
+            <b>{moneyOrDash(run.cost_usd)}</b>
+          </span>
+          <span>{moneyOrDash(run.cost_per_unit)}/unit</span>
+          <span className={run.cost_verification === "passed" && finite(run.frontier_calls) ? styles.runMetricGood : styles.runMetricMuted}>
+            <b>{numberOrDash(run.frontier_calls)}</b> {run.cost_verification === "passed" ? "measured frontier" : "frontier (unverified)"}
+          </span>
           {(run.mock_dispatches ?? 0) > 0 && (
             <span className={styles.simChip} title="Some model calls fell through to a simulated (mock) backend — not a clean live run.">
               {run.mock_dispatches} simulated
@@ -490,11 +518,29 @@ function RunRow({ run, processId, version }: { run: EconProcess["runs"][number];
           )}
         </div>
       </div>
+      <div className={styles.runTruth}>
+        <span className={styles.truthChip}>status: {run.status || "unknown"}</span>
+        <span className={`${styles.truthChip} ${styles[`truth_${run.verification}`] ?? ""}`}>
+          verification: {run.verification}
+        </span>
+        <span className={`${styles.truthChip} ${run.demo ? styles.truthDemo : ""}`}>demo: {run.demo ? "yes" : "no"}</span>
+        {run.verification_reasons.length > 0 ? (
+          <span className={styles.truthReason}>{run.verification_reasons.join("; ")}</span>
+        ) : run.verification !== "passed" ? (
+          <span className={styles.truthReason}>No verification reason was recorded.</span>
+        ) : null}
+        {run.cost_verification !== "passed" && run.cost_reason && (
+          <span className={styles.truthReason}>Cost: {run.cost_reason}</span>
+        )}
+      </div>
       {open && (
         <div className={styles.runBody}>
           {(artifacts.length > 0) && (
-            <div className={`${styles.artCard} ${artGlow ? styles.artGlow : ""}`}>
-              <div className={styles.artTitle}>Deliverables</div>
+            <div className={`${styles.artCard} ${artifactVerification === "passed" ? "" : styles.artUnverified} ${artGlow ? styles.artGlow : ""}`}>
+              <div>
+                <div className={styles.artTitle}>Deliverables · {artifactLabel}</div>
+                {artifactEvidence?.reason && <div className={styles.artReason}>{artifactEvidence.reason}</div>}
+              </div>
               <div className={styles.artBtns}>
                 <a className={styles.artBtn} href={reportUrl} target="_blank" rel="noreferrer">
                   <ArrowSquareOut weight="bold" /> Open report

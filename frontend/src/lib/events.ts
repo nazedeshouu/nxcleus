@@ -209,6 +209,10 @@ export interface TaskTestsPayload {
   module: string;
   passed: number;
   failed: number;
+  total: number;
+  verification: RunVerification;
+  sandboxed: boolean;
+  reason: string | null;
 }
 export interface TaskDonePayload {
   module: string;
@@ -240,13 +244,20 @@ export interface ConsolidateTestRunPayload {
   passed: number;
   failed: number;
   total: number;
+  verification: RunVerification;
+  sandboxed: boolean;
+  reason: string | null;
 }
 export interface ConsolidateCompletedPayload {
   passed: number;
   total: number;
+  verification: RunVerification;
+  sandboxed: boolean;
 }
 
 /* ---------- stage 6: QA ---------- */
+export type OracleVerdict = "match" | "mismatch" | "no_actual" | "oracle_uncertain";
+export type GoalVerdict = "fulfilled" | "partial" | "unfulfilled" | "unknown";
 export interface InspectorStartedPayload {
   scenario: string;
   seat: Seat;
@@ -261,18 +272,23 @@ export interface QaFindingPayload {
   detail?: string;
 }
 export interface GoalCheckPayload {
-  verdict: "fulfilled" | "partial" | "failed";
+  verdict: GoalVerdict;
   gaps: string[];
 }
 export interface OracleCheckPayload {
   vector: string;
-  verdict: "match" | "mismatch";
+  verdict: OracleVerdict;
   model: string; // lineage-independent oracle
 }
 export interface QaPassedPayload {
   scenarios: number;
   probes: number;
   tickets_resolved: number;
+}
+export interface QaCompletedPayload {
+  verification: RunVerification;
+  reasons: string[];
+  demo_override: boolean;
 }
 
 /* ---------- tickets ---------- */
@@ -294,30 +310,48 @@ export interface DeliverRegisteredPayload {
   package: { plan: boolean; docs: boolean; qa_report: boolean; tests: number };
   frontier_calls?: number;
   invoice_total_usd?: number;
-  goal_verdict?: "fulfilled" | "partial" | "failed";
+  goal_verdict?: GoalVerdict;
+  verification: "passed" | "unverified";
+  verification_reasons: string[];
+  demo_override: boolean;
+  delivery_label: string;
 }
 export interface RunStartedPayload {
   run_id: string;
   units: number;
+  demo: boolean;
 }
 export interface RunUnitCompletedPayload {
+  run_id: string;
   unit: string;
   result: string;
 }
 export interface RunProgressPayload {
+  run_id: string;
   done: number;
   total: number;
 }
 export interface RunSpotcheckPayload {
+  run_id: string;
   unit: string;
-  verdict: "match" | "mismatch";
+  verdict: "match" | "mismatch" | "inconclusive";
 }
-export interface RunCompletedPayload {
+export type RunVerification = "passed" | "failed" | "unverified";
+export type RunTerminalStatus = "done" | "partial" | "unverified" | "failed";
+export interface RunTerminalPayload {
+  run_id: string;
+  status: RunTerminalStatus;
+  verification: RunVerification;
+  reasons: string[];
   units: number;
+  done: number;
   flagged: number;
-  cost_usd: number;
-  gpu_seconds: number;
+  cost_usd: number | null;
+  gpu_seconds: number | null;
+  demo: boolean;
 }
+export type RunFinishedPayload = RunTerminalPayload;
+export type RunCompletedPayload = RunTerminalPayload;
 export interface RefineTriagedPayload {
   verdict: "amend" | "consult";
   note: string;
@@ -441,7 +475,10 @@ export interface RunArtifact {
   url: string;
 }
 export interface RunArtifactsReadyPayload {
-  run_id?: string;
+  run_id: string;
+  verification: "passed" | "unverified";
+  degraded: boolean;
+  reason: string | null;
   artifacts: RunArtifact[];
 }
 export interface ModelTracePayload {
@@ -546,6 +583,7 @@ export type NxEvent =
   | Envelope<"qa.finding", QaFindingPayload>
   | Envelope<"qa.goal_check", GoalCheckPayload>
   | Envelope<"qa.oracle_check", OracleCheckPayload>
+  | Envelope<"qa.completed", QaCompletedPayload>
   | Envelope<"qa.passed", QaPassedPayload>
   | Envelope<"ticket.opened", TicketPayload>
   | Envelope<"ticket.in_fix", TicketPayload>
@@ -557,6 +595,7 @@ export type NxEvent =
   | Envelope<"run.unit_completed", RunUnitCompletedPayload>
   | Envelope<"run.progress", RunProgressPayload>
   | Envelope<"run.spotcheck", RunSpotcheckPayload>
+  | Envelope<"run.finished", RunFinishedPayload>
   | Envelope<"run.completed", RunCompletedPayload>
   | Envelope<"warranty.ticket", TicketPayload>
   | Envelope<"refine.triaged", RefineTriagedPayload>

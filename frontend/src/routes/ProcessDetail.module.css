@@ -372,6 +372,28 @@
 .runStat .flag {
   color: var(--warn);
 }
+.runMetricGood { color: var(--ok); }
+.runMetricMuted { color: var(--text-muted); }
+.runTruth {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0 16px 11px 43px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+}
+.truthChip {
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunk);
+  color: var(--text-muted);
+}
+.truth_passed { background: var(--ok-wash); color: var(--ok); }
+.truth_failed { background: var(--danger-wash); color: var(--danger-strong); }
+.truth_unverified,
+.truthDemo { background: var(--warn-wash); color: var(--warn); }
+.truthReason { width: 100%; color: var(--text-muted); line-height: 1.4; }
 .frontierZero {
   color: var(--ok);
 }
@@ -535,6 +557,8 @@
   transition: box-shadow var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
 }
 .artGlow { border-color: var(--ok); box-shadow: 0 0 0 3px var(--ok-wash); }
+.artUnverified { border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.artReason { margin-top: 4px; color: var(--warn); font-size: var(--fs-micro); }
 .artTitle {
   font-family: var(--font-mono);
   font-size: var(--fs-micro);

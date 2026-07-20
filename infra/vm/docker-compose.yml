@@ -14,6 +14,7 @@ services:
       - DATA_DIR=/data
       - MODEL_MODE=auto        # real backends when reachable, else mock (badged)
       - TRACE_PROMPTS=true     # persist full prompt+response per dispatch (LOCAL-only rows) — matches the default, set explicitly so it can't drift off
+      - CODEEXEC_IMAGE=${CODEEXEC_IMAGE:-nxcleus/codeexec:py312}
       # Public URL — derived from the domain (sslip.io now; swap NXCLEUS_DOMAIN to nxcleus.com later).
       - APP_BASE_URL=https://${NXCLEUS_DOMAIN:-localhost}
       # Login wall (backend auth): AUTH_ADMIN_PASSWORD / AUTH_JUDGE_PASSWORD / AUTH_SECRET come from

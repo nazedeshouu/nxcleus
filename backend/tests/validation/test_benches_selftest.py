@@ -2,6 +2,7 @@
 Wave 2 against a live P1 fleet (08 §7); these assert the harness + ground-truth plumbing."""
 from _fake import run
 
+from app.seats.base import Completion
 from tests.validation.ground_truth import VECTORS, claims_payout, kyc_level, kyc_score
 from tests.validation.inspector_bench import _ScriptedInspector, run_inspector_bench
 from tests.validation.inspector_bench import evaluate_gate as insp_gate
@@ -36,3 +37,21 @@ def test_inspector_bench_wiring_and_gate():
     assert insp_gate(report)["pass"] is True
     # the mixed-swarm (looser) bar also passes
     assert insp_gate(report, mixed_swarm=True)["pass"] is True
+
+
+def test_inspector_bench_continues_after_inconclusive_scenarios():
+    class NoEvidenceInspector:
+        def __init__(self):
+            self.calls = 0
+
+        async def __call__(self, *_args, **_kwargs):
+            self.calls += 1
+            return Completion(text="", parsed={
+                "tool": "submit_finding", "submit_finding": {"defect": False}}, usage={})
+
+    scripted = NoEvidenceInspector()
+    report = run(run_inspector_bench(scripted, seat_label="inconclusive"))
+
+    assert report["completed"] == 0
+    assert report["inconclusive"] == report["scenarios"] == 12
+    assert scripted.calls == 12

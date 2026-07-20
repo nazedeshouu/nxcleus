@@ -113,8 +113,14 @@ def create_app() -> FastAPI:
     @app.get("/api/health")
     async def health() -> dict:
         from app.sandbox.seeds import builtin_corpus_present
+        execution_mode = (
+            "unsafe-demo-subprocess"
+            if settings.unsafe_demo_runtime and settings.model_mode == "mock"
+            else "disabled"
+        )
         return {"status": "ok", "app": settings.app_name, "model_mode": settings.model_mode,
-                "corpus": "ok" if builtin_corpus_present() else "missing"}
+                "corpus": "ok" if builtin_corpus_present() else "missing",
+                "generated_execution_mode": execution_mode}
 
     @app.get("/api/config/public")
     async def config_public() -> dict:

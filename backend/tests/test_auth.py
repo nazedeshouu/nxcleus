@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import contextlib
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.config import settings

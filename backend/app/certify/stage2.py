@@ -21,7 +21,11 @@ _CONSULT_CAP = 3
 
 async def run(ctx) -> None:
     job = await ctx.refresh()
-    draft = await ctx.dao.current_plan(ctx.job_id)
+    # Planning upserts this deterministic draft on correction. Prefer it explicitly: the old
+    # certified v2 remains in the audit trail and would otherwise win current_plan's version sort.
+    draft = await ctx.dao.get_plan(deterministic("plan", ctx.job_id, "v1"))
+    if draft is None:
+        draft = await ctx.dao.current_plan(ctx.job_id)
     if draft is None:
         raise RuntimeError("no plan to certify")
     plan = draft["body"]
@@ -34,8 +38,12 @@ async def run(ctx) -> None:
     # certifier.) Certifier's RAW clearance is enforced by the router boundary check.
     # B1 goal anchor: intake overwrites job.spec with the sanitized brief, so spec.request is empty
     # here — the certifier's RAW original request lives on the jobs.request column (dao.create_job)
-    raw_context = {"request": job.get("request") or (job.get("spec") or {}).get("request", ""),
-                   "vault": vault_map}
+    messages = await ctx.dao.list_messages(ctx.job_id)
+    raw_context = {
+        "request": job.get("request") or (job.get("spec") or {}).get("request", ""),
+        "messages": [{"role": row["role"], "content": row["content"]} for row in messages],
+        "vault": vault_map,
+    }
 
     certifier = seat("certifier")
     for check in _CHECKS:

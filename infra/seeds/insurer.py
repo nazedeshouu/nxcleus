@@ -269,7 +269,9 @@ def gen_insurer() -> dict:
     r = rng(11)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "terms").mkdir(parents=True, exist_ok=True)
-    (OUT / "terms" / "insurer_terms.md").write_text(_TERMS)  # fresh overwrite each regen
+    (OUT / "terms" / "insurer_terms.md").write_text(
+        _TERMS, encoding="utf-8"
+    )  # fresh overwrite each regen
     path = OUT / "insurer.db"
     if path.exists():
         path.unlink()

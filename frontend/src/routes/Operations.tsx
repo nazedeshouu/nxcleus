@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Circle, ShieldCheck } from "@phosphor-icons/react";
-import { api, type EconProcess, type ProcessSummary } from "../api/client";
+import { api, type EconProcess, type EconRun, type ProcessSummary } from "../api/client";
 import { MOCK_FORCED } from "../api/config";
 import { usd } from "../lib/format";
 import styles from "./Operations.module.css";
@@ -14,7 +14,22 @@ import styles from "./Operations.module.css";
 const MODELED_FRONTIER_PER_RUN = 1.2;
 const HORIZON = 240; // project the cost curves across this many runs
 
-function MoneyChart({ buildCapex, perRun }: { buildCapex: number; perRun: number }) {
+const finite = (value: number | null): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+const usdOrDash = (value: number | null): string => finite(value) ? usd(value) : "—";
+const verifiedCost = (run: EconRun): run is EconRun & { cost_usd: number } =>
+  run.cost_verification === "passed" && finite(run.cost_usd);
+const verifiedFrontier = (run: EconRun): run is EconRun & { frontier_calls: number } =>
+  run.cost_verification === "passed" && finite(run.frontier_calls);
+
+function MoneyChart({ buildCapex, perRun }: { buildCapex: number; perRun: number | null }) {
+  if (perRun == null) {
+    return (
+      <div className={styles.chartUnavailable}>
+        Run-cost curve unavailable — no verified numeric run-cost samples have been recorded.
+      </div>
+    );
+  }
   const W = 560;
   const H = 210;
   const padL = 46;
@@ -35,7 +50,7 @@ function MoneyChart({ buildCapex, perRun }: { buildCapex: number; perRun: number
 
   return (
     <div>
-      <svg className={styles.chart} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Cumulative cost across runs: Nxcleus stays flat, a frontier-per-run approach scales linearly">
+      <svg className={styles.chart} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Cumulative cost across runs using verified Nxcleus run costs and a modeled frontier-per-run comparison">
         {gridY.map((v, i) => (
           <g key={i}>
             <line x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} stroke="var(--hairline-soft)" strokeWidth="1" />
@@ -58,10 +73,10 @@ function MoneyChart({ buildCapex, perRun }: { buildCapex: number; perRun: number
       </svg>
       <div className={styles.chartCap}>
         <span className={styles.legend}>
-          <i className={styles.swatch} style={{ background: "var(--accent)" }} /> Nxcleus — build once, flat opex, 0 frontier calls per run
+          <i className={styles.swatch} style={{ background: "var(--accent)" }} /> Nxcleus — measured build cost + verified average run cost
         </span>
         <span className={styles.legend}>
-          <i className={styles.swatch} style={{ background: "var(--zone-external)" }} /> Modeled frontier-per-run — cost scales, data crosses the boundary every run
+          <i className={styles.swatch} style={{ background: "var(--zone-external)" }} /> Modeled frontier-per-run comparison
         </span>
       </div>
     </div>
@@ -73,9 +88,23 @@ function Economics({ processes }: { processes: EconProcess[] }) {
     const buildCapex = processes.reduce((s, p) => s + p.build_cost_usd, 0);
     const runs = processes.flatMap((p) => p.runs);
     const runCount = runs.length;
-    const perRun = runCount ? runs.reduce((s, r) => s + r.cost_usd, 0) / runCount : 0;
-    const frontierPerRun = runCount ? runs.reduce((s, r) => s + r.frontier_calls, 0) / runCount : 0;
-    return { buildCapex, runCount, perRun, frontierPerRun, procCount: processes.length };
+    const costRuns = runs.filter(verifiedCost);
+    const frontierRuns = runs.filter(verifiedFrontier);
+    const perRun = costRuns.length
+      ? costRuns.reduce((sum, run) => sum + run.cost_usd, 0) / costRuns.length
+      : null;
+    const frontierPerRun = frontierRuns.length
+      ? frontierRuns.reduce((sum, run) => sum + run.frontier_calls, 0) / frontierRuns.length
+      : null;
+    return {
+      buildCapex,
+      runCount,
+      perRun,
+      frontierPerRun,
+      procCount: processes.length,
+      verifiedCostRuns: costRuns.length,
+      verifiedFrontierRuns: frontierRuns.length,
+    };
   }, [processes]);
 
   return (
@@ -89,7 +118,7 @@ function Economics({ processes }: { processes: EconProcess[] }) {
         </div>
       </div>
       <div className={styles.econGrid}>
-        <MoneyChart buildCapex={agg.buildCapex || 0.047} perRun={agg.perRun || 0.00045} />
+        <MoneyChart buildCapex={agg.buildCapex} perRun={agg.perRun} />
         <div className={styles.tiles}>
           <div className={styles.tile}>
             <div className={styles.tileNum}>{agg.procCount}</div>
@@ -100,12 +129,14 @@ function Economics({ processes }: { processes: EconProcess[] }) {
             <div className={styles.tileLbl}>one-time build cost, all processes</div>
           </div>
           <div className={styles.tile}>
-            <div className={styles.tileNum}>{usd(agg.perRun)}</div>
-            <div className={styles.tileLbl}>average cost per run, trending flat</div>
+            <div className={styles.tileNum}>{usdOrDash(agg.perRun)}</div>
+            <div className={styles.tileLbl}>average measured cost per run · {agg.verifiedCostRuns}/{agg.runCount} verified samples</div>
           </div>
           <div className={styles.tile}>
-            <div className={`${styles.tileNum} ${styles.good}`}>{agg.frontierPerRun.toFixed(0)}</div>
-            <div className={styles.tileLbl}>frontier calls per run — data never leaves</div>
+            <div className={`${styles.tileNum} ${agg.frontierPerRun === 0 ? styles.good : ""}`}>
+              {agg.frontierPerRun == null ? "—" : agg.frontierPerRun.toFixed(1)}
+            </div>
+            <div className={styles.tileLbl}>average measured frontier calls per run · {agg.verifiedFrontierRuns}/{agg.runCount} verified samples</div>
           </div>
         </div>
       </div>
@@ -115,8 +146,10 @@ function Economics({ processes }: { processes: EconProcess[] }) {
 
 function CostSpark({ runs }: { runs: EconProcess["runs"] }) {
   // a single run has no trend to draw — a lone dot reads as debris, so show a dash
-  if (runs.length < 2) return <span className={styles.num} style={{ color: "var(--text-faint)" }}>—</span>;
-  const vals = runs.map((r) => r.cost_per_unit);
+  const vals = runs
+    .filter((run) => run.cost_verification === "passed" && finite(run.cost_per_unit))
+    .map((run) => run.cost_per_unit as number);
+  if (vals.length < 2) return <span className={styles.num} style={{ color: "var(--text-faint)" }}>—</span>;
   const max = Math.max(...vals, 1e-9);
   const w = 68;
   const h = 20;
@@ -139,7 +172,7 @@ export function Operations() {
   const ticketsQ = useQuery({ queryKey: ["tickets", "warranty"], queryFn: () => api.listTickets({ source: "warranty" }), enabled, retry: 0 });
 
   const processes = procsQ.data?.processes ?? [];
-  const econ = econQ.data?.processes ?? [];
+  const econ = useMemo(() => econQ.data?.processes ?? [], [econQ.data?.processes]);
   const econByProc = useMemo(() => new Map(econ.map((e) => [e.process_id, e])), [econ]);
   const openTicketsByScope = useMemo(() => {
     const m = new Map<string, number>();

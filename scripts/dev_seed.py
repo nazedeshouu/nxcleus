@@ -14,7 +14,11 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "backend"))
-os.environ.setdefault("MODEL_MODE", "mock")
+# Running this command is the explicit local-demo opt-in. Keep the model backend deterministic and
+# enable only the two narrowly named escape hatches required by the fail-closed generated runtime.
+os.environ["MODEL_MODE"] = "mock"
+os.environ["UNSAFE_DEMO_RUNTIME"] = "true"
+os.environ["ALLOW_UNVERIFIED_DEMO_DELIVERY"] = "true"
 
 from app.boundary.errors import SovereignViolation  # noqa: E402
 from app.db import dao  # noqa: E402
@@ -53,9 +57,11 @@ async def run_build_job() -> str:
     if status == "quoted":
         await dao.approve_quote(job_id)
         await engine.set_stage(job_id, "building")
-        engine.submit_job(job_id)
+        engine.wake_job(job_id)
         status = await wait_status(job_id, {"done", "blocked", "aborted"}, timeout=90)
     print(f"  build job {job_id} -> {status}")
+    if status != "done":
+        raise RuntimeError(f"build golden path ended with terminal status {status!r}")
     return job_id
 
 
@@ -119,15 +125,18 @@ async def main() -> None:
             process = p
             break
     if process is None:
-        print("  no process registered — aborting downstream seed")
-        await coverage_report()
         await db.disconnect()
-        return
+        raise RuntimeError(f"build job {job_id} reached done without registering a process")
 
     # operate: one batch run (run.* + warranty + spotcheck)
     run_id = await dao.create_run(process_id=process["id"], version=1, kind="batch", input_ref="8")
     await drive_run(run_id)
-    print(f"  batch run {run_id} complete")
+    run = await dao.get_run(run_id)
+    run_status = run.get("status") if run else "missing"
+    run_stats = (run or {}).get("stats") or {}
+    if run_status != "unverified" or run_stats.get("verification") != "unverified":
+        raise RuntimeError(f"batch golden path ended with terminal status {run_status!r}")
+    print(f"  batch run {run_id} -> {run_status} (expected synthetic mock demo)")
 
     # review one needs_review unit (review.decided)
     review_units = await dao.list_run_units(run_id, status="needs_review")
@@ -145,11 +154,19 @@ async def main() -> None:
     await byok_and_sovereign(process["id"])
 
     # sandbox run (sandbox.* + a process-mode job)
-    sjob, pos = await sandbox_queue.enqueue(company="lawfirm",
-                                            prompt="Extract renewal dates and auto-renew clauses; flag "
-                                                   "notice windows under 60 days", session_id=None)
-    await wait_status(sjob, {"done", "blocked", "aborted"}, timeout=90)
-    print(f"  sandbox job {sjob} complete")
+    sjob, _position = await sandbox_queue.enqueue(company="lawfirm",
+                                                  prompt="Extract renewal dates and auto-renew clauses; flag "
+                                                         "notice windows under 60 days", session_id=None)
+    sandbox_status = await wait_status(sjob, {"done", "blocked", "aborted"}, timeout=90)
+    if sandbox_status != "done":
+        raise RuntimeError(f"sandbox golden path ended with terminal status {sandbox_status!r}")
+    sandbox_run_id = await dao.get_checkpoint(f"job:{sjob}", "fanout_run_id")
+    sandbox_run = await dao.get_run(sandbox_run_id) if sandbox_run_id else None
+    sandbox_run_stats = (sandbox_run or {}).get("stats") or {}
+    if ((sandbox_run or {}).get("status") != "unverified"
+            or sandbox_run_stats.get("verification") != "unverified"):
+        raise RuntimeError("sandbox mock run did not retain unverified evidence")
+    print(f"  sandbox job {sjob} -> {sandbox_status}; run -> unverified demo")
 
     # abort path (job.aborted)
     from app.events import E, emit

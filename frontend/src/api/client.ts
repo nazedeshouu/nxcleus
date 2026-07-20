@@ -1,6 +1,6 @@
 /** Typed REST client for 06 §2. Shapes match what the live backend returns. */
 import { API_BASE, getDemoToken } from "./config";
-import type { DeliveryMode, JobStatus, Stage, Zone } from "../lib/events";
+import type { DeliveryMode, JobStatus, RunVerification, Stage, Zone } from "../lib/events";
 
 export interface PublicConfig {
   sovereign: boolean;
@@ -58,11 +58,18 @@ export interface ProcessVersion {
 }
 export interface EconRun {
   run_id: string;
-  ts: string;
-  units: number;
-  cost_usd: number;
-  cost_per_unit: number;
-  frontier_calls: number;
+  ts: string | null;
+  units: number | null;
+  cost_usd: number | null;
+  cost_per_unit: number | null;
+  model_calls: number | null;
+  frontier_calls: number | null;
+  cost_verification: "passed" | "unverified";
+  cost_reason: string | null;
+  status: string;
+  verification: RunVerification;
+  verification_reasons: string[];
+  demo: boolean;
   mock_dispatches?: number;
 }
 export interface EconProcess {
@@ -76,18 +83,32 @@ export interface EconProcess {
 
 /* ---------- runs ---------- */
 export interface RunStats {
-  units: number;
-  ok: number;
-  needs_review: number;
-  error: number;
-  spot_checks: number;
-  discrepancies: number;
+  units?: number | null;
+  ok?: number | null;
+  needs_review?: number | null;
+  error?: number | null;
+  spot_checks?: number | null;
+  discrepancies?: number | null;
   mock_dispatches?: number;
+  verification?: RunVerification;
+  verification_reasons?: string[];
+  run_status?: string;
+  demo?: boolean;
+  corpus?: { kind?: string; company?: string | null; synthetic_demo?: boolean };
+  artifact?: {
+    verification?: "passed" | "unverified";
+    degraded?: boolean;
+    reason?: string | null;
+    artifacts?: RunArtifactInfo[];
+  };
 }
 export interface RunCost {
-  total_usd: number;
-  cost_per_unit: number;
-  frontier_calls: number;
+  total_usd?: number | null;
+  cost_per_unit?: number | null;
+  model_calls?: number | null;
+  frontier_calls?: number | null;
+  verification?: "passed" | "unverified";
+  reason?: string | null;
 }
 export interface RunArtifactInfo {
   kind: string; // "report" | "csv"
@@ -99,6 +120,9 @@ export interface RunDetail {
   version: number;
   kind: string;
   status: string;
+  verification?: RunVerification;
+  verification_reasons?: string[];
+  demo?: boolean;
   input_ref: string;
   started_at?: string;
   finished_at?: string;
@@ -110,6 +134,13 @@ export interface NextStep {
   title: string;
   why: string;
   action: { kind: "refine" | "export" | "review" | "rerun"; params?: Record<string, unknown> };
+}
+export interface RunBatchRequest {
+  version?: number;
+  corpus?: { company: string };
+  sample?: { mode?: "first" | "random"; n?: number };
+  deliverable?: Record<string, unknown>;
+  synthetic_demo?: boolean;
 }
 export interface RunUnit {
   id: string;
@@ -414,6 +445,10 @@ export const api = {
     req<{ job: JobSummary }>("/jobs", { method: "POST", body: JSON.stringify(body), demo: true }),
   postMessage: (id: string, content: string) =>
     req<unknown>(`/jobs/${id}/messages`, { method: "POST", body: JSON.stringify({ content }), demo: true }),
+  retryJob: (id: string, correction = "") =>
+    req<{ retried: boolean; target_stage: string }>(`/jobs/${id}/retry`, {
+      method: "POST", body: JSON.stringify({ correction }), demo: true,
+    }),
   confirmSpec: (id: string, mode: DeliveryMode) =>
     req<unknown>(`/jobs/${id}/confirm-spec`, { method: "POST", body: JSON.stringify({ mode }), demo: true }),
   getQuote: (id: string) => req<{ lines: unknown[] }>(`/jobs/${id}/quote`),
@@ -424,8 +459,8 @@ export const api = {
   listProcesses: () => req<{ processes: ProcessSummary[] }>("/processes"),
   getProcess: (id: string) => req<{ process: ProcessSummary; versions: ProcessVersion[] }>(`/processes/${id}`),
   getVersionDiff: (id: string, v: number) => req<{ diff: VersionDiff }>(`/processes/${id}/versions/${v}/diff`),
-  // extra keys (sample, budget, …) pass through opaquely — next-steps rerun params ride here
-  runBatch: (id: string, body: { input_ref: string; version?: number; corpus?: { company: string } } & Record<string, unknown>) =>
+  // extra keys (budget, …) pass through opaquely — next-steps rerun params ride here
+  runBatch: (id: string, body: RunBatchRequest & Record<string, unknown>) =>
     req<{ run: RunDetail }>(`/processes/${id}/runs`, { method: "POST", body: JSON.stringify({ ...body, kind: "batch" }), demo: true }),
   refineProcess: (id: string, request: string) =>
     req<{ job: JobSummary }>(`/processes/${id}/refine`, { method: "POST", body: JSON.stringify({ request }), demo: true }),

@@ -192,6 +192,7 @@ and change nothing else. {ENGLISH_ONLY}
 # db/models.Plan without importing it (team ruling).
 _TASK_FLAGS = ["greenfield-codegen", "refactor-edit", "sql-data", "test-writing", "docs-writing",
                "extraction", "math", "agentic-tool-use", "long-context", "merge-review"]
+_MODULE_ID_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*$"
 
 PLAN_SCHEMA: dict[str, Any] = {
     "type": "object", "additionalProperties": True,
@@ -200,7 +201,8 @@ PLAN_SCHEMA: dict[str, Any] = {
         "mode": {"enum": ["build", "process", "semi"]},
         "modules": {"type": "array", "items": {"type": "object", "additionalProperties": True,
             "properties": {
-                "id": {"type": "string"}, "name": {"type": "string"}, "purpose": {"type": "string"},
+                "id": {"type": "string", "pattern": _MODULE_ID_PATTERN},
+                "name": {"type": "string"}, "purpose": {"type": "string"},
                 "consumes": {"type": "array", "items": {"type": "string"}},
                 "provides": {"type": "array", "items": {"type": "string"}},
                 "algorithm": {"type": "string"}, "complexity": {"enum": ["S", "M", "L"]},
@@ -213,8 +215,10 @@ PLAN_SCHEMA: dict[str, Any] = {
                            "consumers": {"type": "array", "items": {"type": "string"}},
                            "schema": {"type": "object"}}, "required": ["id"]}},
         "dag": {"type": "array", "items": {"type": "object", "properties": {
-            "task": {"type": "string"}, "module": {"type": "string"},
-            "deps": {"type": "array", "items": {"type": "string"}}}, "required": ["task"]}},
+            "task": {"type": "string"},
+            "module": {"type": "string", "pattern": _MODULE_ID_PATTERN},
+            "deps": {"type": "array", "items": {"type": "string"}}},
+            "required": ["task", "module"]}},
         "topology": {"type": ["object", "null"], "additionalProperties": True, "properties": {
             "unit": {"type": "object", "additionalProperties": True, "properties": {
                 "noun": {"type": "string"}, "source": {"type": "string"}, "schema": {"type": "object"}}},

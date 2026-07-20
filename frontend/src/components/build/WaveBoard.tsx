@@ -3,14 +3,16 @@ import { Panel, type PanelStatus } from "./Panel";
 import { ZoneBadge } from "../ui/ZoneBadge";
 import type { JobView, TaskState } from "../../store/jobStore";
 import type { Zone } from "../../lib/events";
+import { countEvidenceState, taskNodeStatus } from "../../lib/evidenceTruth";
 
 function Worker({ t }: { t: TaskState }) {
+  const evidenceStatus = taskNodeStatus(t);
   return (
-    <div className={`bv-worker ${t.status}`}>
+    <div className={`bv-worker ${evidenceStatus}`}>
       <div className="bv-worker-head">
         <span className="bv-worker-name">{t.module}</span>
         {t.status === "running" && <span className="bv-worker-spin" />}
-        {t.status === "completed" && <CheckCircle weight="fill" style={{ width: 14, height: 14, color: "var(--ok)", marginLeft: "auto" }} />}
+        {evidenceStatus === "done" && <CheckCircle weight="fill" style={{ width: 14, height: 14, color: "var(--ok)", marginLeft: "auto" }} />}
       </div>
       <div className="bv-worker-backend">
         <Cpu weight="bold" />
@@ -24,7 +26,9 @@ function Worker({ t }: { t: TaskState }) {
       <div className="bv-worker-foot">
         {t.tests ? (
           <>
-            <span className="bv-worker-tests-ok">✓ {t.tests.passed}</span>
+            <span className={countEvidenceState(t.tests) === "passed" ? "bv-worker-tests-ok" : "bv-worker-tests-warn"}>
+              {t.tests.verification} · {t.tests.passed}/{t.tests.total}
+            </span>
             {t.tests.failed > 0 && <span className="bv-worker-tests-fail">✗ {t.tests.failed}</span>}
           </>
         ) : (
@@ -39,7 +43,12 @@ function Worker({ t }: { t: TaskState }) {
 export function WaveBoard({ view }: { view: JobView }) {
   const waves = Object.values(view.build.waves).sort((a, b) => a.wave - b.wave);
   const tasks = Object.values(view.build.tasks);
-  const status: PanelStatus = view.stage === 4 ? "active" : waves.length ? "ok" : "pending";
+  const taskStates = tasks.map(taskNodeStatus);
+  const status: PanelStatus = view.stage === 4 ? "active"
+    : taskStates.some((state) => state === "failed") ? "error"
+      : taskStates.some((state) => state === "unverified") ? "warn"
+        : waves.length && taskStates.length && taskStates.every((state) => state === "done")
+          ? "ok" : waves.length ? "default" : "pending";
 
   return (
     <Panel

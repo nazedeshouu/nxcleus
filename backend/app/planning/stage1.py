@@ -118,9 +118,8 @@ async def run(ctx) -> None:
                 "text": "planner produced no corpus-narrowing topology after a replan — blocking "
                         "the job rather than delivering a false 0-findings result",
                 "level": "error"})
-            await ctx.dao.update_job(ctx.job_id, status="blocked")
-            await ctx.emit(E.JOB_BLOCKED, {"stage": "planning",
-                           "reason": "no candidate topology for a corpus-bound detection request"})
+            await ctx.block(
+                "planning", "no candidate topology for a corpus-bound detection request")
             return
 
     # Zero-candidate guard (deterministic): a candidate step whose literal doesn't match the corpus's
@@ -154,9 +153,8 @@ async def run(ctx) -> None:
                 "text": "candidate query still returns zero rows after a replan — blocking the job "
                         "rather than delivering a false 0-findings result",
                 "level": "error"})
-            await ctx.dao.update_job(ctx.job_id, status="blocked")
-            await ctx.emit(E.JOB_BLOCKED, {"stage": "planning",
-                           "reason": "candidate topology returns zero rows (literals don't match corpus)"})
+            await ctx.block(
+                "planning", "candidate topology returns zero rows (literals don't match corpus)")
             return
 
     # deterministic plan id so a resumed stage upserts the same row (07 §4)

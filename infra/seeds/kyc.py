@@ -66,7 +66,7 @@ def _id_image(fields: dict, path: Path) -> None:
     # sidecar text layer for the no-tesseract OCR fallback
     sidecar = "\n".join([f"{title}", f"Issuer: {fields['issuer']}"]
                         + [f"{label}: {val}" for label, val in lines])
-    path.with_suffix(path.suffix + ".txt").write_text(sidecar)
+    path.with_suffix(path.suffix + ".txt").write_text(sidecar, encoding="utf-8")
 
 
 def _download_or_synth(url: str, out_path: Path, synth_rows: list[list[str]]) -> dict:
@@ -82,7 +82,7 @@ def _download_or_synth(url: str, out_path: Path, synth_rows: list[list[str]]) ->
         w.writerow(["ent_num", "name", "type", "program", "list"])
         for row in synth_rows:
             w.writerow(row)
-        out_path.write_text(buf.getvalue())
+        out_path.write_text(buf.getvalue(), encoding="utf-8")
         return {"source": "synthetic-fallback", "reason": type(exc).__name__, "rows": len(synth_rows)}
 
 
@@ -127,7 +127,7 @@ def generate(n: int = 30) -> dict:
         hits += planted_hit
         peps += is_pep
         expired += 1 if i in (10, 11) else 0
-    (OUT / "applicants.json").write_text(json.dumps(applicants, indent=1))
+    (OUT / "applicants.json").write_text(json.dumps(applicants, indent=1), encoding="utf-8")
 
     # sanctions lists — real download, else synthetic containing the planted hit-names
     sanc_dir = OUT / "sanctions"
@@ -140,10 +140,12 @@ def generate(n: int = 30) -> dict:
     pep_names = [a["name"] for a in applicants if a["planted"] == "pep"]
     (OUT / "pep.json").write_text(json.dumps(
         [{"name": nm, "role": r.choice(["Deputy Minister", "State Bank Director", "MP", "Mayor"]),
-          "country": r.choice(_NATIONALITIES), "since": 2018 + r.randint(0, 6)} for nm in pep_names], indent=1))
+          "country": r.choice(_NATIONALITIES), "since": 2018 + r.randint(0, 6)} for nm in pep_names], indent=1),
+        encoding="utf-8")
     (OUT / "adverse_media.json").write_text(json.dumps(
         [{"name": nm, "headline": f"Regulator opens inquiry into {nm.split()[-1]} affiliate",
-          "source": "synthetic-wire", "sentiment": "negative"} for nm in pep_names[:2]], indent=1))
+          "source": "synthetic-wire", "sentiment": "negative"} for nm in pep_names[:2]], indent=1),
+        encoding="utf-8")
 
     return {"applicants": len(applicants),
             "planted": {"sanctions_hits": hits, "peps": peps, "expired_documents": expired,

@@ -40,6 +40,19 @@ _MAX_STAGE_ATTEMPTS = 2
 # stage number for the UI (03 §1)
 _STAGE_NUM = {"intake": 0, "awaiting_input": 0, "planning": 1, "certifying": 2, "quoted": 3,
               "building": 4, "consolidating": 5, "qa": 6, "delivering": 7, "done": 7}
+_STATUS_BY_STAGE = {number: status for status, number in _STAGE_NUM.items()
+                    if status in _STAGE_MODULES}
+
+_CORRECTION_CHECKPOINTS = (
+    "clarifications", "tests", "vectors", "adversarial_scenarios", "certified_plan_id",
+    "fanout_result", "fanout_run_id", "consolidation_assembled", "consolidation_fix_state",
+    "integration_result", "qa_result", "goal_check",
+)
+_RETRY_CHECKPOINTS = {
+    "building": ("fanout_result", "fanout_run_id"),
+    "consolidating": ("integration_result", "consolidation_fix_state"),
+    "qa": ("qa_result", "goal_check"),
+}
 
 
 async def _persist_status(job_id: str, status: str) -> bool:
@@ -54,6 +67,13 @@ async def _persist_status(job_id: str, status: str) -> bool:
     await dao.update_job(job_id, status=status, current_stage=_STAGE_NUM.get(status, 0))
     await emit(f"job:{job_id}", E.JOB_STAGE_CHANGED, {"status": status, "stage": _STAGE_NUM.get(status, 0)})
     return True
+
+
+async def _block_job(job_id: str, stage: str, reason: str) -> None:
+    """Persist the exact restart point before parking the job."""
+    await dao.set_checkpoint(f"job:{job_id}", "failed_stage", {"stage": stage, "reason": reason})
+    await dao.update_job(job_id, status="blocked", current_stage=_STAGE_NUM.get(stage, 0))
+    await emit(f"job:{job_id}", E.JOB_BLOCKED, {"stage": stage, "reason": reason})
 
 
 class StageContext:
@@ -90,6 +110,9 @@ class StageContext:
         a stage that finishes just after an abort landed must not overwrite the terminal status."""
         await _persist_status(self.job_id, status)
 
+    async def block(self, stage: str, reason: str) -> None:
+        await _block_job(self.job_id, stage, reason)
+
     async def refresh(self) -> dict:
         self.job = await dao.get_job(self.job_id) or self.job
         return self.job
@@ -116,9 +139,74 @@ class Engine:
 
     # -------------------------------------------------------------- submit
     def submit_job(self, job_id: str) -> None:
-        if job_id in self._tasks and not self._tasks[job_id].done():
+        current = self._tasks.get(job_id)
+        if current is not None and not current.done():
             return
+        if current is not None:
+            self._tasks.pop(job_id, None)
         self._tasks[job_id] = asyncio.create_task(self._drive_job(job_id))
+
+    def wake_job(self, job_id: str) -> None:
+        """Resume after the current driver exits, avoiding the parked-task race."""
+        current = self._tasks.get(job_id)
+        if current is None or current.done():
+            self.submit_job(job_id)
+            return
+
+        def resume(done: asyncio.Task) -> None:
+            if self._tasks.get(job_id) is done:
+                self._tasks.pop(job_id, None)
+                self.submit_job(job_id)
+
+        current.add_done_callback(resume)
+
+    async def retry_job(self, job_id: str, correction: str = "") -> tuple[dict, bool, str]:
+        """Retry the failed stage, or re-run intake when the customer corrects the request."""
+        job = await dao.get_job(job_id)
+        if job is None:
+            raise KeyError(job_id)
+        failed = await dao.get_checkpoint(f"job:{job_id}", "failed_stage") or {}
+        failed_stage = failed.get("stage") or _STATUS_BY_STAGE.get(job.get("current_stage"))
+        if failed_stage not in _STAGE_MODULES:
+            raise ValueError("blocked job has no retryable failed-stage checkpoint")
+
+        correction = correction.strip()
+        target = "intake" if correction else failed_stage
+        claimed = await dao.retry_blocked_job(
+            job_id, status=target, current_stage=_STAGE_NUM[target])
+        if not claimed:
+            return (await dao.get_job(job_id)) or job, False, target
+
+        scope = f"job:{job_id}"
+        checkpoint_keys = (
+            _CORRECTION_CHECKPOINTS if correction
+            else _RETRY_CHECKPOINTS.get(failed_stage, ())
+        )
+        await dao.delete_checkpoints(scope, checkpoint_keys)
+
+        if correction:
+            # A correction changes the plan, so old generated code cannot remain authoritative.
+            # Conversation, event history, and the original request remain as the audit trail.
+            from app.runtime import workspace
+
+            await dao.delete_build_tasks(job_id)
+            workspace.reset_job(job_id)
+
+        if correction:
+            if not await dao.list_messages(job_id):
+                await dao.add_message(job_id, "customer", job.get("request", ""))
+            await dao.add_message(job_id, "customer", correction)
+            await emit(f"job:{job_id}", E.INTAKE_MESSAGE,
+                       {"role": "customer", "content": correction})
+        await dao.set_checkpoint(f"job:{job_id}", "retry_context", {
+            "failed_stage": failed_stage,
+            "target_stage": target,
+            "correction": correction,
+        })
+        await emit(f"job:{job_id}", E.JOB_STAGE_CHANGED,
+                   {"status": target, "stage": _STAGE_NUM[target]})
+        self.wake_job(job_id)
+        return (await dao.get_job(job_id)) or job, True, target
 
     def submit_run(self, run_id: str) -> None:
         key = f"run:{run_id}"
@@ -159,10 +247,10 @@ class Engine:
             # B6: a stage that returns ok without advancing would hot-loop forever — park it
             after = await dao.get_job(job_id)
             if after and after["status"] == status:
-                await dao.update_job(job_id, status="blocked")
+                reason = f"stage {status} returned without advancing"
+                await _block_job(job_id, status, reason)
                 await emit(f"job:{job_id}", E.SYSTEM_NOTICE,
-                           {"text": f"stage {status} returned without advancing — job parked",
-                            "level": "error"})
+                           {"text": f"{reason} — job parked", "level": "error"})
                 return
 
     async def _run_stage(self, job: dict, status: str) -> bool:
@@ -189,9 +277,7 @@ class Engine:
                            {"text": f"stage {status} attempt {attempt} failed: {type(exc).__name__}: "
                             f"{str(exc)[:200]}", "level": "warn"})
                 if attempt >= _MAX_STAGE_ATTEMPTS:
-                    await dao.update_job(job["id"], status="blocked")
-                    await emit(ctx.scope, E.JOB_BLOCKED,
-                               {"stage": status, "reason": f"{type(exc).__name__}: {str(exc)[:200]}"})
+                    await ctx.block(status, f"{type(exc).__name__}: {str(exc)[:200]}")
                     return False
         return False
 

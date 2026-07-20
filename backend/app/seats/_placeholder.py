@@ -237,7 +237,7 @@ def _module_stub(mid: str, module: dict) -> str:
 # --------------------------------------------------------------------------- consolidator
 class _Consolidator:
     async def consolidate(self, complete: CompleteFn, emit: EmitFn, *, modules: list,
-                          interfaces: list, plan: dict) -> dict:
+                          interfaces: list, source_files: list, plan: dict) -> dict:
         await _ask(complete, "consolidator", "RAW", None,
                    "You are the consolidator seat. Merge the module files into a coherent package with a "
                    "process.py entrypoint implementing the runtime contract; resolve imports; thread config.",
@@ -249,7 +249,8 @@ class _Consolidator:
 def _process_entrypoint(modules: list) -> str:
     imports = "\n".join(f"from src.{m.get('id')} import run_step as {m.get('id')}_step"
                         for m in modules if m.get("id"))
-    calls = "\n".join(f"    trace.append(await {m.get('id')}_step(unit, ctx))" for m in modules if m.get("id"))
+    calls = "\n".join(f"        trace.append(await {m.get('id')}_step(unit, ctx))"
+                      for m in modules if m.get("id"))
     return (
         '"""Generated process entrypoint (runtime contract, 04 §3)."""\n'
         f"{imports}\n\n"
@@ -307,25 +308,21 @@ def run_unit(unit: dict) -> dict:
 class _Inspector:
     async def probe(self, complete: CompleteFn, emit: EmitFn, *, scenario: dict, tools=None,
                     step_budget: int = 15) -> dict | None:
-        # Conformed to the ratified inspector.probe signature (scenario DICT + injected egress tools
-        # + step_budget; returns a Ticket-shaped dict or None). Placeholder stays deterministic and
-        # does not need to drive the real tool loop.
+        # Mock output is not independent QA evidence. Exercise the injected HTTP boundary
+        # deterministically, then report inconclusive instead of inventing a pass or finding.
+        from app.seats.inspector import ProbeInconclusive
+
         title = scenario.get("title", "") if isinstance(scenario, dict) else str(scenario)
-        probe_txt = scenario.get("probe", "") if isinstance(scenario, dict) else ""
         sid = scenario.get("id") if isinstance(scenario, dict) else None
-        await _ask(complete, "inspector", "SANITIZED", None,
-                   "You are the inspector seat probing a deployed business process. You cannot see its "
-                   "code; try to break the claim; every finding needs a reproducible request/response.",
-                   f"Scenario: {title} — {probe_txt}")
         await emit("qa.probe_started", {"scenario": sid, "source": scenario.get("source")
                                         if isinstance(scenario, dict) else None})
-        # placeholder swarm reports the main path healthy; malformed/missing scenarios yield a finding
-        if "missing" in (title + probe_txt).lower() or "malformed" in (title + probe_txt).lower():
-            return {"title": f"probe: {title}", "instrument": "inspector", "severity": "minor",
-                    "suspected_modules": ["mod_ocr"],
-                    "repro": {"request": {"method": "POST", "path": "/run_unit"},
-                              "response": {"status": 500}}}
-        return None
+        if not tools or "http_request" not in tools:
+            raise ProbeInconclusive("mock inspector has no live HTTP probe tool")
+        health = await tools["http_request"](method="GET", path="/health", headers=None, body=None)
+        if health.get("status") != 200:
+            detail = health.get("status") or health.get("error")
+            raise ProbeInconclusive(f"staging health check failed for {title or sid}: {detail}")
+        raise ProbeInconclusive("mock inspector cannot provide independent defect evidence")
 
     async def goal_check(self, complete: CompleteFn, emit: EmitFn, *, goal: str, manifest: dict,
                          ac_outcomes: list, probe_results: list) -> dict:
@@ -335,7 +332,13 @@ class _Inspector:
             "customer's own terms — not against the plan (the plan may have drifted).",
             f"Goal: {goal}",
         )
-        return parsed or {"verdict": "fulfilled", "gaps": []}
+        if parsed and parsed.get("verdict") in {"fulfilled", "partial", "unfulfilled"}:
+            return parsed
+        return {"verdict": "partial", "gaps": [{
+            "goal_clause": "goal check",
+            "evidence": "mock inspector returned no independently supported verdict",
+            "severity": "caveat",
+        }]}
 
 
 # module-level namespaces resolved by seatlib

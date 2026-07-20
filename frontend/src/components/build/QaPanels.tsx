@@ -3,15 +3,46 @@ import { Link } from "react-router-dom";
 import { Panel, type PanelStatus } from "./Panel";
 import { ShortId } from "../ui/ShortId";
 import type { JobView } from "../../store/jobStore";
+import { countEvidenceState } from "../../lib/evidenceTruth";
+
+const ORACLE_LABELS = {
+  match: "match",
+  mismatch: "mismatch",
+  no_actual: "no actual result",
+  oracle_uncertain: "oracle uncertain",
+} as const;
+
+const EMPTY_GOAL_COPY = {
+  fulfilled: "Verified against the original ask, not the drifted plan.",
+  partial: "Goal evidence is partial; no specific gaps were reported.",
+  unfulfilled: "The original goal is not fulfilled; no specific gaps were reported.",
+  unknown: "Goal fulfillment evidence was not reported.",
+} as const;
 
 export function ValidationWall({ view }: { view: JobView }) {
   const { consolidate } = view;
   const last = consolidate.testRuns[consolidate.testRuns.length - 1];
-  const status: PanelStatus = view.stage === 5 ? "active" : consolidate.completed ? "ok" : "pending";
+  const completedEvidence = consolidate.completed && {
+    ...consolidate.completed,
+    failed: Math.max(consolidate.completed.total - consolidate.completed.passed, 0),
+  };
+  const wallState = completedEvidence
+    ? countEvidenceState(completedEvidence)
+    : last ? countEvidenceState(last) : null;
+  const status: PanelStatus = view.stage === 5
+    ? "active"
+    : wallState === "passed" ? "ok"
+      : wallState === "failed" ? "error"
+        : wallState === "unverified" ? "warn" : "pending";
   if (view.mode === "process") return null;
 
   return (
-    <Panel title="Validation wall" icon={TestTube} status={status} tag="stage 5">
+    <Panel
+      title="Validation wall"
+      icon={TestTube}
+      status={status}
+      tag={consolidate.completed ? consolidate.completed.verification : "stage 5"}
+    >
       {!last && (
         <p className="bv-goal-pending" style={{ fontSize: "var(--fs-sm)" }}>
           Consolidation is gated by objective tests.
@@ -19,18 +50,30 @@ export function ValidationWall({ view }: { view: JobView }) {
       )}
       {last && (
         <>
+          {wallState !== "passed" && (
+            <div className={`bv-qa-truth ${wallState ?? "unverified"}`}>
+              <strong>Integration {wallState ?? "unverified"}</strong>
+              <p>{last.reason || (last.total === 0
+                ? "No executed test evidence is available."
+                : "The integration suite did not produce fully passing verified evidence.")}</p>
+            </div>
+          )}
           <div className="bv-wall-nums">
-            <span className="bv-wall-pass tnum">{last.passed}</span>
+            <span className={`bv-wall-pass ${wallState ?? "unverified"} tnum`}>{last.passed}</span>
             <span className="bv-wall-total tnum">/ {last.total} passing</span>
             {last.failed > 0 && <span className="bv-wall-fail tnum">{last.failed} failing</span>}
           </div>
           <div className="bv-wall-track">
-            <div className="bv-wall-fill" style={{ width: `${(last.passed / last.total) * 100}%` }} />
+            <div
+              className={`bv-wall-fill ${wallState ?? "unverified"}`}
+              style={{ width: `${last.total > 0 ? (last.passed / last.total) * 100 : 0}%` }}
+            />
           </div>
           <div className="bv-wall-runs">
-            {consolidate.testRuns.map((r, i) => (
-              <div className={`bv-wall-run ${r.failed === 0 ? "pass" : "partial"}`} key={i} title={`${r.passed}/${r.total}`} />
-            ))}
+            {consolidate.testRuns.map((r, i) => {
+              const state = countEvidenceState(r);
+              return <div className={`bv-wall-run ${state}`} key={i} title={`${state}: ${r.passed}/${r.total}`} />;
+            })}
           </div>
         </>
       )}
@@ -42,7 +85,11 @@ export function DefectBoard({ view }: { view: JobView }) {
   const tickets = Object.values(view.tickets);
   const { qa } = view;
   const probes = Object.values(qa.probeBoard).sort((a, b) => a.seq - b.seq);
-  const status: PanelStatus = view.stage === 6 ? "active" : qa.passed ? "ok" : tickets.length ? "default" : "pending";
+  const status: PanelStatus = view.stage === 6
+    ? "active"
+    : qa.completed?.verification === "passed"
+      ? "ok"
+      : qa.completed ? "default" : tickets.length ? "default" : "pending";
 
   return (
     <Panel
@@ -55,6 +102,14 @@ export function DefectBoard({ view }: { view: JobView }) {
         <p className="bv-goal-pending" style={{ fontSize: "var(--fs-sm)" }}>
           Inspectors probe adversarially; the Numeric Oracle checks independently.
         </p>
+      )}
+
+      {qa.completed && qa.completed.verification !== "passed" && (
+        <div className={`bv-qa-truth ${qa.completed.verification}`}>
+          <strong>QA {qa.completed.verification}</strong>
+          {qa.completed.demo_override && <span>demo override</span>}
+          <p>{qa.completed.reasons.length ? qa.completed.reasons.join("; ") : "Verification evidence is incomplete."}</p>
+        </div>
       )}
 
       {view.tools.created.length > 0 && (
@@ -116,7 +171,7 @@ export function DefectBoard({ view }: { view: JobView }) {
           {qa.oracleChecks.map((o, i) => (
             <div className="bv-oracle-row" key={i}>
               <span className="bv-oracle-v">{o.vector}</span>
-              <span className={`bv-oracle-verdict ${o.verdict}`}>{o.verdict}</span>
+              <span className={`bv-oracle-verdict ${o.verdict}`}>{ORACLE_LABELS[o.verdict]}</span>
             </div>
           ))}
           {qa.votes.length > 0 && (
@@ -135,7 +190,9 @@ export function DefectBoard({ view }: { view: JobView }) {
           <div>
             <div className="bv-goalcheck-lbl">Goal fulfillment: {qa.goalCheck.verdict}</div>
             <div className="bv-goalcheck-sub">
-              {qa.goalCheck.gaps.length ? qa.goalCheck.gaps.join("; ") : "Verified against the original ask, not the drifted plan."}
+              {qa.goalCheck.gaps.length
+                ? qa.goalCheck.gaps.join("; ")
+                : EMPTY_GOAL_COPY[qa.goalCheck.verdict]}
             </div>
           </div>
         </div>
@@ -147,11 +204,21 @@ export function DefectBoard({ view }: { view: JobView }) {
 export function DeliveryMoment({ view }: { view: JobView }) {
   if (!view.delivery) return null;
   const d = view.delivery;
+  const verified = d.verification === "passed";
   return (
-    <Panel title="Delivered to registry" icon={SealCheck} status="ok" tag="stage 7">
-      <div className="bv-deliver">
+    <Panel title="Delivered to registry" icon={SealCheck} status={verified ? "ok" : "default"} tag={d.delivery_label}>
+      <div className={`bv-deliver ${verified ? "verified" : "unverified"}`}>
         <SealCheck weight="fill" className="bv-deliver-icon" />
-        <div className="bv-deliver-title"><ShortId id={d.process_id} /> · v{d.version}</div>
+        <div className="bv-deliver-title">
+          <ShortId id={d.process_id} /> · v{d.version} · {verified ? "VERIFIED" : d.delivery_label}
+        </div>
+        {!verified && (
+          <div className="bv-deliver-reasons">
+            {d.verification_reasons.length
+              ? d.verification_reasons.join("; ")
+              : "Verification evidence is incomplete."}
+          </div>
+        )}
         <div className="bv-deliver-pkg">
           {d.package.plan && <span className="bv-deliver-item">plan</span>}
           {d.package.docs && <span className="bv-deliver-item">docs</span>}

@@ -31,7 +31,7 @@ def _minimal_pdf(text: str) -> bytes:
     xref_pos = len(out)
     out += b"xref\n0 " + str(len(objs) + 1).encode() + b"\n0000000000 65535 f \n"
     for off in offsets:
-        out += ("%010d 00000 n \n" % off).encode()
+        out += f"{off:010d} 00000 n \n".encode()
     out += (b"trailer\n<< /Size " + str(len(objs) + 1).encode() + b" /Root 1 0 R >>\nstartxref\n"
             + str(xref_pos).encode() + b"\n%%EOF")
     return bytes(out)

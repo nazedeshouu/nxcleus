@@ -125,7 +125,7 @@ boundary.
 def _write_terms() -> None:
     d = OUT / "terms"
     d.mkdir(parents=True, exist_ok=True)
-    (d / "exchange_terms.md").write_text(_TERMS)
+    (d / "exchange_terms.md").write_text(_TERMS, encoding="utf-8")
 
 
 def _fresh_db(path: Path) -> sqlite3.Connection:

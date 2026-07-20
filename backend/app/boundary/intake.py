@@ -38,9 +38,13 @@ async def run(ctx) -> None:
     request = job.get("request") or (spec.get("request", "") if isinstance(spec, dict) else "")
     trust = seat("trust")
 
-    # customer turn in the intake dialogue
-    await ctx.dao.add_message(ctx.job_id, "customer", request)
-    await ctx.emit(E.INTAKE_MESSAGE, {"role": "customer", "content": request[:500]})
+    # A correction retry already has a conversation, so do not duplicate the original request on
+    # every intake re-entry.
+    stored_messages = await ctx.dao.list_messages(ctx.job_id)
+    if not stored_messages:
+        await ctx.dao.add_message(ctx.job_id, "customer", request)
+        await ctx.emit(E.INTAKE_MESSAGE, {"role": "customer", "content": request[:500]})
+        stored_messages = await ctx.dao.list_messages(ctx.job_id)
 
     # 1) confidentiality policy (D11) — baseline always on; distilled policy on top. With no explicit
     #    policy, a sandbox company job defaults its sources to that company's Terms of Sensitive Data Use.
@@ -93,7 +97,8 @@ async def run(ctx) -> None:
     sanitized_spec = await trust.build_spec(
         ctx.complete, ctx.emit,
         request=brief_request, files=[], code_map=ctx_pack.get("code_map", {}),
-        db_schema=db_schemas, policy=distilled, messages=[],
+        db_schema=db_schemas, policy=distilled,
+        messages=[{"role": m["role"], "content": m["content"]} for m in stored_messages],
     )
     if company:
         sanitized_spec["company"] = company     # survives the spec overwrite; fan-out needs it

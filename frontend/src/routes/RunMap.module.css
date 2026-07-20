@@ -178,6 +178,7 @@
   pointer-events: none;
 }
 .node[data-status="done"], .node[data-status="green"] { border-color: color-mix(in srgb, var(--ok) 34%, transparent); }
+.node[data-status="unverified"] { border-color: color-mix(in srgb, var(--warn) 48%, transparent); }
 .node[data-status="failed"], .node[data-status="blocked"] { border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 
 /* external planner — dashed, distinguished */
@@ -198,6 +199,7 @@
   animation: blink 1.1s var(--ease) infinite;
 }
 .node[data-status="done"] .dot, .node[data-status="green"] .dot { background: var(--ok); }
+.node[data-status="unverified"] .dot { background: var(--warn); }
 .node[data-status="failed"] .dot, .node[data-status="blocked"] .dot { background: var(--danger); }
 @keyframes blink { 50% { opacity: 0.3; } }
 
@@ -377,6 +379,7 @@
 }
 .chip[data-tone="never"] { border-color: color-mix(in srgb, var(--danger) 40%, transparent); color: var(--danger-strong); }
 .chip[data-tone="ok"] { border-color: color-mix(in srgb, var(--ok) 40%, transparent); color: var(--ok); }
+.chip[data-tone="warn"] { border-color: color-mix(in srgb, var(--warn) 42%, transparent); color: var(--warn); }
 
 .rowLine {
   display: flex; align-items: baseline; gap: 8px;

@@ -454,7 +454,7 @@ def gen_freight() -> dict:
 
     terms_dir = OUT / "terms"
     terms_dir.mkdir(parents=True, exist_ok=True)
-    (terms_dir / "freight_terms.md").write_text(_TERMS)
+    (terms_dir / "freight_terms.md").write_text(_TERMS, encoding="utf-8")
 
     return {"db": "freight.db", "counts": counts, "terms": "terms/freight_terms.md",
             "planted": {"ghost_shipment_invoices": 150, "three_way_match_breaks": 400,

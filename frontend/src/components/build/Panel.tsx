@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Icon } from "@phosphor-icons/react";
 
-export type PanelStatus = "default" | "pending" | "active" | "ok";
+export type PanelStatus = "default" | "pending" | "active" | "ok" | "warn" | "error";
 
 export function Panel({
   title,

@@ -54,7 +54,7 @@ def load_rates() -> dict:
     path = settings.config_path("rates")
     if path:
         try:
-            data = yaml.safe_load(path.read_text()) or {}
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
             return _deep_merge(_DEFAULTS, data)
         except Exception as exc:
             # stale built-in prices silently billing the money slide would be a demo lie — say it

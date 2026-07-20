@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import ast
 import json
+import keyword
+import re
 import time
 from pathlib import Path
 
@@ -24,6 +26,7 @@ from app.db.engine import db
 from app.events import E, emit, now_iso
 from app.ids import new_id
 from app.orchestrator import codeexec
+from app.safe_paths import UnsafePathError, resolve_within
 from app.seats.base import Message
 
 _SYSTEM = """\
@@ -40,6 +43,8 @@ return a dict containing every SELF_TEST expect_key; tools that analyze rows tak
 
 _FILE_SCHEMA = {"type": "object", "additionalProperties": False,
                 "properties": {"file": {"type": "string"}}, "required": ["file"]}
+
+_TOOL_NAME = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
 
 _RUNNER = """\
 python - <<'PY'
@@ -65,6 +70,21 @@ print(json.dumps(m.run(args), default=str))
 PY"""
 
 
+def _validated_tool_name(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError("TOOL.name must be a lowercase snake_case identifier")
+    if len(value) > 64:
+        raise ValueError("TOOL.name must be at most 64 characters")
+    if (not _TOOL_NAME.fullmatch(value) or not value.isidentifier()
+            or keyword.iskeyword(value)):
+        raise ValueError("TOOL.name must be a lowercase snake_case identifier")
+    try:
+        resolve_within(Path.cwd(), f"{value}.py")
+    except UnsafePathError as exc:
+        raise ValueError(f"TOOL.name is not a portable filename: {exc}") from None
+    return value
+
+
 def _parse_tool_file(source: str) -> dict:
     """Extract TOOL and SELF_TEST via the AST (never executes untrusted code in-process)."""
     tree = ast.parse(source)
@@ -77,6 +97,7 @@ def _parse_tool_file(source: str) -> dict:
     tool, self_test = found.get("TOOL"), found.get("SELF_TEST")
     if not (isinstance(tool, dict) and tool.get("name") and isinstance(self_test, dict)):
         raise ValueError("file lacks a valid TOOL/SELF_TEST contract")
+    _validated_tool_name(tool["name"])
     if not any(isinstance(n, ast.FunctionDef) and n.name == "run" for n in tree.body):
         raise ValueError("file lacks def run(args)")
     return {"tool": tool, "self_test": self_test}
@@ -111,9 +132,13 @@ async def create_tool(*, purpose: str, args_example: dict, scope: str, complete_
             continue
         tool = meta["tool"]
         fname = f"{tool['name']}.py"
-        tdir = agent_path / "tools"
-        tdir.mkdir(parents=True, exist_ok=True)
-        (tdir / fname).write_text(source)
+        try:
+            tool_file = resolve_within(agent_path, f"tools/{fname}")
+        except UnsafePathError as exc:
+            feedback = f"tool path rejected: {exc}"
+            continue
+        tool_file.parent.mkdir(parents=True, exist_ok=True)
+        tool_file.write_text(source, encoding="utf-8")
         res = await codeexec.run_in_sandbox(str(agent_path), _RUNNER.format(fname=fname),
                                             timeout=20.0)
         if res["returncode"] == 0:
@@ -162,17 +187,29 @@ async def get_tool_by_name(scope: str, name: str) -> dict | None:
 async def invoke_tool(scope: str, name: str, args: dict) -> dict:
     """Run a registered tool in the sandbox: args via a file in the agent folder, stdout JSON
     back. Emits tool.invoked {name, ms, ok}."""
-    row = await get_tool_by_name(scope, name)
+    try:
+        safe_name = _validated_tool_name(name)
+    except ValueError as exc:
+        return {"error": str(exc)}
+    row = await get_tool_by_name(scope, safe_name)
     if not row:
-        return {"error": f"unknown tool {name!r} in scope {scope}"}
+        return {"error": f"unknown tool {safe_name!r} in scope {scope}"}
     agent_path = Path(row["agent_dir"])
-    fname = f"{row['name']}.py"
-    if not (agent_path / "tools" / fname).exists():   # re-materialize from the registry
-        (agent_path / "tools").mkdir(parents=True, exist_ok=True)
-        (agent_path / "tools" / fname).write_text(row["code"])
+    try:
+        row_name = _validated_tool_name(row["name"])
+        fname = f"{row_name}.py"
+        tool_file = resolve_within(agent_path, f"tools/{fname}")
+    except (UnsafePathError, ValueError) as exc:
+        return {"error": f"registered tool path rejected: {exc}"}
+    if not tool_file.exists():   # re-materialize from the registry
+        tool_file.parent.mkdir(parents=True, exist_ok=True)
+        tool_file.write_text(row["code"], encoding="utf-8")
     argsname = f"args-{new_id('x')[-10:]}.json"
-    args_file = agent_path / "tools" / argsname
-    args_file.write_text(json.dumps(args, default=str))
+    try:
+        args_file = resolve_within(agent_path, f"tools/{argsname}")
+    except UnsafePathError as exc:  # generated id is trusted, but keep every write contained
+        return {"error": f"tool args path rejected: {exc}"}
+    args_file.write_text(json.dumps(args, default=str), encoding="utf-8")
     t0 = time.monotonic()
     try:
         res = await codeexec.run_in_sandbox(

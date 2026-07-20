@@ -35,3 +35,13 @@ def test_schemas_are_objects_with_properties():
     for name, schema in SCHEMAS:
         assert isinstance(schema, dict), name
         assert schema.get("type") == "object" or "$ref" in schema or "properties" in schema, name
+
+
+def test_plan_module_ids_share_the_ascii_build_contract():
+    expected = r"^[A-Za-z_][A-Za-z0-9_]*$"
+    module_id = planner.PLAN_SCHEMA["properties"]["modules"]["items"]["properties"]["id"]
+    dag_module = planner.PLAN_SCHEMA["properties"]["dag"]["items"]["properties"]["module"]
+
+    assert module_id == {"type": "string", "pattern": expected}
+    assert dag_module == {"type": "string", "pattern": expected}
+    assert planner.PLAN_SCHEMA["properties"]["dag"]["items"]["required"] == ["task", "module"]

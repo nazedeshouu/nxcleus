@@ -10,11 +10,17 @@ import { ZoneBadge } from "../components/ui/ZoneBadge";
 import { SEAT_INFO } from "../api/adapt";
 import type { JobView, TaskState, WaveState } from "../store/jobStore";
 import type { Zone } from "../lib/events";
+import {
+  deliveryNodeStatus,
+  runNodeStatus,
+  taskNodeStatus,
+  type EvidenceNodeStatus,
+} from "../lib/evidenceTruth";
 import styles from "./RunMap.module.css";
 
 /* ---------- graph model ---------- */
 type NodeKind = "boundary" | "planner" | "certify" | "conductor" | "worker" | "review" | "run" | "deliverable";
-type NodeStatus = "pending" | "active" | "running" | "reviewing" | "done" | "green" | "failed" | "blocked";
+type NodeStatus = EvidenceNodeStatus | "pending" | "active" | "reviewing" | "green" | "blocked";
 
 interface MapNode {
   id: string;
@@ -40,9 +46,6 @@ const H: Record<NodeKind, number> = {
 const isActive = (s: NodeStatus) => s === "running" || s === "active" || s === "reviewing";
 const isDone = (s: NodeStatus) => s === "done" || s === "green";
 
-function taskStatus(t: TaskState): NodeStatus {
-  return t.status === "completed" ? "done" : t.status === "failed" ? "failed" : "running";
-}
 function reviewStatus(w: WaveState): NodeStatus {
   return w.status === "green" ? "green" : w.status === "reviewing" ? "reviewing" : "pending";
 }
@@ -125,11 +128,16 @@ function buildGraph(view: JobView) {
       .sort((a, b) => w.modules.indexOf(a.module) - w.modules.indexOf(b.module));
     const workerNodes: MapNode[] = (workers.length ? workers : w.modules.map((m) => ({ module: m } as TaskState))).map((t) => {
       const known = "status" in t && t.status;
-      const st: NodeStatus = known ? taskStatus(t) : "pending";
+      const st: NodeStatus = known ? taskNodeStatus(t) : "pending";
       return {
         id: `w${w.wave}:${t.module}`, kind: "worker", title: t.module, role: "coder",
         seat: "coder", zone: (t.zone as Zone) ?? "LOCAL", status: st, wave: w.wave, module: t.module,
-        stat: t.tests ? { text: `✓ ${t.tests.passed}${t.tests.failed ? ` · ✗ ${t.tests.failed}` : ""}`, tone: t.tests.failed ? "warn" : "ok" }
+        stat: t.tests ? {
+          text: t.tests.verification === "passed"
+            ? `✓ ${t.tests.passed}/${t.tests.total}`
+            : `${t.tests.verification} · ${t.tests.passed}/${t.tests.total}`,
+          tone: st === "done" ? "ok" : "warn",
+        }
           : t.loc != null ? { text: `${t.loc} LOC` } : undefined,
         col: 0, left: 0, top: 0, w: NODE_W, h: H.worker,
       };
@@ -146,11 +154,13 @@ function buildGraph(view: JobView) {
   // process/detection RUN — one corpus-scan node instead of a build fan-out
   if (hasRun) {
     const r = runs[runs.length - 1];
-    const done = r.status === "done";
+    const status = runNodeStatus(r);
     push([{
       id: "run", kind: "run", title: "Detection run", role: "scans the corpus & flags",
-      zone: "LOCAL", status: done ? "done" : "running",
-      stat: done ? { text: `${r.flagged} flagged`, tone: r.flagged ? "warn" : "ok" } : { text: `${r.done}/${r.units}` },
+      zone: "LOCAL", status,
+      stat: status === "running"
+        ? { text: `${r.done}/${r.units}` }
+        : { text: `${r.verification} · ${r.flagged} flagged`, tone: status === "done" && !r.flagged ? "ok" : "warn" },
       col: 0, left: 0, top: 0, w: NODE_W, h: H.run,
     }]);
   }
@@ -160,8 +170,11 @@ function buildGraph(view: JobView) {
     const d = view.delivery;
     push([{
       id: "deliverable", kind: "deliverable", title: "Deliverable", role: "registered process",
-      zone: "LOCAL", status: d ? "done" : stage >= 7 ? "active" : "pending",
-      stat: d ? { text: `v${d.version} · ${d.package.tests} tests`, tone: "ok" } : undefined,
+      zone: "LOCAL", status: d ? deliveryNodeStatus(d) : stage >= 7 ? "active" : "pending",
+      stat: d ? {
+        text: `v${d.version} · ${d.delivery_label}`,
+        tone: d.verification === "passed" ? "ok" : "warn",
+      } : undefined,
       col: 0, left: 0, top: 0, w: NODE_W, h: H.deliverable,
     }]);
   }
@@ -380,7 +393,12 @@ function Transcript({ view, node }: { view: JobView; node: MapNode }) {
           {t.output && <Out label="streamed output" text={t.output} />}
           <Sect>result</Sect>
           <Field k="status">{t.status}{t.reason ? ` — ${t.reason}` : ""}</Field>
-          {t.tests && <Field k="tests">{t.tests.passed} passing{t.tests.failed ? `, ${t.tests.failed} failing` : ""}</Field>}
+          {t.tests && (
+            <>
+              <Field k="tests">{t.tests.passed}/{t.tests.total} · {t.tests.verification}</Field>
+              {t.tests.reason && <Field k="evidence">{t.tests.reason}</Field>}
+            </>
+          )}
           {t.loc != null && <Field k="size">{t.loc} LOC</Field>}
           <Field k="backend">{t.backend.replace(/^local:/, "")}</Field>
         </>
@@ -411,6 +429,11 @@ function Transcript({ view, node }: { view: JobView; node: MapNode }) {
               {r.cost_usd != null && <Field k="cost">${r.cost_usd.toFixed(3)}</Field>}
               {r.gpu_seconds != null && <Field k="gpu">{r.gpu_seconds}s</Field>}
               <Field k="status">{r.status}</Field>
+              <Field k="verification"><b>{r.verification}</b>{r.demo ? " · demo" : ""}</Field>
+              {r.reasons.length > 0 && <Field k="reasons">{r.reasons.join("; ")}</Field>}
+              {r.artifactVerification && (
+                <Field k="artifacts">{r.artifactVerification}{r.artifactReason ? ` · ${r.artifactReason}` : ""}</Field>
+              )}
             </>
           )}
           {view.runArtifacts && view.runArtifacts.length > 0 && (
@@ -425,12 +448,14 @@ function Transcript({ view, node }: { view: JobView; node: MapNode }) {
       return (
         <>
           <Field k="process"><b>{d.process_id}</b> · v{d.version}</Field>
+          <Field k="verification"><b>{d.delivery_label}</b></Field>
+          {d.verification_reasons.length > 0 && <Field k="reasons">{d.verification_reasons.join("; ")}</Field>}
           <Sect>package</Sect>
           <div className={styles.chips}>
-            {d.package.plan && <span className={styles.chip} data-tone="ok">plan</span>}
-            {d.package.docs && <span className={styles.chip} data-tone="ok">docs</span>}
-            {d.package.qa_report && <span className={styles.chip} data-tone="ok">qa report</span>}
-            <span className={styles.chip} data-tone="ok">{d.package.tests} tests</span>
+            {d.package.plan && <span className={styles.chip} data-tone={d.verification === "passed" ? "ok" : "warn"}>plan</span>}
+            {d.package.docs && <span className={styles.chip} data-tone={d.verification === "passed" ? "ok" : "warn"}>docs</span>}
+            {d.package.qa_report && <span className={styles.chip} data-tone={d.verification === "passed" ? "ok" : "warn"}>qa report</span>}
+            <span className={styles.chip} data-tone={d.verification === "passed" ? "ok" : "warn"}>{d.package.tests} tests</span>
           </div>
           {view.deliveryDocs && view.deliveryDocs.length > 0 && (
             <><Sect>documents</Sect><div className={styles.chips}>{view.deliveryDocs.map((doc, i) => <span key={i} className={styles.chip}>{doc}</span>)}</div></>

@@ -69,6 +69,13 @@ class Settings(BaseSettings):
     #   auto -> real client when its key/endpoint present and backend healthy, else mock (badged)
     #   live -> real clients only; missing backend raises
     model_mode: str = "mock"                    # config addition; dev/CI default is mock
+    # Explicitly unsafe demo-only generated-code executor. A subprocess separates generated imports
+    # from the control-plane interpreter but is NOT a filesystem/network security boundary.
+    unsafe_demo_runtime: bool = False
+    # Delivery may proceed without Docker execution only for an explicitly opted-in mock demo.
+    # This is independent from unsafe_demo_runtime and has no effect in auto/live model modes.
+    allow_unverified_demo_delivery: bool = False
+    codeexec_image: str = "nxcleus/codeexec:py312"
 
     # --- boundary / sovereign
     sovereign_default: bool = False
@@ -165,6 +172,10 @@ class Settings(BaseSettings):
         return {
             "app_name": self.app_name,
             "model_mode": self.model_mode,
+            "unsafe_demo_runtime": self.unsafe_demo_runtime,
+            "allow_unverified_demo_delivery": (
+                self.allow_unverified_demo_delivery and self.model_mode == "mock"
+            ),
             "sovereign_default": self.sovereign_default,
             "allow_raw_on_amd_hosted": self.allow_raw_on_amd_hosted,
             "trace_prompts": self.trace_prompts,

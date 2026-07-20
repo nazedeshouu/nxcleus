@@ -19,7 +19,9 @@ def _err(code: int, msg: str) -> HTTPException:
 
 
 async def require_demo_token(request: Request, x_demo_token: str | None = Header(default=None)) -> None:
-    from app.api.auth import read_session  # lazy: avoids an import cycle (auth imports _err from here)
+    # Lazy import avoids a cycle: auth imports _err from this module.
+    from app.api.auth import read_session
+
     if read_session(request):
         return  # any authenticated user may perform demo-level writes
     if settings.admin_token and x_demo_token == settings.admin_token:
@@ -31,6 +33,7 @@ async def require_demo_token(request: Request, x_demo_token: str | None = Header
 
 async def require_admin_token(request: Request, x_admin_token: str | None = Header(default=None)) -> None:
     from app.api.auth import read_session
+
     sess = read_session(request)
     if sess:
         if sess.get("role") == "admin":

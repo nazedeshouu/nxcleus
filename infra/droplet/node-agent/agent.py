@@ -65,9 +65,9 @@ def _rocm_gpus() -> list[dict]:
             continue
         idx = int("".join(ch for ch in key if ch.isdigit()) or 0)
 
-        def _num(*names: str) -> float:
+        def _num(card_data: dict, *names: str) -> float:
             for n in names:
-                for k, v in card.items():
+                for k, v in card_data.items():
                     if n.lower() in k.lower():
                         try:
                             return float(str(v).split()[0])
@@ -75,15 +75,15 @@ def _rocm_gpus() -> list[dict]:
                             pass
             return 0.0
 
-        used = _num("VRAM Total Used Memory", "Used Memory") / 1e9
-        total = _num("VRAM Total Memory", "Total Memory") / 1e9
+        used = _num(card, "VRAM Total Used Memory", "Used Memory") / 1e9
+        total = _num(card, "VRAM Total Memory", "Total Memory") / 1e9
         gpus.append({
             "index": idx,
             "vram_used_gb": round(used, 1),
             "vram_total_gb": round(total, 1) or 192.0,
-            "util_pct": _num("GPU use (%)", "GPU use"),
-            "power_w": _num("Average Graphics Package Power", "Current Socket Graphics Package Power"),
-            "temp_c": _num("Temperature (Sensor edge)", "Temperature (Sensor junction)"),
+            "util_pct": _num(card, "GPU use (%)", "GPU use"),
+            "power_w": _num(card, "Average Graphics Package Power", "Current Socket Graphics Package Power"),
+            "temp_c": _num(card, "Temperature (Sensor edge)", "Temperature (Sensor junction)"),
         })
     return gpus or [{"index": g, "vram_used_gb": 0.0, "vram_total_gb": 192.0,
                      "util_pct": 0.0, "power_w": 0.0, "temp_c": 0.0} for g in NODE_GPUS]

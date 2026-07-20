@@ -1,6 +1,11 @@
 # Nxcleus control-plane image. Build on the DO VM (native amd64) — this Mac is arm64/colima with no
 # buildx (addendum). Runs zero LLM inference; it is the receptionist, not the brain (01 §2).
+FROM docker:27.5.1-cli AS docker-cli
+
 FROM python:3.12-slim
+
+# The daemon stays on the VM; the API needs only this pinned client for the mounted host socket.
+COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \

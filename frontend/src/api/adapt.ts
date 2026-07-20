@@ -10,7 +10,10 @@
  * falls back to the backend field, so it keeps working whether or not the
  * backend is later reconciled to the spec.
  */
-import type { NxEvent, Stage, Zone, DataClass, Seat } from "../lib/events";
+import type {
+  NxEvent, Stage, Zone, DataClass, Seat, GoalVerdict, OracleVerdict,
+  RunTerminalPayload, RunTerminalStatus, RunVerification,
+} from "../lib/events";
 
 type Raw = { seq: number; ts: string; scope: string; type: string; payload: Record<string, unknown> };
 
@@ -32,10 +35,10 @@ export const KNOWN_EVENT_TYPES: string[] = [
   "task.started", "task.output_delta", "task.tests", "task.completed", "task.failed",
   "conductor.wave_started", "conductor.review", "conductor.amendment", "conductor.green_flag",
   "consolidate.started", "consolidate.test_run", "consolidate.completed",
-  "qa.inspector_started", "qa.probe", "qa.finding", "qa.goal_check", "qa.oracle_check", "qa.passed",
+  "qa.inspector_started", "qa.probe", "qa.finding", "qa.goal_check", "qa.oracle_check", "qa.completed", "qa.passed",
   "ticket.opened", "ticket.in_fix", "ticket.verified", "ticket.human_review",
   "deliver.registered",
-  "run.started", "run.unit_completed", "run.progress", "run.spotcheck", "run.completed",
+  "run.started", "run.unit_completed", "run.progress", "run.spotcheck", "run.finished", "run.completed",
   "warranty.ticket", "refine.triaged", "refine.version_created", "review.decided",
   "model.call", "meter.tick", "egress.request", "egress.violation", "telemetry.gpu",
   "sandbox.queued", "sandbox.started",
@@ -88,6 +91,56 @@ const seatZone = (s: string): Zone => SEAT_INFO[s]?.zone ?? "LOCAL";
 const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
 const num = (v: unknown): number | undefined => (typeof v === "number" ? v : undefined);
 const arr = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+const obj = (v: unknown): Record<string, unknown> =>
+  (v != null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {});
+
+function readableText(v: unknown): string | undefined {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) {
+    const parts = v.map(readableText).filter((item): item is string => Boolean(item));
+    return parts.length ? parts.join(", ") : undefined;
+  }
+  if (v != null && typeof v === "object") {
+    const value = v as Record<string, unknown>;
+    for (const key of ["message", "detail", "description", "reason", "statement", "text", "title"]) {
+      const preferred = readableText(value[key]);
+      if (preferred) return preferred;
+    }
+    const parts = Object.entries(value)
+      .map(([key, item]) => {
+        const text = readableText(item);
+        return text ? `${key}: ${text}` : undefined;
+      })
+      .filter((item): item is string => Boolean(item));
+    return parts.length ? parts.join("; ") : undefined;
+  }
+  return undefined;
+}
+
+function textList(v: unknown): string[] {
+  const values = Array.isArray(v) ? v : v == null ? [] : [v];
+  return values.map(readableText).filter((item): item is string => Boolean(item));
+}
+
+function oracleVerdict(v: unknown): OracleVerdict {
+  return ["match", "mismatch", "no_actual", "oracle_uncertain"].includes(str(v) ?? "")
+    ? str(v) as OracleVerdict
+    : "oracle_uncertain";
+}
+
+function goalVerdict(v: unknown): GoalVerdict {
+  if (v === "failed") return "unfulfilled";
+  return ["fulfilled", "partial", "unfulfilled"].includes(str(v) ?? "")
+    ? str(v) as GoalVerdict
+    : "unknown";
+}
+
+function runVerification(v: unknown): RunVerification {
+  return ["passed", "failed", "unverified"].includes(str(v) ?? "")
+    ? str(v) as RunVerification
+    : "unverified";
+}
 
 /** Stringify a scope-ish value: backend consult scope is {only_regions:[...]}. */
 function scopeText(v: unknown): string {
@@ -105,6 +158,32 @@ function scopeText(v: unknown): string {
 function scopeId(scope: string): string {
   const i = scope.indexOf(":");
   return i >= 0 ? scope.slice(i + 1) : scope;
+}
+
+function terminalPayload(raw: Raw, p: Record<string, unknown>, completed: boolean): RunTerminalPayload {
+  const stats = obj(p.stats);
+  const cost = obj(p.cost);
+  const corpus = Object.keys(obj(p.corpus)).length ? obj(p.corpus) : obj(stats.corpus);
+  let verification = runVerification(p.verification ?? stats.verification);
+  const rawStatus = str(p.status) ?? str(stats.run_status);
+  let status: RunTerminalStatus = ["done", "partial", "unverified", "failed"].includes(rawStatus ?? "")
+    ? rawStatus as RunTerminalStatus
+    : completed && verification === "passed" ? "done" : "unverified";
+  if (status === "failed") verification = "failed";
+  if (verification === "passed" && status !== "done") verification = "unverified";
+  if (completed && verification !== "passed" && status === "done") status = "unverified";
+  return {
+    run_id: str(p.run_id) ?? scopeId(raw.scope),
+    status,
+    verification,
+    reasons: textList(p.reasons ?? stats.verification_reasons),
+    units: num(p.units) ?? num(stats.units) ?? 0,
+    done: num(p.done) ?? num(stats.completed) ?? num(stats.processed_total) ?? num(stats.done) ?? 0,
+    flagged: num(p.flagged) ?? num(stats.needs_review) ?? 0,
+    cost_usd: num(p.cost_usd) ?? num(cost.total_usd) ?? null,
+    gpu_seconds: num(p.gpu_seconds) ?? null,
+    demo: p.demo === true || stats.demo === true || corpus.kind === "synthetic",
+  };
 }
 
 const env = <T extends NxEvent>(raw: Raw, type: T["type"], payload: T["payload"]): T =>
@@ -449,6 +528,10 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         module: str(p.module) ?? "module",
         passed: num(p.passed) ?? 0,
         failed: num(p.failed) ?? 0,
+        total: num(p.total) ?? (num(p.passed) ?? 0) + (num(p.failed) ?? 0),
+        verification: runVerification(p.verification),
+        sandboxed: p.sandboxed === true,
+        reason: readableText(p.reason) ?? null,
       });
     case "task.completed":
       return env(raw, "task.completed", {
@@ -513,9 +596,17 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         passed: num(p.passed) ?? 0,
         failed: num(p.failed) ?? 0,
         total: num(p.total) ?? (num(p.passed) ?? 0) + (num(p.failed) ?? 0),
+        verification: runVerification(p.verification),
+        sandboxed: p.sandboxed === true,
+        reason: readableText(p.reason) ?? null,
       });
     case "consolidate.completed":
-      return env(raw, "consolidate.completed", { passed: num(p.passed) ?? 0, total: num(p.total) ?? 0 });
+      return env(raw, "consolidate.completed", {
+        passed: num(p.passed) ?? 0,
+        total: num(p.total) ?? 0,
+        verification: runVerification(p.verification),
+        sandboxed: p.sandboxed === true,
+      });
 
     /* ---------- stage 6 ---------- */
     case "qa.inspector_started":
@@ -562,13 +653,19 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
     case "qa.oracle_check":
       return env(raw, "qa.oracle_check", {
         vector: str(p.vector) ?? "V",
-        verdict: str(p.verdict) === "mismatch" ? "mismatch" : "match",
-        model: str(p.model) ?? "Gemma-4-31B (lineage-independent)",
+        verdict: oracleVerdict(p.verdict),
+        model: str(p.model) ?? "not reported",
       });
     case "qa.goal_check":
       return env(raw, "qa.goal_check", {
-        verdict: (str(p.verdict) as never) ?? "fulfilled",
-        gaps: arr<string>(p.gaps),
+        verdict: goalVerdict(p.verdict),
+        gaps: textList(p.gaps),
+      });
+    case "qa.completed":
+      return env(raw, "qa.completed", {
+        verification: runVerification(p.verification),
+        reasons: textList(p.reasons),
+        demo_override: p.demo_override === true,
       });
     case "qa.passed":
       return env(raw, "qa.passed", {
@@ -608,19 +705,28 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
 
     /* ---------- stage 7 + operate ---------- */
     case "deliver.registered": {
-      const pkg = (p.package ?? {}) as Record<string, unknown>;
+      const pkg = Object.keys(obj(p.package)).length ? obj(p.package) : obj(p.package_summary);
+      const verification = p.verification === "passed" ? "passed" : "unverified";
+      const demoOverride = p.demo_override === true;
+      const rawLabel = str(p.delivery_label);
       return env(raw, "deliver.registered", {
         process_id: str(p.process_id) ?? "",
         version: num(p.version) ?? 1,
         package: {
-          plan: pkg.plan !== false,
-          docs: pkg.docs !== false,
-          qa_report: pkg.qa_report !== false,
-          tests: num(pkg.tests) ?? 0,
+          plan: pkg.plan === true,
+          docs: pkg.docs === true,
+          qa_report: pkg.qa_report === true,
+          tests: num(pkg.tests) ?? num(pkg.test_specs) ?? 0,
         },
         frontier_calls: num(p.frontier_calls),
         invoice_total_usd: num(p.invoice_total_usd),
-        goal_verdict: str(p.goal_verdict) as never,
+        goal_verdict: p.goal_verdict == null ? undefined : goalVerdict(p.goal_verdict),
+        verification,
+        verification_reasons: textList(p.verification_reasons ?? p.reasons),
+        demo_override: demoOverride,
+        delivery_label: verification === "passed"
+          ? rawLabel ?? "VERIFIED"
+          : rawLabel && rawLabel !== "VERIFIED" ? rawLabel : demoOverride ? "UNVERIFIED DEMO" : "UNVERIFIED",
       });
     }
     case "deliver.docs_generated": {
@@ -631,14 +737,20 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
         : ([num(p.readme_chars) && "README", num(p.runbook_chars) && "runbook"].filter(Boolean) as string[]);
       return env(raw, "deliver.docs_generated", { docs });
     }
-    case "run.started":
+    case "run.started": {
+      const corpus = obj(p.corpus);
       return env(raw, "run.started", {
         run_id: str(p.run_id) ?? scopeId(raw.scope),
         units: num(p.units) ?? num(p.total) ?? 0,
+        demo: p.demo === true || p.synthetic === true || corpus.kind === "synthetic",
       });
+    }
     case "run.artifacts_ready":
       return env(raw, "run.artifacts_ready", {
         run_id: str(p.run_id) ?? scopeId(raw.scope),
+        verification: p.verification === "passed" ? "passed" : "unverified",
+        degraded: p.degraded === true || p.verification !== "passed",
+        reason: readableText(p.reason) ?? null,
         artifacts: arr<Record<string, unknown>>(p.artifacts).map((a) => ({
           kind: str(a.kind) ?? "report",
           url: str(a.url) ?? "",
@@ -665,26 +777,28 @@ export function normalizeEvent(raw: Raw): NxEvent | null {
       });
     case "run.unit_completed":
       return env(raw, "run.unit_completed", {
-        unit: str(p.unit) ?? "unit",
+        run_id: str(p.run_id) ?? scopeId(raw.scope),
+        unit: str(p.unit) ?? (num(p.unit_index) != null ? String(num(p.unit_index)) : "unit"),
         result: str(p.result) ?? str(p.status) ?? "",
       });
     case "run.progress":
-      return env(raw, "run.progress", { done: num(p.done) ?? 0, total: num(p.total) ?? 0 });
+      return env(raw, "run.progress", {
+        run_id: str(p.run_id) ?? scopeId(raw.scope),
+        done: num(p.done) ?? 0,
+        total: num(p.total) ?? 0,
+      });
     case "run.spotcheck":
       return env(raw, "run.spotcheck", {
-        unit: str(p.unit) ?? "unit",
-        verdict: str(p.verdict) === "mismatch" ? "mismatch" : "match",
+        run_id: str(p.run_id) ?? scopeId(raw.scope),
+        unit: str(p.unit) ?? (num(p.unit_index) != null ? String(num(p.unit_index)) : "unit"),
+        verdict: ["match", "mismatch", "inconclusive"].includes(str(p.verdict) ?? "")
+          ? str(p.verdict) as "match" | "mismatch" | "inconclusive"
+          : "inconclusive",
       });
-    case "run.completed": {
-      const stats = (p.stats ?? {}) as Record<string, unknown>;
-      const cost = (p.cost ?? {}) as Record<string, unknown>;
-      return env(raw, "run.completed", {
-        units: num(p.units) ?? num(stats.units) ?? 0,
-        flagged: num(p.flagged) ?? num(stats.needs_review) ?? 0,
-        cost_usd: num(p.cost_usd) ?? num(cost.total_usd) ?? 0,
-        gpu_seconds: num(p.gpu_seconds) ?? 0,
-      });
-    }
+    case "run.finished":
+      return env(raw, "run.finished", terminalPayload(raw, p, false));
+    case "run.completed":
+      return env(raw, "run.completed", terminalPayload(raw, p, true));
     case "refine.triaged":
       return env(raw, "refine.triaged", {
         verdict: str(p.verdict) === "consult" ? "consult" : "amend",

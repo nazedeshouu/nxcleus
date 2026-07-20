@@ -214,7 +214,9 @@ def _candidate_of(result: dict):
 def _summary_sentence(cand: dict) -> str:
     # ponytail: tuned to the duplicate-pair candidate shape (flagship demo). Returns "" for any
     # other schema, which then falls through to the evidence table — no guessing, no lorem.
-    g = lambda *ks: next((cand[k] for k in ks if cand.get(k) is not None), None)
+    def g(*keys: str):
+        return next((cand[key] for key in keys if cand.get(key) is not None), None)
+
     c1, c2 = g("claim_id_1"), g("claim_id_2")
     if c1 is None or c2 is None:
         return ""

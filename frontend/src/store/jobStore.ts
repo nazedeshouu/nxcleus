@@ -18,6 +18,10 @@ import type {
   TicketSeverity,
   ClarifyQuestion,
   RunArtifact,
+  GoalVerdict,
+  OracleVerdict,
+  RunVerification,
+  RunTerminalStatus,
 } from "../lib/events";
 
 export interface ChatTurn {
@@ -72,7 +76,14 @@ export interface TaskState {
   wave: number;
   why: string;
   output: string;
-  tests?: { passed: number; failed: number };
+  tests?: {
+    passed: number;
+    failed: number;
+    total: number;
+    verification: RunVerification;
+    sandboxed: boolean;
+    reason: string | null;
+  };
   status: "running" | "completed" | "failed";
   loc?: number;
   reason?: string;
@@ -108,6 +119,24 @@ export interface NoticeEntry {
   seq: number;
   text: string;
   level: "info" | "warn" | "error";
+}
+
+export interface RunViewState {
+  units: number;
+  done: number;
+  flagged: number;
+  cost_usd: number | null;
+  gpu_seconds: number | null;
+  status: "running" | RunTerminalStatus;
+  verification: RunVerification;
+  reasons: string[];
+  demo: boolean;
+  terminalSource?: "finished" | "completed";
+  lastUnit?: { unit: string; result: string };
+  spotchecks: Array<{ unit: string; verdict: "match" | "mismatch" | "inconclusive" }>;
+  artifacts?: RunArtifact[];
+  artifactVerification?: "passed" | "unverified";
+  artifactReason?: string | null;
 }
 
 export interface JobView {
@@ -168,16 +197,33 @@ export interface JobView {
 
   build: { waves: Record<number, WaveState>; tasks: Record<string, TaskState>; taskWave: Record<string, number> };
 
-  consolidate: { modules?: number; testRuns: Array<{ passed: number; failed: number; total: number }>; completed?: { passed: number; total: number } };
+  consolidate: {
+    modules?: number;
+    testRuns: Array<{
+      passed: number;
+      failed: number;
+      total: number;
+      verification: RunVerification;
+      sandboxed: boolean;
+      reason: string | null;
+    }>;
+    completed?: {
+      passed: number;
+      total: number;
+      verification: RunVerification;
+      sandboxed: boolean;
+    };
+  };
 
   qa: {
     inspectors: Array<{ scenario: string; seat: string }>;
     probes: Array<{ scenario: string; probe: string }>;
     probeBoard: Record<string, ProbeEntry>; // key `${scenario}#${probe}` — live probe status
     findings: Array<{ scenario: string; result: "clear" | "flag"; detail?: string }>;
-    oracleChecks: Array<{ vector: string; verdict: "match" | "mismatch"; model: string }>;
+    oracleChecks: Array<{ vector: string; verdict: OracleVerdict; model: string }>;
     votes: Array<{ vector: string; vote: string }>;
-    goalCheck?: { verdict: "fulfilled" | "partial" | "failed"; gaps: string[] };
+    goalCheck?: { verdict: GoalVerdict; gaps: string[] };
+    completed?: { verification: RunVerification; reasons: string[]; demo_override: boolean };
     passed?: { scenarios: number; probes: number; tickets_resolved: number };
   };
 
@@ -185,7 +231,15 @@ export interface JobView {
 
   tickets: Record<string, TicketState>;
 
-  delivery?: { process_id: string; version: number; package: { plan: boolean; docs: boolean; qa_report: boolean; tests: number } };
+  delivery?: {
+    process_id: string;
+    version: number;
+    package: { plan: boolean; docs: boolean; qa_report: boolean; tests: number };
+    verification: "passed" | "unverified";
+    verification_reasons: string[];
+    demo_override: boolean;
+    delivery_label: string;
+  };
   deliveryDocs?: string[];
 
   boundarySweep?: { seq: number; clean: boolean; checked?: number; findings?: number };
@@ -210,7 +264,7 @@ export interface JobView {
   notices: NoticeEntry[];
 
   // wave-2 surfaces, folded minimally so nothing is a total no-op
-  runs: Record<string, { units: number; done: number; flagged: number; cost_usd?: number; gpu_seconds?: number; status: string }>;
+  runs: Record<string, RunViewState>;
   refine?: { verdict?: "amend" | "consult"; note?: string; version?: number; diff_summary?: string };
   sandbox?: { position: number; started: boolean };
   config: { connections: string[]; models: string[]; seatBindings: Array<{ seat: string; model_key: string; scope: string }> };
@@ -251,6 +305,21 @@ export function initialJobView(scope = ""): JobView {
 
 const MAX_EGRESS = 40;
 const MAX_CALLS = 30;
+
+function emptyRun(units = 0, demo = false): RunViewState {
+  return {
+    units,
+    done: 0,
+    flagged: 0,
+    cost_usd: null,
+    gpu_seconds: null,
+    status: "running",
+    verification: "unverified",
+    reasons: [],
+    demo,
+    spotchecks: [],
+  };
+}
 
 /** Fold one event into a fresh view reference (so React re-renders). */
 export function foldEvent(prev: JobView, ev: NxEvent): JobView {
@@ -431,7 +500,13 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
     }
     case "task.tests": {
       const t = v.build.tasks[ev.payload.module];
-      if (t) v.build = { ...v.build, tasks: { ...v.build.tasks, [ev.payload.module]: { ...t, tests: { passed: ev.payload.passed, failed: ev.payload.failed } } } };
+      if (t) v.build = {
+        ...v.build,
+        tasks: {
+          ...v.build.tasks,
+          [ev.payload.module]: { ...t, tests: ev.payload },
+        },
+      };
       break;
     }
     case "task.completed": {
@@ -478,10 +553,10 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       v.consolidate = { ...v.consolidate, modules: ev.payload.modules };
       break;
     case "consolidate.test_run":
-      v.consolidate = { ...v.consolidate, testRuns: [...v.consolidate.testRuns, { passed: ev.payload.passed, failed: ev.payload.failed, total: ev.payload.total }] };
+      v.consolidate = { ...v.consolidate, testRuns: [...v.consolidate.testRuns, ev.payload] };
       break;
     case "consolidate.completed":
-      v.consolidate = { ...v.consolidate, completed: { passed: ev.payload.passed, total: ev.payload.total } };
+      v.consolidate = { ...v.consolidate, completed: ev.payload };
       break;
 
     /* stage 6 */
@@ -508,6 +583,9 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
     case "qa.goal_check":
       v.qa = { ...v.qa, goalCheck: { verdict: ev.payload.verdict, gaps: ev.payload.gaps } };
       break;
+    case "qa.completed":
+      v.qa = { ...v.qa, completed: ev.payload };
+      break;
     case "qa.passed":
       v.qa = { ...v.qa, passed: { scenarios: ev.payload.scenarios, probes: ev.payload.probes, tickets_resolved: ev.payload.tickets_resolved } };
       break;
@@ -529,8 +607,23 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
 
     /* stage 7 + operate */
     case "deliver.registered": {
-      const tests = ev.payload.package.tests || v.certify.certified?.tests || v.consolidate.completed?.total || 0;
-      v.delivery = { process_id: ev.payload.process_id, version: ev.payload.version, package: { ...ev.payload.package, tests } };
+      const tests = ev.payload.package.tests ?? v.certify.certified?.tests ?? v.consolidate.completed?.total ?? 0;
+      const verification = ev.payload.verification === "passed" ? "passed" : "unverified";
+      const demoOverride = ev.payload.demo_override === true;
+      const deliveryLabel = verification === "passed"
+        ? ev.payload.delivery_label || "VERIFIED"
+        : ev.payload.delivery_label && ev.payload.delivery_label !== "VERIFIED"
+          ? ev.payload.delivery_label
+          : demoOverride ? "UNVERIFIED DEMO" : "UNVERIFIED";
+      v.delivery = {
+        process_id: ev.payload.process_id,
+        version: ev.payload.version,
+        package: { ...ev.payload.package, tests },
+        verification,
+        verification_reasons: ev.payload.verification_reasons,
+        demo_override: demoOverride,
+        delivery_label: deliveryLabel,
+      };
       v.status = "delivered";
       v.stage = 7;
       break;
@@ -539,23 +632,70 @@ export function foldEvent(prev: JobView, ev: NxEvent): JobView {
       v.deliveryDocs = ev.payload.docs;
       break;
     case "run.started":
-      v.runs = { ...v.runs, [ev.payload.run_id]: { units: ev.payload.units, done: 0, flagged: 0, status: "running" } };
+      v.runs = { ...v.runs, [ev.payload.run_id]: emptyRun(ev.payload.units, ev.payload.demo) };
       break;
-    case "run.artifacts_ready":
+    case "run.artifacts_ready": {
+      const run = v.runs[ev.payload.run_id] ?? emptyRun();
+      v.runs = {
+        ...v.runs,
+        [ev.payload.run_id]: {
+          ...run,
+          artifacts: ev.payload.artifacts,
+          artifactVerification: ev.payload.verification,
+          artifactReason: ev.payload.reason,
+        },
+      };
       v.runArtifacts = ev.payload.artifacts;
       break;
+    }
     case "run.progress": {
-      const anyKey = Object.keys(v.runs)[Object.keys(v.runs).length - 1];
-      if (anyKey) v.runs = { ...v.runs, [anyKey]: { ...v.runs[anyKey], done: ev.payload.done } };
+      const run = v.runs[ev.payload.run_id] ?? emptyRun(ev.payload.total);
+      v.runs = {
+        ...v.runs,
+        [ev.payload.run_id]: { ...run, units: ev.payload.total, done: ev.payload.done },
+      };
       break;
     }
-    case "run.unit_completed":
-      break; // wave-2 unit table; folded via run.progress for the meter
-    case "run.spotcheck":
-      break; // wave-2 warranty strip
+    case "run.unit_completed": {
+      const run = v.runs[ev.payload.run_id] ?? emptyRun();
+      v.runs = {
+        ...v.runs,
+        [ev.payload.run_id]: { ...run, lastUnit: { unit: ev.payload.unit, result: ev.payload.result } },
+      };
+      break;
+    }
+    case "run.spotcheck": {
+      const run = v.runs[ev.payload.run_id] ?? emptyRun();
+      v.runs = {
+        ...v.runs,
+        [ev.payload.run_id]: {
+          ...run,
+          spotchecks: [...run.spotchecks, { unit: ev.payload.unit, verdict: ev.payload.verdict }],
+        },
+      };
+      break;
+    }
+    case "run.finished":
     case "run.completed": {
-      const anyKey = Object.keys(v.runs)[Object.keys(v.runs).length - 1];
-      if (anyKey) v.runs = { ...v.runs, [anyKey]: { ...v.runs[anyKey], done: ev.payload.units, flagged: ev.payload.flagged, cost_usd: ev.payload.cost_usd, gpu_seconds: ev.payload.gpu_seconds, status: "done" } };
+      const run = v.runs[ev.payload.run_id] ?? emptyRun(ev.payload.units, ev.payload.demo);
+      if (ev.type === "run.completed" && run.terminalSource === "finished") break;
+      const compatibilityUnverified = ev.type === "run.completed" && ev.payload.verification !== "passed";
+      v.runs = {
+        ...v.runs,
+        [ev.payload.run_id]: {
+          ...run,
+          units: ev.payload.units,
+          done: ev.payload.done,
+          flagged: ev.payload.flagged,
+          cost_usd: ev.payload.cost_usd,
+          gpu_seconds: ev.payload.gpu_seconds,
+          status: compatibilityUnverified ? "unverified" : ev.payload.status,
+          verification: compatibilityUnverified ? "unverified" : ev.payload.verification,
+          reasons: ev.payload.reasons,
+          demo: ev.payload.demo,
+          terminalSource: ev.type === "run.finished" ? "finished" : "completed",
+        },
+      };
       break;
     }
     case "refine.triaged":
@@ -720,6 +860,8 @@ function nowText(ev: NxEvent): string | null {
       return `oracle: ${ev.payload.vector} ${ev.payload.verdict}`;
     case "qa.oracle_vote":
       return `oracle: vote on ${ev.payload.vector} — ${ev.payload.vote}`;
+    case "qa.completed":
+      return `QA ${ev.payload.verification}${ev.payload.demo_override ? " · demo override" : ""}`;
     case "qa.passed":
       return `QA passed — ${ev.payload.probes} probes across ${ev.payload.scenarios} scenarios`;
     case "ticket.opened":
@@ -746,6 +888,8 @@ function nowText(ev: NxEvent): string | null {
         : `tool ${ev.payload.name} failed`;
     case "run.completed":
       return `run complete — ${ev.payload.units} units, ${ev.payload.flagged} flagged`;
+    case "run.finished":
+      return `run ${ev.payload.status} — ${ev.payload.done}/${ev.payload.units} units, ${ev.payload.verification}`;
     case "egress.violation":
       return "BLOCKED: external call stopped at the boundary";
     default:

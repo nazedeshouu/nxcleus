@@ -1,11 +1,14 @@
 """Inspector: bounded tool loop (step cap, timeout, finding, pass), goal check, generators."""
+import asyncio
+
+import pytest
 from _fake import Emits, FakeComplete, run
 
 from app.seats import inspector
 
 
 async def _manifest():
-    return {"name": "kyc", "input_schema": {}, "output_schema": {}}
+    return {"status": 200, "manifest": {"name": "kyc", "input_schema": {}, "output_schema": {}}}
 
 
 async def _http(**kw):
@@ -16,12 +19,13 @@ TOOLS = {"read_manifest": _manifest, "http_request": _http}
 
 
 def test_step_cap_enforced():
-    # model NEVER submits a finding -> loop must stop at step_budget and return None.
+    # The model never submits a verdict: exhaustion must be inconclusive, not a synthetic pass.
     fake = FakeComplete(handler=lambda *a: {"tool": "http_request",
                                             "http_request": {"method": "GET", "path": "/run"}})
     emits = Emits()
-    ticket = run(inspector.probe(fake, emits, scenario={"id": "s1"}, tools=TOOLS, step_budget=5))
-    assert ticket is None
+    with pytest.raises(inspector.ProbeInconclusive, match="budget exhausted") as exc_info:
+        run(inspector.probe(fake, emits, scenario={"id": "s1"}, tools=TOOLS, step_budget=5))
+    assert exc_info.value.outcome == "exhausted"
     assert len(fake.calls) == 5                       # exactly the budget, never more
     assert "qa.probe_exhausted" in emits.types()
 
@@ -42,21 +46,49 @@ def test_submit_defect_returns_ticket():
 
 
 def test_submit_pass_returns_none():
-    fake = FakeComplete(responses=[{"tool": "submit_finding", "submit_finding": {"defect": False}}])
+    fake = FakeComplete(responses=[
+        {"tool": "read_manifest"},
+        {"tool": "submit_finding", "submit_finding": {"defect": False}},
+    ])
     emits = Emits()
     ticket = run(inspector.probe(fake, emits, scenario={"id": "s3"}, tools=TOOLS, step_budget=15))
     assert ticket is None
     assert "qa.probe_passed" in emits.types()
 
 
+def test_submit_pass_without_tool_evidence_is_inconclusive():
+    fake = FakeComplete(responses=[
+        {"tool": "submit_finding", "submit_finding": {"defect": False}},
+    ])
+    emits = Emits()
+    with pytest.raises(inspector.ProbeInconclusive, match="without factual") as exc_info:
+        run(inspector.probe(fake, emits, scenario={"id": "no-evidence"}, tools=TOOLS))
+    assert exc_info.value.outcome == "no_evidence"
+    assert "qa.probe_passed" not in emits.types()
+
+
 def test_deadline_short_circuits():
     fake = FakeComplete(handler=lambda *a: {"tool": "read_manifest"})
     emits = Emits()
-    ticket = run(inspector.probe(fake, emits, scenario={"id": "s4"}, tools=TOOLS,
-                                 step_budget=15, scenario_deadline_s=-1.0))
-    assert ticket is None
+    with pytest.raises(inspector.ProbeInconclusive, match="deadline exceeded") as exc_info:
+        run(inspector.probe(fake, emits, scenario={"id": "s4"}, tools=TOOLS,
+                            step_budget=15, scenario_deadline_s=-1.0))
+    assert exc_info.value.outcome == "timeout"
     assert "qa.probe_timeout" in emits.types()
     assert len(fake.calls) == 0                       # deadline checked before first call
+
+
+def test_deadline_cancels_a_hanging_completion():
+    async def hanging_complete(*_args, **_kwargs):
+        await asyncio.Event().wait()
+
+    emits = Emits()
+    with pytest.raises(inspector.ProbeInconclusive, match="deadline exceeded") as exc_info:
+        run(inspector.probe(
+            hanging_complete, emits, scenario={"id": "hung"}, tools=TOOLS,
+            scenario_deadline_s=0.01))
+    assert exc_info.value.outcome == "timeout"
+    assert "qa.probe_timeout" in emits.types()
 
 
 def test_goal_check():

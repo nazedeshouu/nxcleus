@@ -169,27 +169,68 @@
   top: clamp(84px, 12vh, 104px);
   right: clamp(18px, 4vw, 40px);
   z-index: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 12px 16px;
-  border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--seal) 76%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  width: min(280px, calc(100% - 36px));
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--seal) 84%, transparent);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  border: 1px solid color-mix(in srgb, var(--seal-on) 18%, transparent);
   color: var(--seal-on);
-  box-shadow: 0 18px 44px rgba(6, 15, 20, 0.4);
+  box-shadow: 0 24px 64px rgba(6, 15, 20, 0.42), inset 0 1px 0 color-mix(in srgb, var(--seal-on) 10%, transparent);
   font-family: var(--font-mono);
   animation: heroRise 0.9s var(--ease) 0.5s both;
 }
-.heroMeterLbl {
+.heroHudHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--seal-on) 12%, transparent);
   font-size: 0.58rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   color: color-mix(in srgb, var(--seal-on) 60%, transparent);
 }
-.heroMeterVal { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
-.heroMeterVal b { font-weight: 400; color: var(--sov-seal); }
+.heroHudHead b { font-weight: 500; color: var(--sov-seal); }
+.heroMeterVal {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 17px 14px 15px;
+  font-variant-numeric: tabular-nums;
+}
+.heroMeterVal > b {
+  font-size: clamp(2.6rem, 4vw, 3.6rem);
+  font-weight: 300;
+  line-height: 0.82;
+  letter-spacing: -0.07em;
+  color: var(--sov-seal);
+}
+.heroMeterVal > span {
+  font-size: 0.62rem;
+  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--seal-on) 68%, transparent);
+}
+.heroHudRows {
+  border-top: 1px solid color-mix(in srgb, var(--seal-on) 12%, transparent);
+  padding: 4px 14px 8px;
+}
+.heroHudRows > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--seal-on) 8%, transparent);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.heroHudRows > span:last-child { border-bottom: 0; }
+.heroHudRows i { font-style: normal; color: color-mix(in srgb, var(--seal-on) 48%, transparent); }
+.heroHudRows b { font-weight: 500; color: color-mix(in srgb, var(--seal-on) 86%, transparent); }
 
 .hero .container { position: relative; z-index: 1; width: 100%; }
 /* bottom band: text block anchored left, CTA pair riding its baseline on the right */
@@ -313,8 +354,10 @@
 }
 
 @media (max-width: 640px) {
-  .heroHud { top: 74px; padding: 9px 12px; }
-  .heroMeterVal { font-size: 1rem; }
+  .heroHud { top: 74px; width: 196px; }
+  .heroHudRows { display: none; }
+  .heroMeterVal { padding-block: 14px; }
+  .heroMeterVal > b { font-size: 2.7rem; }
 }
 
 /* ---------- section frame ----------
@@ -378,42 +421,32 @@
   display: grid;
   grid-template-columns: 1.4fr 1fr;
   grid-template-rows: auto auto;
-  gap: 16px;
+  gap: 0;
+  border-block: 1px solid var(--hairline);
 }
 .mode {
   position: relative;
   padding: clamp(24px, 2.8vw, 36px);
-  border: 1px solid var(--hairline-soft);
-  border-radius: var(--r-xl);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+  background: transparent;
+  transition: background var(--dur-2) var(--ease);
 }
-.mode:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
-}
+.mode:hover { background: color-mix(in srgb, var(--surface) 68%, transparent); }
+.mode:not(.modeLead):last-child { border-top: 1px solid var(--hairline); }
 /* the lead card earns dominance through material, not just size */
 .modeLead {
   grid-row: span 2;
+  border-right: 1px solid var(--hairline);
   background:
-    radial-gradient(88% 52% at 10% 0%, color-mix(in srgb, var(--accent-pale) 88%, transparent), transparent 66%),
-    var(--surface);
-  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
-  box-shadow: var(--shadow-md);
+    radial-gradient(90% 74% at 0% 0%, color-mix(in srgb, var(--accent-pale) 76%, transparent), transparent 70%);
   display: flex;
   flex-direction: column;
 }
 .modeIcon {
-  width: 44px;
-  height: 44px;
-  padding: 10px;
-  border-radius: 13px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   color: var(--accent-strong);
-  background: var(--accent-wash);
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-  margin-bottom: 15px;
+  margin-bottom: 22px;
 }
 .modeName { font-size: var(--fs-h3); letter-spacing: -0.015em; }
 .modeDesc { margin-top: 10px; font-size: var(--fs-sm); line-height: 1.6; color: var(--text-muted); }
@@ -452,16 +485,11 @@
 }
 @media (max-width: 760px) {
   .modes { grid-template-columns: 1fr; }
-  .modeLead { grid-row: auto; }
+  .modeLead { grid-row: auto; border-right: 0; border-bottom: 1px solid var(--hairline); }
 }
 
-/* ---------- "shape" highlight + hover connectors ----------
-   Always-on: "shape" reads as a highlighted word. Progressive enhancement:
-   hovering it drops a dashed line and draws dashed accent outlines into the
-   three modes. Static layout is complete without any of this. */
-/* known: shape hover draw glitchy — post-deadline fix */
+/* The highlighted word carries the topology idea without a decorative connector. */
 .shapeHi {
-  position: relative;
   font-style: italic;
   color: var(--accent-strong);
   padding: 0 0.14em;
@@ -471,40 +499,7 @@
   -webkit-box-decoration-break: clone;
   transition: background var(--dur-2) var(--ease);
 }
-.planner:has(.shapeHi:hover) .shapeHi { background: color-mix(in srgb, var(--accent-mid) 55%, transparent); }
-/* dashed line drawn down from the word */
-.shapeHi::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  height: clamp(16px, 2.4vw, 30px);
-  border-left: 2px dashed var(--accent);
-  opacity: 0;
-  transform: scaleY(0);
-  transform-origin: top;
-  transition: opacity var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
-}
-.planner:has(.shapeHi:hover) .shapeHi::after { opacity: 0.75; transform: scaleY(1); }
-/* the three modes light up with dashed accent outlines + a rising tick */
-.planner:has(.shapeHi:hover) .mode {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--accent) 52%, transparent);
-}
-.mode::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  height: 0;
-  border-left: 2px dashed var(--accent);
-  opacity: 0;
-  transition: height var(--dur-2) var(--ease), opacity var(--dur-2) var(--ease);
-}
-.planner:has(.shapeHi:hover) .mode::before { height: clamp(12px, 2vw, 24px); opacity: 0.6; }
-@media (prefers-reduced-motion: reduce) {
-  .shapeHi::after, .mode::before { transition: none; }
-}
+.shapeHi:hover { background: color-mix(in srgb, var(--accent-mid) 55%, transparent); }
 
 /* ---------- lifecycle: the title carries the idea ---------- */
 /* "forever" widens and trails off under a fading rule — the word embodies the claim */
@@ -597,17 +592,10 @@
 .moneyItemExt { color: var(--zone-external); }
 .moneyItemV { display: block; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; max-width: 40ch; }
 .chartShell {
-  padding: 8px;
-  border-radius: 26px;
-  background: color-mix(in srgb, var(--surface) 55%, transparent);
-  border: 1px solid var(--hairline-soft);
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  border-block: 1px solid var(--hairline);
 }
 .chartCard {
-  background: var(--surface);
-  border-radius: 19px;
-  padding: clamp(20px, 2.6vw, 30px);
-  box-shadow: inset 0 0 0 1px var(--hairline-soft);
+  padding: clamp(24px, 3vw, 34px) 0;
 }
 .chartLegend { display: flex; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; }
 .legendItem { display: inline-flex; align-items: center; gap: 0.5em; font-size: var(--fs-xs); color: var(--text-muted); }
@@ -665,6 +653,136 @@
   max-width: 52ch;
   margin-inline: auto;
   line-height: 1.55;
+}
+
+/* ---------- AMD runtime: a single technical plate ---------- */
+.amd {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.35fr);
+  gap: clamp(34px, 6vw, 88px);
+  align-items: center;
+}
+.amdIntro { max-width: 34rem; }
+.amdKicker {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+}
+.amdTitle {
+  margin-top: 18px;
+  font-size: clamp(2.1rem, 4vw, 3.35rem);
+  line-height: 1.04;
+  letter-spacing: -0.032em;
+}
+.amdTitle em { font-style: italic; color: var(--accent-strong); }
+.amdLede {
+  margin-top: 18px;
+  max-width: 44ch;
+  color: var(--text-muted);
+  font-size: var(--fs-lead);
+  line-height: 1.55;
+}
+.amdBoard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  background: var(--seal);
+  color: var(--seal-on);
+  box-shadow: 0 28px 70px rgba(6, 15, 20, 0.2);
+  isolation: isolate;
+}
+.amdBoard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, transparent 49.9%, color-mix(in srgb, var(--seal-on) 5%, transparent) 50%, transparent 50.1%),
+    linear-gradient(color-mix(in srgb, var(--seal-on) 4%, transparent) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 42px;
+  opacity: 0.7;
+}
+.amdBoardHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 13px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--seal-on) 13%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--seal-on) 50%, transparent);
+}
+.amdBoardHead b { color: var(--sov-seal); font-weight: 500; }
+.amdHeroMetric {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
+  gap: 18px;
+  padding: clamp(28px, 4vw, 48px) clamp(20px, 3.2vw, 38px);
+}
+.amdHeroMetric > span,
+.amdHeroMetric > small {
+  padding-bottom: 0.55em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--seal-on) 50%, transparent);
+}
+.amdHeroMetric > strong {
+  font-size: clamp(3.3rem, 8vw, 6.8rem);
+  font-weight: 300;
+  line-height: 0.8;
+  letter-spacing: -0.075em;
+  color: #eefafd;
+}
+.amdHeroMetric > small { text-align: right; }
+.amdRoute {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-block: 1px solid color-mix(in srgb, var(--seal-on) 13%, transparent);
+}
+.amdRoute > div {
+  display: grid;
+  gap: 4px;
+  padding: 18px;
+  border-right: 1px solid color-mix(in srgb, var(--seal-on) 13%, transparent);
+}
+.amdRoute > div:last-child { border-right: 0; }
+.amdRoute span,
+.amdRoute small,
+.amdBoundary {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.amdRoute span { color: var(--sov-seal); }
+.amdRoute b { font-size: var(--fs-sm); font-weight: 500; color: var(--seal-on); }
+.amdRoute small { color: color-mix(in srgb, var(--seal-on) 43%, transparent); }
+.amdBoundary {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 18px;
+  color: color-mix(in srgb, var(--seal-on) 48%, transparent);
+}
+.amdBoundary b { color: var(--sov-seal); font-weight: 500; }
+@media (max-width: 900px) {
+  .amd { grid-template-columns: 1fr; }
+  .amdIntro { max-width: 48rem; }
+}
+@media (max-width: 600px) {
+  .amdHeroMetric { grid-template-columns: 1fr; gap: 10px; }
+  .amdHeroMetric > span,
+  .amdHeroMetric > small { padding-bottom: 0; text-align: left; }
+  .amdRoute { grid-template-columns: 1fr; }
+  .amdRoute > div { border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--seal-on) 13%, transparent); }
+  .amdRoute > div:last-child { border-bottom: 0; }
 }
 
 /* ---------- final CTA ---------- */

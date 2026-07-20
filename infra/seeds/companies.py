@@ -465,7 +465,7 @@ def _write_terms(cid: str) -> str:
     d = OUT / "terms"
     d.mkdir(parents=True, exist_ok=True)
     p = d / f"{cid}_terms.md"
-    p.write_text(_TERMS[cid])
+    p.write_text(_TERMS[cid], encoding="utf-8")
     return f"terms/{cid}_terms.md"
 
 
@@ -815,7 +815,7 @@ def gen_lawfirm() -> dict:
                                      term=term, renewal=renewal, feecap=feecap, signature=signature,
                                      liability=liability, indemnity=indemnity)
         ref = f"contracts/contract_{i:03d}.txt"
-        (contracts_dir / f"contract_{i:03d}.txt").write_text(text)
+        (contracts_dir / f"contract_{i:03d}.txt").write_text(text, encoding="utf-8")
         matter = f"H&O-{s.choice([2022, 2023, 2024, 2025])}-{s.randint(1000, 9999):04d}"
         privilege = s.choice(["attorney-client", "work-product", "confidential"])
         rows.append((i, title, a, b, eff.isoformat(), term, auto_renew, notice, fee_cap, ref,
@@ -858,7 +858,8 @@ def gen_lawfirm() -> dict:
         ref = f"contracts/amendment_{aid:03d}.txt"
         (contracts_dir / f"amendment_{aid:03d}.txt").write_text(
             _AMEND_TMPL.format(no=no, eff=eff_date, matter=rows[cid - 1][10], body=body,
-                               precedence=precedence))
+                               precedence=precedence),
+            encoding="utf-8")
         amend_rows.append((aid, cid, eff_date, ref))
         aid += 1
 

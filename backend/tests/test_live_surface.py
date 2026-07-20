@@ -51,11 +51,20 @@ def test_rate_card_confirmed_prices():
 # ── seed kits: deterministic, planted patterns present (companies only — no network) ──────────
 def test_company_seeds_are_deterministic(tmp_path, monkeypatch):
     from infra.seeds import companies
-    monkeypatch.setattr(companies, "OUT", tmp_path / "a")
+    first_root = tmp_path / "a"
+    second_root = tmp_path / "b"
+    monkeypatch.setattr(companies, "OUT", first_root)
     first = companies.generate_all()
-    monkeypatch.setattr(companies, "OUT", tmp_path / "b")
+    monkeypatch.setattr(companies, "OUT", second_root)
     second = companies.generate_all()
     assert first == second                                  # fixed RNG -> byte-identical report
+    for company in ("bank", "clinic", "lawfirm"):
+        relative = Path("terms") / f"{company}_terms.md"
+        first_bytes = (first_root / relative).read_bytes()
+        assert first_bytes == (second_root / relative).read_bytes()
+        terms = first_bytes.decode("utf-8")
+        assert "—" in terms
+        assert "\ufffd" not in terms
     # spec 09 §2 volumes + planted patterns fire
     assert first["bank"]["counts"]["customers"] == 800
     assert first["clinic"]["counts"]["lab_results"] == 4000
@@ -68,32 +77,41 @@ def test_company_seeds_are_deterministic(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_codeexec_falls_back_without_docker(monkeypatch, tmp_path):
     from app.orchestrator import codeexec
+    monkeypatch.setattr(codeexec.settings, "data_dir", str(tmp_path))
+    workspace = tmp_path / "workspaces" / "no-docker"
+    workspace.mkdir(parents=True)
+    (workspace / "process.py").write_text("VALUE = 1\n", encoding="utf-8")
     monkeypatch.setattr(codeexec, "docker_available", lambda: False)
-    r = await codeexec.run_tests(workspace=str(tmp_path), tests=[{"id": "a"}, {"id": "b"}])
-    assert r["sandboxed"] is False and r["passed"] == 2 and r["failed"] == 0
+    r = await codeexec.run_tests(workspace=str(workspace), tests=[{"id": "a"}, {"id": "b"}])
+    assert r["verification"] == "unverified"
+    assert r["sandboxed"] is False and r["passed"] == 0 and r["failed"] == 0
 
 
 @pytest.mark.asyncio
-async def test_codeexec_sandbox_isolation(tmp_path):
+async def test_codeexec_sandbox_isolation(tmp_path, monkeypatch):
     from app.orchestrator import codeexec
     if not codeexec.docker_available():
         pytest.skip("docker not available")
-    (tmp_path / "src").mkdir()
-    (tmp_path / "src" / "m.py").write_text("x = 1\n")
+    monkeypatch.setattr(codeexec.settings, "data_dir", str(tmp_path))
+    workspace = tmp_path / "workspaces" / "sandbox-isolation"
+    (workspace / "src").mkdir(parents=True)
+    (workspace / "src" / "m.py").write_text("x = 1\n", encoding="utf-8")
     # some Docker Desktop setups don't bind-mount tmp dirs (macOS /var/folders) — skip if so
-    probe = await codeexec.run_in_sandbox(str(tmp_path), "test -f /work/src/m.py && echo OK || echo NO")
+    probe = await codeexec.run_in_sandbox(
+        str(workspace), "test -f /work/src/m.py && echo OK || echo NO")
     if "OK" not in probe["stdout"]:
         pytest.skip("docker bind-mount of tmp not shared in this environment")
     # network is OFF inside the sandbox
     net = await codeexec.run_in_sandbox(
-        str(tmp_path), "python -c \"import socket; socket.create_connection(('1.1.1.1',80),2)\" 2>&1; true")
+        str(workspace),
+        "python -c \"import socket; socket.create_connection(('1.1.1.1',80),2)\" 2>&1; true")
     assert "Network is unreachable" in (net["stdout"] + net["stderr"])
-    # valid code compiles; broken code fails — real execution, not a stub
-    good = await codeexec.run_tests(workspace=str(tmp_path), tests=[{"id": "t"}])
-    assert good["sandboxed"] and good["failed"] == 0
-    (tmp_path / "src" / "bad.py").write_text("def f(x)\n    return x\n")
-    bad = await codeexec.run_tests(workspace=str(tmp_path), tests=[{"id": "t"}])
-    assert bad["failed"] >= 1
+    # valid code loads but, without pytest files, stays unverified; broken syntax fails
+    good = await codeexec.run_tests(workspace=str(workspace), tests=[{"id": "t"}])
+    assert good["verification"] == "unverified" and good["sandboxed"] and good["failed"] == 0
+    (workspace / "src" / "bad.py").write_text("def f(x)\n    return x\n", encoding="utf-8")
+    bad = await codeexec.run_tests(workspace=str(workspace), tests=[{"id": "t"}])
+    assert bad["verification"] == "failed" and bad["failed"] >= 1
 
 
 # ── OCR seam: sidecar text-layer path works with no tesseract binary ──────────────────────────
@@ -133,17 +151,26 @@ async def test_staging_shim_serves_real_http(tmp_path):
     from app.runtime import staging
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "process.py").write_text(
-        "def run_unit(u):\n    return {'id': u.get('id'), 'decision': 'review'}\n")
+        "def run_unit(u):\n    return {'id': u.get('id'), 'decision': 'review'}\n",
+        encoding="utf-8")
     manifest = {"process": "p1", "goal": "g", "mode": "process",
                 "unit_schema": {"type": "object", "required": ["id"]}}
     h = await staging.deploy("p1", manifest, str(tmp_path), expect_token=True)
     try:
         async with httpx.AsyncClient() as c:
-            assert (await c.get(h.base_url + "/health")).json()["status"] == "ok"
-            assert (await c.get(h.base_url + "/manifest")).json()["goal"] == "g"
+            health = (await c.get(h.base_url + "/health")).json()
+            assert health["status"] == "ok"
+            assert health["execution_mode"] == "unsafe-demo-subprocess"
+            staged_manifest = (await c.get(h.base_url + "/manifest")).json()
+            assert staged_manifest["goal"] == "g"
+            assert staged_manifest["execution_mode"] == "unsafe-demo-subprocess"
+            assert staged_manifest["entrypoint_contract"] == "legacy-function"
             tok = proxy_token.sign_token("p1", ["coder"])
             r = await c.post(h.base_url + "/run_unit", json={"id": "u1"}, headers={"x-proxy-token": tok})
-            assert r.status_code == 200 and r.json()["decision"] == "review"
+            assert r.status_code == 200
+            assert r.json()["status"] == "ok"
+            assert r.json()["output"]["decision"] == "review"
+            assert r.json()["execution_mode"] == "unsafe-demo-subprocess"
             assert (await c.post(h.base_url + "/run_unit", json={"id": "u1"})).status_code == 401  # no token
             assert (await c.post(h.base_url + "/run_unit", json={}, headers={"x-proxy-token": tok})
                     ).status_code == 422  # missing required field
@@ -158,9 +185,9 @@ async def test_staging_shim_serves_real_http(tmp_path):
 @pytest.mark.asyncio
 async def test_sandbox_browse_page1_is_first_page():
     from app.api.sandbox import browse_table
-    from app.sandbox.seeds import builtin_corpus_present
-    if not builtin_corpus_present():
-        pytest.skip("seed corpus not generated (infra/seeds/out/*.db)")
+    from app.sandbox.seeds import seed_db_path
+    if seed_db_path("ledger") is None:
+        pytest.skip("ledger seed corpus not generated (infra/seeds/out/ledger.db)")
     page1 = await browse_table("ledger", "entities", page=1)
     rows = page1["rows"]
     assert rows, "ledger.entities page 1 came back empty — off-by-a-page offset regressed"

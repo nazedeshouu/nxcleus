@@ -92,7 +92,7 @@ export function Landing() {
             <a className={styles.navLink} href="#boundary">The boundary</a>
             <a className={styles.navLink} href="#lifecycle">Lifecycle</a>
             <a className={styles.navLink} href="#economics">Economics</a>
-            <PlatformLink className={styles.navLink} to="/sandbox">Sandbox</PlatformLink>
+            <a className={styles.navLink} href="#amd">AMD stack</a>
           </nav>
           <PlatformLink to="/build" className={styles.navCta}>
             Enter the platform
@@ -111,8 +111,16 @@ export function Landing() {
           <div className={styles.heroScrim} />
         </div>
         <div className={styles.heroHud} aria-hidden="true">
-          <span className={styles.heroMeterLbl}>egress monitor</span>
-          <span className={styles.heroMeterVal}><b>0</b> external calls</span>
+          <div className={styles.heroHudHead}>
+            <span>boundary monitor</span>
+            <b>sealed</b>
+          </div>
+          <div className={styles.heroMeterVal}><b>0</b><span>raw data<br />crossings</span></div>
+          <div className={styles.heroHudRows}>
+            <span><i>raw records</i><b>local</b></span>
+            <span><i>planner payload</i><b>sanitized</b></span>
+            <span><i>runtime</i><b>inside</b></span>
+          </div>
         </div>
         <div className={styles.container}>
           <div className={styles.heroCopy}>
@@ -250,7 +258,6 @@ export function Landing() {
       <section className={`${styles.container} ${styles.section}`} id="economics">
         <Reveal className={styles.money}>
           <div className={styles.moneyCopy}>
-            <div className={styles.eyebrow}>The economics</div>
             <h2 className={styles.moneyStat}>
               Frontier intelligence is a <em>capital expense,</em> not a marginal cost.
             </h2>
@@ -300,6 +307,40 @@ export function Landing() {
             Banks, insurers, healthcare, legal. The internal processes that cannot move to the cloud, running on
             hardware you control.
           </p>
+        </Reveal>
+      </section>
+
+      {/* ---------- AMD runtime ---------- */}
+      <section className={`${styles.container} ${styles.section} ${styles.amd}`} id="amd">
+        <Reveal className={styles.amdIntro}>
+          <p className={styles.amdKicker}>Target runtime / AMD Instinct</p>
+          <h2 className={styles.amdTitle}>
+            The plan becomes a <em>right-sized local fleet.</em>
+          </h2>
+          <p className={styles.amdLede}>
+            A model bill of materials maps every seat to the right serving tier. ROCm and vLLM keep inference
+            close to the data while the control plane records cost, egress, and verification evidence.
+          </p>
+        </Reveal>
+        <Reveal className={styles.amdBoard}>
+          <div className={styles.amdBoardHead}>
+            <span>deployment profile</span>
+            <b>LOCAL / TARGET</b>
+          </div>
+          <div className={styles.amdHeroMetric}>
+            <span>accelerator</span>
+            <strong>MI300X</strong>
+            <small>AMD Instinct inference fleet</small>
+          </div>
+          <div className={styles.amdRoute}>
+            <div><span>01</span><b>Model BoM</b><small>seat-aware routing</small></div>
+            <div><span>02</span><b>ROCm</b><small>local compute layer</small></div>
+            <div><span>03</span><b>vLLM</b><small>high-throughput serving</small></div>
+          </div>
+          <div className={styles.amdBoundary}>
+            <span>protected data plane</span>
+            <b>RAW stays inside</b>
+          </div>
         </Reveal>
       </section>
 

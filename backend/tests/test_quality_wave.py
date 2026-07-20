@@ -135,57 +135,30 @@ def test_sample_probes_caps_and_keeps_every_source():
     assert stage6._sample_probes(small, 40) == small
 
 
-async def test_fix_loop_hard_budget_parks_overflow_and_reports_partial(monkeypatch):
-    """More fixable tickets than the budget: coder.fix is called at most _FIX_ATTEMPT_BUDGET times,
-    the overflow is parked for human review, and the loop reports partial QA. Always terminates."""
-    scope = "job:qabudget"
-    n = stage6._FIX_ATTEMPT_BUDGET + 5
-    for i in range(n):
-        await dao.create_ticket(scope=scope, source="inspector", severity="major",
-                                title=f"t{i}", body={"i": i})
+async def test_qa_tickets_are_parked_without_calling_coder(monkeypatch):
+    """Stage 6 owns no source write/retest loop, so unresolved findings go to human review."""
+    scope = "job:qapark"
+    ticket_id = await dao.create_ticket(
+        scope=scope, source="inspector", severity="major", title="real defect", body={})
+    events = []
 
-    fix_calls = {"n": 0}
+    async def emit(event, payload=None):
+        events.append((event, payload or {}))
 
-    class _Coder:
-        async def fix(self, *a, **k):
-            fix_calls["n"] += 1
+    monkeypatch.setattr(
+        stage6, "seat", lambda _name: (_ for _ in ()).throw(AssertionError("coder requested")))
+    ctx = types.SimpleNamespace(dao=dao, scope=scope, emit=emit)
+    tickets = [{
+        "ticket_id": ticket_id,
+        "source": "inspector",
+        "severity": "major",
+        "reason": "requires real fix and retest",
+        "status": "open",
+    }]
 
-    monkeypatch.setattr(stage6, "seat", lambda name: _Coder())
+    await stage6._park_qa_tickets(ctx, tickets)
 
-    async def _emit(t, p=None):
-        pass
-
-    async def _ckpt(_k):
-        return []
-
-    ctx = types.SimpleNamespace(dao=dao, scope=scope, emit=_emit, complete=None, get_checkpoint=_ckpt)
-    partial = await stage6._fix_loop(ctx)
-
-    assert partial is True
-    assert fix_calls["n"] == stage6._FIX_ATTEMPT_BUDGET          # never exceeds the hard budget
-    assert await dao.list_tickets(scope=scope, status="open") == []   # nothing left to spin on
-    assert len(await dao.list_tickets(scope=scope, status="human_review")) == 5   # the overflow
-
-
-async def test_fix_loop_within_budget_is_not_partial(monkeypatch):
-    """Fewer tickets than the budget: all fixed, no partial marker."""
-    scope = "job:qasmall"
-    for i in range(3):
-        await dao.create_ticket(scope=scope, source="inspector", severity="major",
-                                title=f"t{i}", body={"i": i})
-
-    class _Coder:
-        async def fix(self, *a, **k):
-            pass
-
-    monkeypatch.setattr(stage6, "seat", lambda name: _Coder())
-
-    async def _emit(t, p=None):
-        pass
-
-    async def _ckpt(_k):
-        return []
-
-    ctx = types.SimpleNamespace(dao=dao, scope=scope, emit=_emit, complete=None, get_checkpoint=_ckpt)
-    assert await stage6._fix_loop(ctx) is False
-    assert len(await dao.list_tickets(scope=scope, status="fix_applied")) == 3
+    assert tickets[0]["status"] == "human_review"
+    assert len(await dao.list_tickets(scope=scope, status="human_review")) == 1
+    assert [event for event, _payload in events] == [stage6.E.TICKET_HUMAN_REVIEW]
+    assert not await dao.list_tickets(scope=scope, status="fix_applied")

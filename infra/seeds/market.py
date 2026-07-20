@@ -228,7 +228,7 @@ boundary.
 def _write_terms() -> Path:
     path = OUT / "terms" / "market_terms.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_TERMS)
+    path.write_text(_TERMS, encoding="utf-8")
     return path
 
 

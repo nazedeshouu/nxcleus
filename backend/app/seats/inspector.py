@@ -11,7 +11,7 @@ judge the deliverable against the goal in the customer's own terms.
 """
 from __future__ import annotations
 
-import time
+import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -115,28 +115,23 @@ GOAL_CHECK_SCHEMA: dict[str, Any] = {
 Tools = dict[str, Callable[..., Awaitable[Any]]]
 
 
-async def probe(
-    complete: CompleteFn,
-    emit: EmitFn,
-    *,
-    scenario: dict[str, Any],
-    tools: Tools,
-    step_budget: int = 15,
-    scenario_deadline_s: float = 60.0,
-    temperature: float | None = 0.7,
-) -> dict[str, Any] | None:
-    """Run one scenario as a bounded tool loop (<=step_budget steps, <=deadline seconds).
+class ProbeInconclusive(RuntimeError):
+    """The probe ended without evidence that the scenario passed or failed."""
 
-    Returns a Ticket-shaped dict if the inspector found a defect, else None (claim held / budget
-    spent). The step cap and deadline are enforced HERE — a probe can never run away."""
-    await emit("qa.probe_started", {"scenario": scenario.get("id"), "source": scenario.get("source")})
+    def __init__(self, reason: str, *, outcome: str = "inconclusive") -> None:
+        super().__init__(reason)
+        self.outcome = outcome
+
+
+async def _probe_loop(
+    complete: CompleteFn, emit: EmitFn, *, scenario: dict[str, Any], tools: Tools,
+    step_budget: int, temperature: float | None, progress: dict[str, int],
+) -> dict[str, Any] | None:
     transcript: list[dict[str, Any]] = []
-    started = time.monotonic()
+    factual_evidence = False
 
     for step in range(step_budget):
-        if time.monotonic() - started > scenario_deadline_s:
-            await emit("qa.probe_timeout", {"scenario": scenario.get("id"), "steps": step})
-            return None
+        progress["steps"] = step
         payload = as_json({"scenario": scenario, "transcript": transcript,
                            "steps_used": step, "steps_left": step_budget - step})
         c = await complete("inspector", convo(SYSTEM_PROBE, payload),
@@ -147,6 +142,11 @@ async def probe(
         if tool == "submit_finding":
             sf = action.get("submit_finding", {}) or {}
             if not sf.get("defect"):
+                if not factual_evidence:
+                    raise ProbeInconclusive(
+                        "clear verdict submitted without factual probe evidence",
+                        outcome="no_evidence",
+                    )
                 await emit("qa.probe_passed", {"scenario": scenario.get("id"), "steps": step + 1})
                 return None
             ticket = {
@@ -162,12 +162,24 @@ async def probe(
 
         if tool == "read_manifest":
             result = await tools["read_manifest"]()
+            factual_evidence = (
+                factual_evidence
+                or isinstance(result, dict)
+                and "error" not in result
+                and isinstance(result.get("status"), int)
+            )
             transcript.append({"step": step, "action": "read_manifest", "result": result})
         elif tool == "http_request":
             req = action.get("http_request", {}) or {}
             result = await tools["http_request"](
                 method=req.get("method", "GET"), path=req.get("path", "/"),
                 headers=req.get("headers"), body=req.get("body"))
+            factual_evidence = (
+                factual_evidence
+                or isinstance(result, dict)
+                and "error" not in result
+                and isinstance(result.get("status"), int)
+            )
             transcript.append({"step": step, "action": "http_request", "request": req, "result": result})
         elif tool == "create_tool" and "create_tool" in tools:
             req = action.get("create_tool", {}) or {}
@@ -180,12 +192,47 @@ async def probe(
             fn = tools.get(req.get("name", ""))
             result = await fn(args=req.get("args") or {}) if fn is not None else \
                 {"error": f"unknown tool {req.get('name')!r} — create_tool it first"}
+            factual_evidence = (
+                factual_evidence
+                or isinstance(result, dict) and "error" not in result
+            )
             transcript.append({"step": step, "action": "call_tool", "request": req, "result": result})
         else:  # unknown tool — record and continue (defensive)
             transcript.append({"step": step, "action": "unknown", "raw": action})
 
     await emit("qa.probe_exhausted", {"scenario": scenario.get("id"), "steps": step_budget})
-    return None
+    raise ProbeInconclusive("probe step budget exhausted", outcome="exhausted")
+
+
+async def probe(
+    complete: CompleteFn,
+    emit: EmitFn,
+    *,
+    scenario: dict[str, Any],
+    tools: Tools,
+    step_budget: int = 15,
+    scenario_deadline_s: float = 60.0,
+    temperature: float | None = 0.7,
+) -> dict[str, Any] | None:
+    """Run one scenario as a bounded tool loop (<=step_budget steps, <=deadline seconds).
+
+    Returns a Ticket-shaped dict for a defect and None only after an explicit clear verdict.
+    Timeout and budget exhaustion raise ProbeInconclusive; neither is evidence of success."""
+    await emit("qa.probe_started", {"scenario": scenario.get("id"), "source": scenario.get("source")})
+    progress = {"steps": 0}
+    if scenario_deadline_s <= 0:
+        await emit("qa.probe_timeout", {"scenario": scenario.get("id"), "steps": 0})
+        raise ProbeInconclusive("probe deadline exceeded", outcome="timeout")
+    try:
+        async with asyncio.timeout(scenario_deadline_s):
+            return await _probe_loop(
+                complete, emit, scenario=scenario, tools=tools, step_budget=step_budget,
+                temperature=temperature, progress=progress)
+    except TimeoutError as exc:
+        await emit("qa.probe_timeout", {
+            "scenario": scenario.get("id"), "steps": progress["steps"],
+        })
+        raise ProbeInconclusive("probe deadline exceeded", outcome="timeout") from exc
 
 
 async def goal_fulfillment_check(

@@ -36,6 +36,8 @@ if [ "${NXCLEUS_DOMAIN}" != "localhost" ] && [ -f "${HERE}/extra_hosts" ]; then
   done < "${HERE}/extra_hosts"
 fi
 export NXCLEUS_SITE
+: "${CODEEXEC_IMAGE:=nxcleus/codeexec:py312}"
+export CODEEXEC_IMAGE
 
 # Dedicated landing + platform hosts (their own Caddy site blocks, separate from NXCLEUS_SITE).
 # Default = amd./amdplatform. prefix on the primary domain (=> amd.localhost in dev, internal cert,
@@ -44,7 +46,32 @@ export NXCLEUS_SITE
 : "${NXCLEUS_PLATFORM_HOST:=amdplatform.${NXCLEUS_DOMAIN}}"
 export NXCLEUS_LANDING_HOST NXCLEUS_PLATFORM_HOST
 
+# Build the executor only for mutating Compose commands. Global flags and their values are skipped
+# so a service named "up" passed to a read-only command cannot trigger a build accidentally.
+COMPOSE_COMMAND=""
+COMPOSE_ARGS=("$@")
+arg_index=0
+while [ "${arg_index}" -lt "${#COMPOSE_ARGS[@]}" ]; do
+  arg="${COMPOSE_ARGS[${arg_index}]}"
+  case "${arg}" in
+    -f|--file|--env-file|--ansi|--parallel|--profile|--progress|--project-directory|-p|--project-name)
+      arg_index=$((arg_index + 2))
+      ;;
+    --*=*|--compatibility|--dry-run|--*)
+      arg_index=$((arg_index + 1))
+      ;;
+    *)
+      COMPOSE_COMMAND="${arg}"
+      break
+      ;;
+  esac
+done
+
 echo "[deploy] NXCLEUS_DOMAIN=${NXCLEUS_DOMAIN}  NXCLEUS_SITE=${NXCLEUS_SITE}"
 echo "[deploy] NXCLEUS_LANDING_HOST=${NXCLEUS_LANDING_HOST}  NXCLEUS_PLATFORM_HOST=${NXCLEUS_PLATFORM_HOST}"
 cd "${ROOT}"
+if [ "${COMPOSE_COMMAND}" = "up" ] || [ "${COMPOSE_COMMAND}" = "build" ]; then
+  echo "[deploy] building code-exec image ${CODEEXEC_IMAGE}"
+  docker build -f backend/Dockerfile.codeexec -t "${CODEEXEC_IMAGE}" backend
+fi
 exec docker compose -f infra/vm/docker-compose.yml "$@"

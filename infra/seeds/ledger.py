@@ -232,7 +232,7 @@ def _write_terms() -> Path:
     d = OUT / "terms"
     d.mkdir(parents=True, exist_ok=True)
     p = d / "ledger_terms.md"
-    p.write_text(_TERMS)
+    p.write_text(_TERMS, encoding="utf-8")
     return p
 
 

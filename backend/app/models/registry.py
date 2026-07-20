@@ -198,7 +198,7 @@ class Registry:
         path = settings.config_path("seats")
         if path:
             try:
-                data = yaml.safe_load(path.read_text()) or {}
+                data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
                 seats = _seats_from_yaml(data)
                 if seats:
                     return seats
@@ -214,7 +214,7 @@ class Registry:
         path = settings.config_path("models")
         if path:
             try:
-                return (yaml.safe_load(path.read_text()) or {}).get("models", {})
+                return (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("models", {})
             except Exception:
                 return {}
         return {}

@@ -10,6 +10,7 @@ from app.api.deps import require_demo_token
 from app.db import dao
 from app.events import E, emit
 from app.orchestrator.engine import engine
+from app.safe_paths import UnsafePathError, resolve_within
 
 router = APIRouter(tags=["processes"])
 
@@ -46,7 +47,10 @@ async def package_file(process_id: str, version: int, path: str):
     v = await dao.get_version(process_id, version)
     if not v or not v.get("package_path"):
         raise _err(404, "package not found")
-    target = Path(v["package_path"]) / path
+    try:
+        target = resolve_within(Path(v["package_path"]), path)
+    except UnsafePathError:
+        raise _err(404, "file not found") from None
     if not target.exists() or not target.is_file():
         raise _err(404, "file not found")
     return FileResponse(str(target))

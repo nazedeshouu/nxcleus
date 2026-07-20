@@ -48,6 +48,51 @@
 .bv-blocked-banner b { font-weight: 600; }
 .bv-blocked-banner p { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 3px; line-height: 1.5; word-break: break-word; }
 .bv-blocked-banner a { color: var(--accent-strong); font-weight: 500; white-space: nowrap; }
+.bv-recovery { margin-top: 12px; }
+.bv-recovery-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bv-recovery-actions button,
+.bv-recovery-actions a,
+.bv-recovery-form button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 11px;
+  border-radius: var(--r-sm);
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--hairline));
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  transition: border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.bv-recovery-actions button:hover:not(:disabled),
+.bv-recovery-actions a:hover,
+.bv-recovery-form button:hover:not(:disabled) { border-color: var(--warn); transform: translateY(-1px); }
+.bv-recovery-actions button:disabled,
+.bv-recovery-form button:disabled { cursor: not-allowed; opacity: 0.45; }
+.bv-recovery-actions svg { width: 13px; height: 13px; }
+.bv-recovery-form {
+  display: grid;
+  gap: 8px;
+  max-width: 680px;
+  margin-top: 10px;
+}
+.bv-recovery-form label { font-size: var(--fs-xs); font-weight: 600; }
+.bv-recovery-form textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  line-height: 1.5;
+}
+.bv-recovery-form button { justify-self: start; background: var(--ink); color: var(--paper); }
+.bv-recovery-note,
+.bv-recovery-error { margin-top: 8px !important; }
+.bv-recovery-error { color: var(--danger) !important; }
 
 /* completion cross-links — offered once a build finishes */
 .bv-complete-bar {
@@ -268,6 +313,8 @@
 .bv-panel.pending { opacity: 0.5; }
 .bv-panel.active { border-color: color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: var(--glow-accent), 0 0 0 3px var(--accent-wash); }
 .bv-panel.ok { border-color: color-mix(in srgb, var(--ok) 38%, transparent); }
+.bv-panel.warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.bv-panel.error { border-color: color-mix(in srgb, var(--danger) 48%, transparent); }
 .bv-panel-head {
   display: flex;
   align-items: center;
@@ -278,6 +325,8 @@
 .bv-panel-head svg { width: 15px; height: 15px; color: var(--text-muted); flex: none; }
 .bv-panel.active .bv-panel-head svg { color: var(--accent); }
 .bv-panel.ok .bv-panel-head svg { color: var(--ok); }
+.bv-panel.warn .bv-panel-head svg { color: var(--warn); }
+.bv-panel.error .bv-panel-head svg { color: var(--danger); }
 .bv-panel-title { font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.01em; }
 .bv-panel-tag {
   margin-left: auto;
@@ -614,6 +663,8 @@
 }
 .bv-worker.running { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 .bv-worker.completed { border-color: color-mix(in srgb, var(--ok) 34%, transparent); }
+.bv-worker.done { border-color: color-mix(in srgb, var(--ok) 34%, transparent); }
+.bv-worker.unverified { border-color: color-mix(in srgb, var(--warn) 42%, transparent); }
 .bv-worker.failed { border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
 .bv-worker-head { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--hairline-soft); }
 .bv-worker-name { font-size: var(--fs-xs); font-weight: 600; color: var(--ink); }
@@ -636,6 +687,7 @@
 }
 .bv-worker-foot { display: flex; align-items: center; gap: 10px; padding: 7px 10px; font-family: var(--font-mono); font-size: 0.6rem; }
 .bv-worker-tests-ok { color: var(--ok); }
+.bv-worker-tests-warn { color: var(--warn); }
 .bv-worker-tests-fail { color: var(--danger); }
 .bv-worker-loc { color: var(--text-faint); margin-left: auto; }
 .bv-review {
@@ -652,14 +704,19 @@
 /* ---- validation wall ---- */
 .bv-wall-nums { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
 .bv-wall-pass { font-family: var(--font-mono); font-size: 2rem; font-variant-numeric: tabular-nums; color: var(--ok); letter-spacing: -0.01em; }
+.bv-wall-pass.unverified { color: var(--warn); }
+.bv-wall-pass.failed { color: var(--danger); }
 .bv-wall-total { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-muted); }
 .bv-wall-fail { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--danger); margin-left: auto; }
 .bv-wall-track { height: 8px; border-radius: 4px; background: var(--danger-wash); overflow: hidden; display: flex; }
 .bv-wall-fill { height: 100%; background: var(--ok); transition: width var(--dur-2) var(--ease); }
+.bv-wall-fill.unverified { background: var(--warn); }
+.bv-wall-fill.failed { background: var(--danger); }
 .bv-wall-runs { display: flex; gap: 5px; margin-top: 10px; }
 .bv-wall-run { flex: 1; height: 5px; border-radius: 3px; background: var(--hairline); }
-.bv-wall-run.pass { background: var(--ok); }
-.bv-wall-run.partial { background: var(--warn); }
+.bv-wall-run.passed { background: var(--ok); }
+.bv-wall-run.unverified { background: var(--warn); }
+.bv-wall-run.failed { background: var(--danger); }
 
 /* ---- defect board + oracle + goal check ---- */
 .bv-tickets { display: flex; flex-direction: column; gap: 8px; }
@@ -687,11 +744,21 @@
 .bv-oracle-verdict { margin-left: auto; font-family: var(--font-mono); font-size: 0.6rem; text-transform: uppercase; }
 .bv-oracle-verdict.match { color: var(--ok); }
 .bv-oracle-verdict.mismatch { color: var(--danger); }
+.bv-oracle-verdict.no_actual,
+.bv-oracle-verdict.oracle_uncertain { color: var(--warn); }
+
+.bv-qa-truth { margin: 0 0 12px; padding: 11px 13px; border-radius: var(--r-sm); background: var(--surface-sunk); color: var(--text-muted); }
+.bv-qa-truth.failed { background: var(--danger-wash); color: var(--danger-strong); }
+.bv-qa-truth.unverified { background: var(--warn-wash); color: var(--warn); }
+.bv-qa-truth strong { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; }
+.bv-qa-truth span { margin-left: 8px; font-family: var(--font-mono); font-size: var(--fs-micro); text-transform: uppercase; }
+.bv-qa-truth p { margin: 5px 0 0; font-size: var(--fs-xs); line-height: 1.45; }
 
 .bv-goalcheck { margin-top: 12px; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--r-sm); }
 .bv-goalcheck.fulfilled { background: var(--ok-wash); color: var(--ok); }
 .bv-goalcheck.partial { background: var(--warn-wash); color: var(--warn); }
-.bv-goalcheck.failed { background: var(--danger-wash); color: var(--danger-strong); }
+.bv-goalcheck.unfulfilled { background: var(--danger-wash); color: var(--danger-strong); }
+.bv-goalcheck.unknown { background: var(--surface-sunk); color: var(--text-muted); }
 .bv-goalcheck svg { width: 20px; height: 20px; flex: none; }
 .bv-goalcheck-lbl { font-size: var(--fs-xs); font-weight: 600; }
 .bv-goalcheck-sub { font-size: var(--fs-micro); opacity: 0.85; }
@@ -733,9 +800,12 @@
 /* ---- delivery ---- */
 .bv-deliver { text-align: center; padding: 8px 4px; }
 .bv-deliver-icon { width: 34px; height: 34px; color: var(--ok); margin: 0 auto 10px; }
+.bv-deliver.unverified .bv-deliver-icon { color: var(--warn); }
 .bv-deliver-title { font-size: var(--fs-sm); font-weight: 600; color: var(--ink); }
+.bv-deliver-reasons { max-width: 48rem; margin: 8px auto 0; color: var(--warn); font-size: var(--fs-xs); }
 .bv-deliver-pkg { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .bv-deliver-item { font-family: var(--font-mono); font-size: 0.6rem; padding: 3px 9px; border-radius: var(--r-pill); background: var(--ok-wash); color: var(--ok); }
+.bv-deliver.unverified .bv-deliver-item { background: var(--warn-wash); color: var(--warn); }
 .bv-deliver-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-size: var(--fs-sm); font-weight: 500; color: var(--accent-strong); }
 
 /* ---- presenter controls ---- */

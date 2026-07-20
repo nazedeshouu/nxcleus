@@ -42,7 +42,8 @@ class StubProcess:
         self._counter = 0
 
     async def read_manifest(self) -> dict[str, Any]:
-        return self.MANIFEST
+        # Match the production probe-tool envelope so this is factual evidence for a clear verdict.
+        return {"status": 200, "manifest": self.MANIFEST}
 
     async def http_request(self, *, method: str, path: str, headers=None, body=None) -> dict[str, Any]:
         headers, body = headers or {}, body or {}
@@ -89,14 +90,20 @@ async def run_inspector_bench(complete, *, seat_label: str = "inspector",
     tools = {"read_manifest": stub.read_manifest, "http_request": stub.http_request}
     scenarios = bench_scenarios()
     completed = 0
+    inconclusive = 0
     defects_found: set[str] = set()
     for sc in scenarios:
-        ticket = await inspector.probe(complete, emit, scenario=sc, tools=tools,
-                                       step_budget=step_budget, temperature=temperature)
-        completed += 1  # returned within budget (probe never raises); timeouts return None too
+        try:
+            ticket = await inspector.probe(complete, emit, scenario=sc, tools=tools,
+                                           step_budget=step_budget, temperature=temperature)
+        except inspector.ProbeInconclusive:
+            inconclusive += 1
+            continue
+        completed += 1  # only an explicit clear or reproducible finding completes a scenario
         if ticket is not None and sc.get("targets"):
             defects_found.add(sc["targets"])
     return {"seat": seat_label, "scenarios": len(scenarios), "completed": completed,
+            "inconclusive": inconclusive,
             "defects_found": sorted(defects_found), "defects_total": len(StubProcess.PLANTED)}
 
 
@@ -126,6 +133,9 @@ class _ScriptedInspector:
             return Completion(text="", parsed={"tool": "submit_finding", "submit_finding": {
                 "defect": True, "title": sc["title"], "request": {"path": "/run_unit"},
                 "response": {"status": 500}, "severity": "major"}}, usage={})
+        if steps_used == 0:
+            return Completion(text="", parsed={"tool": "http_request",
+                              "http_request": {"method": "GET", "path": "/health"}}, usage={})
         return Completion(text="", parsed={"tool": "submit_finding",
                           "submit_finding": {"defect": False}}, usage={})
 

@@ -59,6 +59,7 @@ async def consolidate(
     *,
     modules: list[dict[str, Any]],
     interfaces: list[dict[str, Any]],
+    source_files: list[dict[str, str]],
     plan: dict[str, Any],
     temperature: float | None = None,
 ) -> dict[str, Any]:
@@ -66,6 +67,7 @@ async def consolidate(
     entrypoint. Returns a CoderOutput-shaped dict: {files: [{path, content}], notes}."""
     await emit("consolidate.started", {"modules": len(modules)})
     payload = as_json({"modules": modules, "interfaces": interfaces,
+                       "source_files": source_files,
                        "wiring": {"dag": plan.get("dag", []), "data_schemas": plan.get("data_schemas", {})}})
     c = await complete("consolidator", convo(SYSTEM_CONSOLIDATE, payload),
                        data_class=DATA_CLASS, schema=CONSOLIDATE_SCHEMA, temperature=temperature)

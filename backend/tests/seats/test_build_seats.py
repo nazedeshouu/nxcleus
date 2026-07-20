@@ -31,8 +31,15 @@ def test_consolidator_detects_entrypoint():
         {"path": "process.py", "content": "class Process: ..."},
         {"path": "src/mod_a.py", "content": "..."}], "notes": "wired"}])
     emits = Emits()
-    out = run(consolidator.consolidate(fake, emits, modules=[{"id": "mod_a"}],
-                                       interfaces=[], plan={"dag": []}))
+    out = run(consolidator.consolidate(
+        fake,
+        emits,
+        modules=[{"id": "mod_a"}],
+        interfaces=[],
+        source_files=[{"path": "src/mod_a.py", "content": "VALUE = 'from-source'"}],
+        plan={"dag": []},
+    ))
     assert len(out["files"]) == 2
     assert emits.payload("consolidate.assembled")["has_entrypoint"] is True
     assert fake.data_classes_for("consolidator") == {"RAW"}
+    assert "from-source" in fake.calls[0]["messages"][1].content

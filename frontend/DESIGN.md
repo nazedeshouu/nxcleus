@@ -70,13 +70,13 @@ Cool near-white base, one deep-cyan accent, temperature-coded zones. Not AI-purp
 
 ## 6. Imagery
 
-Raster art via Higgsfield (Seedream 4.5, exact palette anchors in the prompt), four shipped assets in `src/assets/img/`: `hero-arc.webp` (sealed white vault, cyan seam to a dark door — the hero), `wedge-dark.webp` (midnight interior with cyan hairline seams — the landing wedge), `inside-field.webp` (quieter midnight field — the platform's fixed backdrop), `field-light.webp` (whisper-quiet light field — the CTA). Abstract architectural sovereignty — no robots, brains, or circuit-board clichés. No text in images (one candidate was discarded for rendering its own hex code). Optimized webp, lazy below the fold. Functional icons/diagrams stay SVG/DOM (Phosphor, one family). The boundary diagram is DOM/SVG (it's data, and it animates).
+Raster art uses exact palette anchors: `hero-archive-crossing.jpg` is the full-bleed archive threshold in the hero; `wedge-dark.webp` is the midnight landing wedge; `inside-field.webp` is the quieter platform backdrop; `field-light.webp` closes the landing CTA. Abstract architectural sovereignty only: no robots, brains, or circuit-board clichés. No text in images. Below-the-fold assets are lazy. Functional icons and diagrams stay SVG/DOM (Phosphor, one family). The boundary diagram is DOM/SVG because it communicates data and animates once.
 
 ## 7. Per-view layout intent
 
 ### 7.1 Landing (`/`)
 Narrative spine = the pitch from `IDEA.md`, in order:
-1. **Hero** — asymmetric split: one-liner left over open image space, primary CTA "Enter the platform" + secondary "Judge sandbox". AMD/ROCm/vLLM credibility line present (legible < 30s).
+1. **Hero** — one-viewport, full-bleed archive threshold: copy anchored bottom-left, actions on the same baseline, and a compact boundary monitor in the open upper-right field. Primary CTA "Enter the platform" + secondary "Judge sandbox". AMD/ROCm/vLLM credibility line present (legible < 30s).
 2. **The boundary moment** — the hero diagram: raw context stays sealed in LOCAL; a single *sanitized brief* crosses to EXTERNAL; Sovereign Mode = zero crossings. Animated once on view. This is the astonish beat.
 3. **The lifecycle** — Build once / Operate forever / Refine on demand. Three phases, not three equal cards; a horizontal timeline with weight on "Operate forever."
 4. **Money slide** — frontier intelligence as capex not marginal cost: a small honest chart, build cost once vs. flat per-run local opex, vs. competitors paying tokens *and* surrendering data every run.

@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import settings
@@ -19,6 +19,7 @@ from app.events import E, emit, now_iso
 from app.metering import meter
 from app.models.registry import registry
 from app.models.router import router
+from app.orchestrator import codeexec
 from app.seats.base import Message
 
 _DEFAULT_STEP = {"id": "extract", "seat": "coder",
@@ -28,6 +29,107 @@ _DEFAULT_STEP = {"id": "extract", "seat": "coder",
                      "required": ["findings", "flagged"]}}
 
 _FLAG_KEYS = ("flag", "flagged", "needs_review", "suspicious")
+
+
+def _contains_review_signal(value: object) -> bool:
+    if isinstance(value, dict):
+        if value.get("decision") == "review" or any(value.get(key) for key in _FLAG_KEYS):
+            return True
+        return any(_contains_review_signal(child) for child in value.values())
+    if isinstance(value, list):
+        return any(_contains_review_signal(child) for child in value)
+    return False
+
+
+def _runtime_unit_status(body: dict) -> str:
+    """Honor explicit UnitResult status, then retain legacy review signals inside output."""
+    status = body.get("status")
+    if status in ("needs_review", "error"):
+        return status
+    if status != "ok":
+        return "error"
+    return "needs_review" if _contains_review_signal(body.get("output")) else "ok"
+
+
+def _classify_process_fanout(summary: dict, artifact: dict) -> dict:
+    """Classify build-time process fan-out from persisted execution evidence."""
+    failed: list[str] = []
+    partial: list[str] = []
+    unverified: list[str] = []
+
+    counts = summary.get("counts")
+    if not isinstance(counts, dict):
+        failed.append("execution counts are missing")
+        counts = {}
+    numeric_counts = {name: counts.get(name) for name in ("ok", "needs_review", "error")}
+    if any(type(value) is not int or value < 0 for value in numeric_counts.values()):
+        failed.append("execution counts are malformed")
+    elif numeric_counts["error"]:
+        failed.append(f"{numeric_counts['error']} unit(s) failed")
+
+    execution_errors = summary.get("execution_errors")
+    if isinstance(execution_errors, list) and execution_errors:
+        failed.append(f"execution recorded {len(execution_errors)} error(s)")
+    elif execution_errors not in (None, []):
+        failed.append("execution error evidence is malformed")
+
+    done = summary.get("done")
+    total = summary.get("total")
+    if type(done) is not int or type(total) is not int or done < 0 or total < 0:
+        failed.append("execution coverage counts are malformed")
+    elif done > total:
+        failed.append("processed unit count exceeds selected unit count")
+    else:
+        if all(type(value) is int for value in numeric_counts.values()) \
+                and sum(numeric_counts.values()) != done:
+            failed.append("execution counts do not match processed units")
+        if done < total:
+            partial.append("not all selected units were processed")
+
+    if summary.get("partial") is True:
+        partial.append("execution coverage is partial")
+    elif type(summary.get("partial")) is not bool:
+        failed.append("partial coverage evidence is malformed")
+    if summary.get("zero_candidate") is True:
+        unverified.append("candidate execution surfaced zero rows")
+    elif type(summary.get("zero_candidate")) is not bool:
+        failed.append("zero-candidate evidence is malformed")
+    if summary.get("actual_units") is not True:
+        unverified.append("execution used no actual corpus units")
+
+    mock_dispatches = summary.get("mock_dispatches")
+    if type(mock_dispatches) is not int or mock_dispatches < 0:
+        failed.append("model dispatch evidence is malformed")
+    elif mock_dispatches:
+        unverified.append("execution dispatched to the mock model backend")
+
+    artifact_state = artifact.get("verification") if isinstance(artifact, dict) else None
+    if artifact_state == "failed":
+        failed.append("artifact generation failed")
+    elif artifact_state != "passed" or artifact.get("degraded") is not False:
+        reason = artifact.get("reason") if isinstance(artifact, dict) else None
+        unverified.append(reason or "artifacts are degraded or unverified")
+    else:
+        raw_artifacts = artifact.get("artifacts")
+        kinds = [item.get("kind") for item in raw_artifacts
+                 if isinstance(item, dict)] if isinstance(raw_artifacts, list) else []
+        if sorted(kinds) != ["csv", "report"]:
+            unverified.append("passed artifact evidence lacks one CSV and one report")
+
+    failed = list(dict.fromkeys(failed))
+    partial = list(dict.fromkeys(partial))
+    unverified = list(dict.fromkeys(unverified))
+    if failed:
+        return {"status": "failed", "verification": "failed",
+                "reasons": [*failed, *partial, *unverified]}
+    if partial:
+        return {"status": "partial", "verification": "unverified",
+                "reasons": [*partial, *unverified]}
+    if unverified:
+        return {"status": "unverified", "verification": "unverified",
+                "reasons": unverified}
+    return {"status": "done", "verification": "passed", "reasons": []}
+
 
 # When a candidate (sql/analysis) step already established the STRUCTURAL match the request targets,
 # the per-unit judge is a confirmation pass, not an independent re-derivation. Without this framing a
@@ -110,9 +212,9 @@ def _scope_workspace_id(scope: str) -> str:
 
 
 async def _run_analysis_step(step: dict, units: list[tuple[str, dict]], *, scope: str,
-                             complete_fn, emit_fn, run_id: str) -> list[tuple[str, dict]] | None:
+                             complete_fn, emit_fn, run_id: str) -> list[tuple[str, dict]]:
     """One analysis candidate step: createTool (cached by scope+step id), invoke over the current
-    rows, findings replace the unit set. Returns None on failure (units unchanged, run degrades)."""
+    rows, and replace the unit set with validated findings. Candidate failures are terminal."""
     from app.ids import deterministic
     from app.orchestrator import toolsmith
     from app.runtime import workspace
@@ -131,20 +233,19 @@ async def _run_analysis_step(step: dict, units: list[tuple[str, dict]], *, scope
             agent_dir=workspace.agent_dir(_scope_workspace_id(scope), "toolsmith"),
             tool_id=tool_id)
         if "error" in res:
-            await emit_fn(E.SYSTEM_NOTICE, {"text": f"analysis step {step_id} tool not created: "
-                                            f"{res['error'][:200]}", "level": "warn"})
-            return None
+            reason = f"analysis step {step_id} tool not created: {str(res['error'])[:200]}"
+            await emit_fn(E.SYSTEM_NOTICE, {"text": reason, "level": "error"})
+            raise RuntimeError(reason)
         name = res["tool_name"]
     out = await toolsmith.invoke_tool(scope, name, {"rows": rows_in})
-    findings = out.get("findings")
-    if not isinstance(findings, list):
-        await emit_fn(E.SYSTEM_NOTICE, {"text": f"analysis step {step_id} returned no findings "
-                                        f"list: {str(out)[:200]}", "level": "warn"})
-        return None
+    findings = out.get("findings") if isinstance(out, dict) else None
+    if not isinstance(findings, list) or any(not isinstance(row, dict) for row in findings):
+        reason = f"analysis step {step_id} returned malformed findings: {str(out)[:200]}"
+        await emit_fn(E.SYSTEM_NOTICE, {"text": reason, "level": "error"})
+        raise RuntimeError(reason)
     await emit_fn(E.RUN_SQL_STEP, {"run_id": run_id, "step": step_id, "kind": "analysis",
                                    "label": step.get("label", purpose[:80]), "rows": len(findings)})
-    return [(_row_ref(step_id, i, r if isinstance(r, dict) else {"value": r}),
-             r if isinstance(r, dict) else {"value": r}) for i, r in enumerate(findings)]
+    return [(_row_ref(step_id, i, row), row) for i, row in enumerate(findings)]
 
 
 async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topology: dict,
@@ -201,12 +302,10 @@ async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topolo
             await emit_fn(E.RUN_SQL_STEP, {"run_id": run_id, "step": step.get("id"),
                                            "label": step.get("label", ""), "rows": len(rows)})
         else:   # analysis (T8 wire-up B): commission once, run deterministically over the rows
-            new_units = await _run_analysis_step(step, units, scope=scope,
-                                                 complete_fn=complete_fn, emit_fn=emit_fn,
-                                                 run_id=run_id)
-            if new_units is not None:
-                units = new_units
-                sql_rows = len(units)
+            units = await _run_analysis_step(step, units, scope=scope,
+                                             complete_fn=complete_fn, emit_fn=emit_fn,
+                                             run_id=run_id)
+            sql_rows = len(units)
 
     # visible-zero backstop: a candidate step that ran but surfaced nothing is a query/literal mismatch,
     # not a clean result — surfaced in the summary (like mock_dispatches) so no path ships a silent 0.
@@ -315,10 +414,16 @@ async def execute_topology(*, scope: str, complete_fn, emit_fn, dao, plan_topolo
             "zero_candidate": zero_candidate}
 
 
-async def run_process_fanout(ctx, plan: dict) -> None:
+async def run_process_fanout(ctx, plan: dict) -> dict:
     """Process-mode stage 4'/5' — corpus fan-out + aggregation (03 §8, 09 §3–4), through the
     shared topology executor. Budget exhaustion degrades to a partial dashboard (09 §4)."""
     from app.sandbox import seeds
+
+    existing = await ctx.get_checkpoint("fanout_result")
+    if isinstance(existing, dict) and existing.get("status") in {
+        "done", "failed", "partial", "unverified",
+    }:
+        return existing
 
     job = await ctx.refresh()
     spec = job.get("spec") or {}
@@ -330,7 +435,8 @@ async def run_process_fanout(ctx, plan: dict) -> None:
     company = spec.get("company") if isinstance(spec, dict) else None
     units = seeds.load_units(company, source=unit_def.get("source"), noun=noun,
                              cap=settings.sandbox_max_units)
-    if not units:
+    actual_units = bool(units)
+    if not actual_units:
         # ponytail: no corpus attached (non-sandbox process job) -> nominal refs; real customer
         # corpus intake (uploads/connectors) is post-deadline scope
         units = [(f"{noun}-{i}", {"ref": f"{noun}-{i}"}) for i in range(6)]
@@ -346,16 +452,35 @@ async def run_process_fanout(ctx, plan: dict) -> None:
     fleet = (plan.get("model_bom") or {}).get("fleet") or {}
     width = max(1, min(8, int(fleet.get("parallel_width") or 4)))
 
-    summary = await execute_topology(
-        scope=ctx.scope, complete_fn=ctx.complete, emit_fn=ctx.emit, dao=ctx.dao,
-        plan_topology=topology, request=request, corpus_units=units, width=width,
-        run_id=run_id, corpus_company=company)
+    try:
+        summary = await execute_topology(
+            scope=ctx.scope, complete_fn=ctx.complete, emit_fn=ctx.emit, dao=ctx.dao,
+            plan_topology=topology, request=request, corpus_units=units, width=width,
+            run_id=run_id, corpus_company=company)
+    except Exception as exc:  # noqa: BLE001 - persist terminal evidence before Stage 4 blocks
+        reason = f"{type(exc).__name__}: {str(exc)[:240]}"
+        summary = {
+            "counts": {"ok": 0, "needs_review": 0, "error": 1},
+            "flagged": [], "done": 1, "total": len(units), "partial": True,
+            "sql_rows": 0, "spot_checks": 0, "discrepancies": 0,
+            "zero_candidate": False, "execution_errors": [reason],
+        }
+        await ctx.emit(E.SYSTEM_NOTICE, {
+            "run_id": run_id, "text": f"process fan-out failed: {reason}", "level": "error"})
+
+    summary.update({
+        "actual_units": actual_units,
+        "synthetic_units": not actual_units,
+        "mock_dispatches": await meter.mock_dispatches(ctx.scope),
+    })
 
     stats = {"units": summary["total"], "completed": summary["done"], **summary["counts"],
              "flagged_refs": summary["flagged"][:20], "partial": summary["partial"],
              "sql_rows": summary["sql_rows"],
              "zero_candidate": summary.get("zero_candidate", False),
-             "mock_dispatches": await meter.mock_dispatches(ctx.scope)}
+             "actual_units": summary["actual_units"],
+             "synthetic_units": summary["synthetic_units"],
+             "mock_dispatches": summary["mock_dispatches"]}
     if summary.get("zero_candidate"):
         await ctx.emit(E.SYSTEM_NOTICE, {
             "text": "candidate step ran but surfaced zero rows — 0 findings is a query/literal "
@@ -364,16 +489,43 @@ async def run_process_fanout(ctx, plan: dict) -> None:
     cost = {"total_usd": fanout_usd,
             "cost_per_unit": round(fanout_usd / max(1, summary["done"]), 6), "frontier_calls": 0}
     # artifacts BEFORE the status flip — clients poll status==done and expect artifacts to exist
-    await _finalize_artifacts(run_id, scope=ctx.scope, process_name=job.get("title", ""),
-                              goal=job.get("goal", ""), corpus=company, stats=stats, cost=cost,
-                              deliverable=spec.get("deliverable") if isinstance(spec, dict) else None,
-                              mirror_emit=ctx.emit)
-    await ctx.dao.update_run(run_id, status="done", finished_at=now_iso(), stats=stats, cost=cost)
-    await ctx.emit(E.RUN_COMPLETED, {"run_id": run_id, "stats": stats, "cost": cost})
+    artifact = await _finalize_artifacts(
+        run_id, scope=ctx.scope, process_name=job.get("title", ""), goal=job.get("goal", ""),
+        corpus=company, stats=stats, cost=cost,
+        deliverable=spec.get("deliverable") if isinstance(spec, dict) else None,
+        mirror_emit=ctx.emit)
+    summary["artifact"] = artifact
+    outcome = _classify_process_fanout(summary, artifact)
+    stats.update({
+        "artifact": artifact,
+        "verification": outcome["verification"],
+        "verification_reasons": outcome["reasons"],
+        "run_status": outcome["status"],
+    })
+    result = {
+        "run_id": run_id, **outcome, "stats": stats, "cost": cost,
+        "execution": summary, "artifact": artifact,
+        "demo_override": (
+            outcome["verification"] == "unverified"
+            and codeexec.unverified_demo_delivery_allowed()
+        ),
+    }
+    await ctx.dao.update_run(
+        run_id, status=outcome["status"], finished_at=now_iso(), stats=stats, cost=cost)
+    await ctx.checkpoint("fanout_result", result)
+    if outcome["verification"] == "passed":
+        await ctx.emit(E.RUN_COMPLETED, {"run_id": run_id, "stats": stats, "cost": cost})
+    else:
+        await ctx.emit(E.SYSTEM_NOTICE, {
+            "run_id": run_id,
+            "text": f"process fan-out {outcome['status']}: " + "; ".join(outcome["reasons"]),
+            "level": "error" if outcome["verification"] == "failed" else "warn",
+        })
     if summary["partial"]:
         await ctx.emit(E.SYSTEM_NOTICE, {
             "text": f"budget cap reached — partial dashboard ({summary['done']} of "
                     f"{summary['total']} units)", "level": "warn"})
+    return result
 
 
 async def drive_run(run_id: str) -> None:
@@ -435,20 +587,29 @@ async def _drive_run_inner(run: dict, run_id: str, scope: str, _emit) -> None:
         cap = int(sample.get("n") or settings.sandbox_max_units)
         units = seeds.load_units(company, source=unit_def.get("source"), noun=noun,
                                  cap=cap, sample=sample.get("mode", "first"))
+        actual_units = bool(units)
         summary = await execute_topology(
             scope=scope, complete_fn=complete_fn, emit_fn=_emit, dao=dao,
             plan_topology=topology, request=request, corpus_units=units, width=4,
             run_id=run_id, corpus_company=company, process_id=run["process_id"])
     else:
         summary = await _drive_build_units(run, run_id, package, company, _emit)
+        actual_units = summary.get("actual_units") is True
 
     totals = await meter.scope_totals(scope)
+    mock_dispatches = await meter.mock_dispatches(scope)
+    summary.update({
+        "actual_units": actual_units,
+        "synthetic_units": not actual_units,
+        "mock_dispatches": mock_dispatches,
+    })
     stats = {"units": summary["total"], "completed": summary["done"], **summary["counts"],
              "flagged_refs": summary["flagged"][:20], "partial": summary["partial"],
              "sql_rows": summary["sql_rows"], "spot_checks": summary["spot_checks"],
              "discrepancies": summary["discrepancies"], "corpus": company,
              "zero_candidate": summary.get("zero_candidate", False),
-             "mock_dispatches": await meter.mock_dispatches(scope)}
+             "actual_units": actual_units, "synthetic_units": not actual_units,
+             "mock_dispatches": mock_dispatches}
     if summary.get("zero_candidate"):
         await _emit(E.SYSTEM_NOTICE, {
             "text": "candidate step ran but surfaced zero rows — 0 findings is a query/literal "
@@ -457,11 +618,41 @@ async def _drive_run_inner(run: dict, run_id: str, scope: str, _emit) -> None:
             "cost_per_unit": round(totals["cost_usd"] / max(1, summary["done"]), 6),
             "frontier_calls": 0}
     # artifacts BEFORE the status flip — clients poll status==done and expect artifacts to exist
-    await _finalize_artifacts(run_id, scope=scope, process_name=process.get("name", ""),
-                              goal=process.get("goal", ""), corpus=company, stats=stats, cost=cost,
-                              deliverable=deliverable)
-    await dao.update_run(run_id, status="done", finished_at=now_iso(), stats=stats, cost=cost)
-    await _emit(E.RUN_COMPLETED, {"run_id": run_id, "stats": stats, "cost": cost})
+    artifact = await _finalize_artifacts(
+        run_id, scope=scope, process_name=process.get("name", ""),
+        goal=process.get("goal", ""), corpus=company, stats=stats, cost=cost,
+        deliverable=deliverable)
+    stats["artifact"] = artifact
+    summary["artifact"] = artifact
+    await _persist_run_outcome(run_id, summary, stats, cost, _emit)
+
+
+async def _persist_run_outcome(run_id: str, summary: dict, stats: dict, cost: dict, _emit) -> str:
+    """Persist and emit the same explicit terminal evidence used by build-time fan-out."""
+    outcome = _classify_process_fanout(summary, stats.get("artifact"))
+    status = outcome["status"]
+    stats.update({
+        "verification": outcome["verification"],
+        "verification_reasons": outcome["reasons"],
+        "run_status": status,
+        "demo": summary.get("synthetic_units") is True or summary.get("mock_dispatches", 0) > 0,
+    })
+    await dao.update_run(run_id, status=status, finished_at=now_iso(), stats=stats, cost=cost)
+    payload = {
+        "run_id": run_id, "status": status, "verification": outcome["verification"],
+        "reasons": outcome["reasons"], "stats": stats, "cost": cost,
+        "demo": stats["demo"],
+    }
+    if outcome["verification"] == "passed":
+        await _emit(E.RUN_COMPLETED, payload)
+    else:
+        await _emit(E.SYSTEM_NOTICE, {
+            "run_id": run_id,
+            "text": f"run {status}: " + "; ".join(outcome["reasons"]),
+            "level": "error" if outcome["verification"] == "failed" else "warn",
+        })
+        await _emit(E.RUN_FINISHED, payload)
+    return status
 
 
 async def _drive_build_units(run: dict, run_id: str, package: Path, company: str | None,
@@ -477,10 +668,11 @@ async def _drive_build_units(run: dict, run_id: str, package: Path, company: str
     manifest = {}
     mf = package / "manifest.json"
     if mf.exists():
-        manifest = json.loads(mf.read_text())
+        manifest = json.loads(mf.read_text(encoding="utf-8"))
 
     units = seeds.load_units(company, source=None, noun="unit", cap=settings.sandbox_max_units) \
         if company else []
+    actual_units = bool(units)
     if not units:
         n = int(run["input_ref"]) if str(run.get("input_ref", "")).isdigit() else 8
         units = [(f"unit-{i}", {"id": f"unit-{i}"}) for i in range(n)]
@@ -498,10 +690,8 @@ async def _drive_build_units(run: dict, run_id: str, package: Path, company: str
                 body = r.json() if "json" in r.headers.get("content-type", "") else {}
                 if r.status_code != 200 or not isinstance(body, dict) or body.get("error"):
                     status = "error"
-                elif any(body.get(k) for k in _FLAG_KEYS) or body.get("decision") == "review":
-                    status = "needs_review"
                 else:
-                    status = "ok"
+                    status = _runtime_unit_status(body)
             except Exception as exc:  # noqa: BLE001
                 status, body = "error", {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
             counts[status] += 1
@@ -540,13 +730,14 @@ async def _drive_build_units(run: dict, run_id: str, package: Path, company: str
         await handle.stop()
 
     return {"counts": counts, "flagged": flagged, "done": done, "total": len(units),
-            "partial": False, "sql_rows": 0, "spot_checks": spot_checks,
-            "discrepancies": discrepancies}
+            "partial": counts["error"] > 0, "sql_rows": 0, "spot_checks": spot_checks,
+            "discrepancies": discrepancies, "zero_candidate": False,
+            "actual_units": actual_units}
 
 
 async def _finalize_artifacts(run_id: str, *, scope: str, process_name: str, goal: str,
                               corpus: str | None, stats: dict, cost: dict,
-                              deliverable: dict | None, mirror_emit=None) -> None:
+                              deliverable: dict | None, mirror_emit=None) -> dict:
     """Generate findings.csv + report.html for a completed run and announce them. Never fails
     the run — a deliverable bug must not eat the sweep that produced the data."""
     from app.runtime import deliverables
@@ -557,7 +748,7 @@ async def _finalize_artifacts(run_id: str, *, scope: str, process_name: str, goa
         egress = await dao.trace_zone_counts(scope)
         run = await dao.get_run(run_id)
         if run and run.get("started_at"):
-            duration_s = (datetime.now(timezone.utc)
+            duration_s = (datetime.now(UTC)
                           - datetime.fromisoformat(run["started_at"].replace("Z", "+00:00"))
                           ).total_seconds()
     except Exception:  # noqa: BLE001 — a report garnish must never break delivery
@@ -568,14 +759,29 @@ async def _finalize_artifacts(run_id: str, *, scope: str, process_name: str, goa
                                           corpus=corpus, stats=stats, cost=cost, units=units,
                                           deliverable=deliverable, egress=egress,
                                           duration_s=duration_s)
+        evidence = {"verification": "passed", "degraded": False,
+                    "reason": None, "artifacts": artifacts}
     except Exception as exc:  # noqa: BLE001 — a deliverable bug must never 404 a completed run
         # write a minimal stub so /report + /export.csv still resolve; a live demo can't end in 404
-        artifacts = deliverables.write_stub(run_id, process_name=process_name, goal=goal,
-                                            corpus=corpus, stats=stats, cost=cost)
+        reason = (f"artifact generation degraded to stub: {type(exc).__name__}: "
+                  f"{str(exc)[:200]}")
+        try:
+            stub_stats = {
+                **stats, "verification": "unverified", "run_status": "unverified",
+                "verification_reasons": [reason],
+            }
+            artifacts = deliverables.write_stub(
+                run_id, process_name=process_name, goal=goal, corpus=corpus,
+                stats=stub_stats, cost=cost)
+        except Exception as stub_exc:  # noqa: BLE001 - preserve missing-artifact evidence
+            artifacts = []
+            reason += f"; stub failed: {type(stub_exc).__name__}: {str(stub_exc)[:160]}"
+        evidence = {"verification": "unverified", "degraded": True,
+                    "reason": reason, "artifacts": artifacts}
         await emit(f"run:{run_id}", E.SYSTEM_NOTICE,
-                   {"text": f"artifact generation degraded to stub: {type(exc).__name__}: "
-                    f"{str(exc)[:200]}", "level": "warn"})
-    payload = {"run_id": run_id, "artifacts": artifacts}
+                   {"text": reason, "level": "warn"})
+    payload = {"run_id": run_id, **evidence}
     await emit(f"run:{run_id}", E.RUN_ARTIFACTS_READY, payload)
     if mirror_emit is not None:   # fan-out watchers live on the job scope
         await mirror_emit(E.RUN_ARTIFACTS_READY, payload)
+    return evidence

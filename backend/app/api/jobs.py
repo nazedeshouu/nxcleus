@@ -32,7 +32,7 @@ async def create_job(body: dict) -> dict:
                                   company=body.get("company") or None)
     await emit(f"job:{job_id}", E.JOB_CREATED, {"title": body.get("title", ""),
                                                 "sovereign": bool(body.get("sovereign"))})
-    engine.submit_job(job_id)
+    engine.wake_job(job_id)
     return {"job": await dao.get_job(job_id)}
 
 
@@ -76,7 +76,7 @@ async def post_answers(job_id: str, body: dict) -> dict:
     await emit(f"job:{job_id}", E.INTAKE_CLARIFICATION_ANSWERED,
                {"auto": False, "answers": [{"id": a.get("id"), "answer": a.get("answer")}
                                            for a in answers]})
-    engine.submit_job(job_id)
+    engine.wake_job(job_id)
     return {"job": await dao.get_job(job_id)}
 
 
@@ -97,6 +97,24 @@ async def post_message(job_id: str, body: dict) -> dict:
     mid = await dao.add_message(job_id, "customer", body.get("content", ""))
     await emit(f"job:{job_id}", E.INTAKE_MESSAGE, {"role": "customer", "content": body.get("content", "")})
     return {"message_id": mid}
+
+
+@router.post("/jobs/{job_id}/retry", dependencies=[Depends(require_demo_token)])
+async def retry_job(job_id: str, body: dict) -> dict:
+    """Retry a blocked stage; a correction safely re-enters through local intake first."""
+    correction = body.get("correction", "")
+    if not isinstance(correction, str):
+        raise _err(400, "correction must be a string")
+    correction = correction.strip()
+    if len(correction) > 4000:
+        raise _err(400, "correction must be 4000 characters or fewer")
+    try:
+        job, retried, target = await engine.retry_job(job_id, correction)
+    except KeyError as exc:
+        raise _err(404, "job not found") from exc
+    except ValueError as exc:
+        raise _err(409, str(exc)) from exc
+    return {"job": job, "retried": retried, "target_stage": target}
 
 
 @router.post("/jobs/{job_id}/policy", dependencies=[Depends(require_demo_token)])
@@ -139,7 +157,7 @@ async def confirm_spec(job_id: str, body: dict) -> dict:
         raise _err(409, f"cannot confirm spec in status {job['status']}")
     await dao.update_job(job_id, mode=body.get("mode", job.get("mode", "build")))
     await engine.set_stage(job_id, "planning")
-    engine.submit_job(job_id)
+    engine.wake_job(job_id)
     return {"job": await dao.get_job(job_id)}
 
 
@@ -170,7 +188,7 @@ async def approve_quote(job_id: str) -> dict:
     await dao.approve_quote(job_id)
     await emit(f"job:{job_id}", E.QUOTE_APPROVED, {})
     await engine.set_stage(job_id, "building")
-    engine.submit_job(job_id)
+    engine.wake_job(job_id)
     return {"job": await dao.get_job(job_id)}
 
 

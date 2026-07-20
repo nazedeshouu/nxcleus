@@ -177,7 +177,13 @@ for (const chunk of ["def extract_fields(doc):", "\n    text = ocr(doc)", "\n   
 for (const chunk of ["def screen(name):", "\n    return match(name, ofac) or match(name, eu)"]) push("task.output_delta", { module: "sanctions-screen", text: chunk }, 110);
 for (const t of wave1) { call("coder", t.b, "LOCAL", "RAW", 2600, 1400, 0.0); }
 meter(9, 60, 55);
-for (const t of wave1) push("task.tests", { module: t.m, passed: t.m === "sanctions-screen" ? 11 : 8, failed: 0 }, 140);
+for (const t of wave1) {
+  const passed = t.m === "sanctions-screen" ? 11 : 8;
+  push("task.tests", {
+    module: t.m, passed, failed: 0, total: passed,
+    verification: "passed", sandboxed: true, reason: null,
+  }, 140);
+}
 for (const t of wave1) push("task.completed", { module: t.m, ok: true, loc: t.loc }, 160);
 push("conductor.review", { wave: 1, verdict: "green", goal_drift: 0.02, note: "All three modules meet their interface contracts; goal alignment strong." }, 320);
 push("conductor.green_flag", { wave: 1 }, 200);
@@ -196,13 +202,25 @@ for (const chunk of ["def score(sig):", "\n    w = WEIGHTS  # sums to 1.0", "\n 
 for (const t of wave2) call("coder", t.b, "LOCAL", "RAW", 2400, 1300, 0.0);
 meter(11, 60, 60);
 // one module needs a fix -> ticket
-push("task.tests", { module: "adverse-media", passed: 6, failed: 2 }, 150);
+push("task.tests", {
+  module: "adverse-media", passed: 6, failed: 2, total: 8,
+  verification: "failed", sandboxed: true, reason: "2 tests failed",
+}, 150);
 push("ticket.opened", { id: "tk_1", title: "adverse-media: pagination drops results past page 1", status: "opened", severity: "medium", source: "consolidation" }, 220);
 push("ticket.in_fix", { id: "tk_1", title: "adverse-media: pagination drops results past page 1", status: "in_fix", severity: "medium", source: "consolidation" }, 260);
-push("task.tests", { module: "adverse-media", passed: 8, failed: 0 }, 200);
+push("task.tests", {
+  module: "adverse-media", passed: 8, failed: 0, total: 8,
+  verification: "passed", sandboxed: true, reason: null,
+}, 200);
 push("ticket.verified", { id: "tk_1", title: "adverse-media: pagination drops results past page 1", status: "verified", severity: "medium", source: "consolidation" }, 200);
-push("task.tests", { module: "risk-score", passed: 9, failed: 0 }, 140);
-push("task.tests", { module: "case-file", passed: 12, failed: 0 }, 140);
+push("task.tests", {
+  module: "risk-score", passed: 9, failed: 0, total: 9,
+  verification: "passed", sandboxed: true, reason: null,
+}, 140);
+push("task.tests", {
+  module: "case-file", passed: 12, failed: 0, total: 12,
+  verification: "passed", sandboxed: true, reason: null,
+}, 140);
 for (const t of wave2) push("task.completed", { module: t.m, ok: true, loc: t.loc }, 150);
 push("conductor.amendment", { id: "am_wave2", origin: "conductor", summary: "Tighten case-file audit schema to include the sanctions list version used.", hash: "9c1a4f", prev_hash: hprev, region: "case-file" } as any, 260);
 hprev = "9c1a4f";
@@ -213,11 +231,22 @@ push("job.stage_changed", { status: "consolidating", stage: 5 }, 300);
 
 /* ---------- stage 5: consolidation (validation wall) ---------- */
 push("consolidate.started", { modules: 6 }, 250);
-push("consolidate.test_run", { passed: 58, failed: 4, total: 62 }, 300);
+push("consolidate.test_run", {
+  passed: 58, failed: 4, total: 62,
+  verification: "failed", sandboxed: true, reason: "4 tests failed",
+}, 300);
 call("consolidator", "local:B/glm-4.6", "LOCAL", "RAW", 5200, 900, 0.0);
-push("consolidate.test_run", { passed: 61, failed: 1, total: 62 }, 320);
-push("consolidate.test_run", { passed: 62, failed: 0, total: 62 }, 320);
-push("consolidate.completed", { passed: 62, total: 62 }, 300);
+push("consolidate.test_run", {
+  passed: 61, failed: 1, total: 62,
+  verification: "failed", sandboxed: true, reason: "1 test failed",
+}, 320);
+push("consolidate.test_run", {
+  passed: 62, failed: 0, total: 62,
+  verification: "passed", sandboxed: true, reason: null,
+}, 320);
+push("consolidate.completed", {
+  passed: 62, total: 62, verification: "passed", sandboxed: true,
+}, 300);
 meter(8, 40, 40);
 push("job.stage_changed", { status: "qa", stage: 6 }, 300);
 
@@ -247,7 +276,15 @@ push("job.stage_changed", { status: "delivered", stage: 7 }, 300);
 /* ---------- stage 7: delivery ---------- */
 push("boundary.sweep", { clean: true, checked: 14 }, 240);
 push("deliver.docs_generated", { docs: ["runbook", "case-file template"] }, 260);
-push("deliver.registered", { process_id: "proc_kyc_onboarding", version: 1, package: { plan: true, docs: true, qa_report: true, tests: 62 } }, 300);
+push("deliver.registered", {
+  process_id: "proc_kyc_onboarding",
+  version: 1,
+  package: { plan: true, docs: true, qa_report: true, tests: 62 },
+  verification: "passed",
+  verification_reasons: [],
+  demo_override: false,
+  delivery_label: "VERIFIED",
+}, 300);
 push("job.done", { status: "done", stage: 7 }, 300);
 push("system.notice", { text: "Process registered. Ready to run on new applicants — zero frontier calls from here.", level: "info" }, 200);
 

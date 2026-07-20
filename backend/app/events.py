@@ -96,6 +96,7 @@ class E:
     QA_GOAL_CHECK = "qa.goal_check"
     QA_ORACLE_CHECK = "qa.oracle_check"
     QA_ORACLE_VOTE = "qa.oracle_vote"
+    QA_COMPLETED = "qa.completed"
     QA_PASSED = "qa.passed"
     # tickets
     TICKET_OPENED = "ticket.opened"
@@ -112,6 +113,7 @@ class E:
     RUN_PROGRESS = "run.progress"
     RUN_SQL_STEP = "run.sql_step"
     RUN_SPOTCHECK = "run.spotcheck"
+    RUN_FINISHED = "run.finished"
     RUN_COMPLETED = "run.completed"
     RUN_ARTIFACTS_READY = "run.artifacts_ready"
     WARRANTY_TICKET = "warranty.ticket"

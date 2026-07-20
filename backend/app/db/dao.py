@@ -77,6 +77,16 @@ async def update_job(job_id: str, **fields: Any) -> None:
     await db.execute(f"UPDATE jobs SET {sets} WHERE id = :id", {**fields, "id": job_id})
 
 
+async def retry_blocked_job(job_id: str, *, status: str, current_stage: int) -> bool:
+    """Claim a blocked job once so duplicate retry requests cannot launch it twice."""
+    row = await db.execute_returning(
+        "UPDATE jobs SET status = :status, current_stage = :stage "
+        "WHERE id = :id AND status = 'blocked' RETURNING id",
+        {"id": job_id, "status": status, "stage": current_stage},
+    )
+    return row is not None
+
+
 async def add_message(job_id: str, role: str, content: str) -> str:
     mid = new_id("message")
     await db.execute(
@@ -202,6 +212,11 @@ async def upsert_build_task(*, task_id: str, job_id: str, module_id: str, wave: 
 
 async def list_build_tasks(job_id: str) -> list[dict]:
     return await db.fetchall("SELECT * FROM build_tasks WHERE job_id = :j ORDER BY wave, id", {"j": job_id})
+
+
+async def delete_build_tasks(job_id: str) -> None:
+    """Discard generated task state when a customer correction changes the plan itself."""
+    await db.execute("DELETE FROM build_tasks WHERE job_id = :j", {"j": job_id})
 
 
 async def build_task_done(task_id: str) -> bool:
@@ -570,6 +585,22 @@ async def get_checkpoint(scope: str, key: str) -> Any:
     row = await db.fetchone("SELECT value_json FROM checkpoints WHERE scope=:sc AND key=:k",
                             {"sc": scope, "k": key})
     return json.loads(row["value_json"]) if row and row["value_json"] else None
+
+
+async def delete_checkpoints(scope: str, keys: tuple[str, ...]) -> None:
+    """Forget only the named derived checkpoints before an explicit re-execution."""
+    if not keys:
+        return
+    params: dict[str, str] = {"scope": scope}
+    placeholders: list[str] = []
+    for index, key in enumerate(keys):
+        name = f"key_{index}"
+        params[name] = key
+        placeholders.append(f":{name}")
+    await db.execute(
+        f"DELETE FROM checkpoints WHERE scope = :scope AND key IN ({', '.join(placeholders)})",
+        params,
+    )
 
 
 async def resume_candidates() -> list[dict]:

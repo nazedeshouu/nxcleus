@@ -1,7 +1,8 @@
-"""Judge-run centerpiece regression: a sandbox job through the API enqueue path must reach `done`
-with a real `runs` parent row and FK-valid units. The Wave-2 blocker was an IntegrityError on
-exactly this path (run_units inserted under the job id, FK pragma only set on one pooled
-connection)."""
+"""Sandbox enqueue must deliver its explicitly-unverified mock run with an FK-valid parent.
+
+The Wave-2 blocker was an IntegrityError on exactly this path (run_units inserted under the job
+id, FK pragma only set on one pooled connection).
+"""
 from __future__ import annotations
 
 import asyncio
@@ -32,8 +33,12 @@ async def test_sandbox_api_path_completes_with_fk_parent():
     run_id = await dao.get_checkpoint(f"job:{job_id}", "fanout_run_id")
     assert run_id, "fan-out did not checkpoint its run id"
     run = await dao.get_run(run_id)
-    assert run and run["status"] == "done"
-    assert (run.get("stats") or {}).get("units", 0) > 0
+    assert run and run["status"] == "unverified"
+    stats = run.get("stats") or {}
+    assert stats.get("units", 0) > 0
+    assert stats.get("verification") == "unverified"
+    assert any("mock model backend" in reason
+               for reason in stats.get("verification_reasons", []))
 
     units = await dao.list_run_units(run_id, limit=500)
     assert units, "no run_units under the fan-out run"
